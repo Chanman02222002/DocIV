@@ -1,0 +1,14 @@
+Flask
+Flask-WTF
+Flask-Login
+Flask-SQLAlchemy
+WTForms
+email-validator
+Jinja2
+Werkzeug
+geopy
+openai
+pandas
+gunicorn
+Pillow
+python-dotenv
