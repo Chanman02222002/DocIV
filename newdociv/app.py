@@ -2466,57 +2466,7 @@ def doctor_call_details(call_id):
     return render_template("doctor_call_details.html", call=call)
 
 
-# ============================================================
-#               CLIENT HANDLES RESCHEDULE REQUEST
-# ============================================================
 
-@app.route('/client/handle_reschedule/<int:call_id>', methods=['POST'])
-@login_required
-def client_handle_reschedule(call_id):
-    if current_user.role != "client":
-        flash("Unauthorized", "danger")
-        return redirect(url_for('dashboard'))
-
-    call = ScheduledCall.query.get_or_404(call_id)
-    action = request.form.get("action")
-    note = request.form.get("client_note", "")
-
-    # ---------- ACCEPT ----------
-    if action == "accept":
-        call.datetime = call.reschedule_datetime
-        call.reschedule_requested = False
-        call.reschedule_note = None
-        call.reschedule_datetime = None
-        db.session.commit()
-
-        send_system_message(
-            sender_id=current_user.id,
-            recipient_id=call.doctor.user_id,
-            content="Your reschedule request was accepted.",
-            message_type="reschedule_result"
-        )
-
-        flash("Reschedule accepted.", "success")
-
-    # ---------- DECLINE ----------
-    elif action == "decline":
-        declined_dt = call.reschedule_datetime
-
-        call.reschedule_requested = False
-        call.reschedule_note = None
-        call.reschedule_datetime = None
-        db.session.commit()
-
-        send_system_message(
-            sender_id=current_user.id,
-            recipient_id=call.doctor.user_id,
-            content=f"Your reschedule request for {declined_dt} was declined. {note}",
-            message_type="reschedule_result"
-        )
-
-        flash("Reschedule declined.", "warning")
-
-    return redirect(url_for('client_dashboard'))
 # ============================================================
 #                       ADMIN ANALYTICS
 # ============================================================
@@ -3061,5 +3011,6 @@ threading.Thread(target=open_browser).start()
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
 
 
