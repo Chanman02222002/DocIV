@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Inbox</h2>
+
+<ul class="list-group">
+    {% for msg in messages %}
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+        <a href="{{ url_for('view_thread', thread_id=msg.thread_id) }}">
+            {{ msg.sender.username }} — {{ msg.content[:50] }}...
+        </a>
+
+        <small>{{ msg.timestamp.strftime('%Y-%m-%d %H:%M') }}</small>
+    </li>
+    {% endfor %}
+</ul>
+
+{% endblock %}
