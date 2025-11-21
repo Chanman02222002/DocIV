@@ -204,7 +204,7 @@
                     {% elif current_user.role == 'admin' %}
                         <a class="nav-link text-white" href="{{ url_for('public_register_doctor') }}">Create Doctor Login</a>
                         <a class="nav-link text-white" href="{{ url_for('public_register_client') }}">Create Client Login</a>
-                        <a class="nav-link text-white" href="{{ url_for('add_doctor') }}">Add Doctor</a>
+                        <a class="nav-link text-white" href="{{ url_for('public_register_doctor') }}">Add Doctor</a>
                         <a class="nav-link text-white" href="{{ url_for('doctors') }}">View Doctors</a>
                         <a class="nav-link text-white" href="{{ url_for('post_job') }}">Post Job</a>
                         <a class="nav-link text-white" href="{{ url_for('admin_analytics') }}">Analytics</a>
