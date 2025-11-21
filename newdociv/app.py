@@ -547,6 +547,230 @@ def register():
 #        PUBLIC REGISTRATION (CLIENT / DOCTOR SELF-SIGNUP)
 # =================================================================
 
+@app.route('/add_doctor', methods=['GET', 'POST'])
+@login_required
+def add_doctor():
+    if current_user.role.name != "admin":
+        flash("You do not have permission to access this page.", "danger")
+        return redirect(url_for('dashboard'))
+
+    form = DoctorForm()
+
+    # For the add form, we don't have a doctor yet; just supply None.
+    existing_windows = []
+
+    if form.validate_on_submit():
+        try:
+            # Create user for the doctor
+            doctor_role = Role.query.filter_by(name="doctor").first()
+            if not doctor_role:
+                doctor_role = Role(name="doctor")
+                db.session.add(doctor_role)
+                db.session.commit()
+
+            user = User(
+                username=form.username.data,
+                email=form.email.data,
+                role=doctor_role
+            )
+            user.set_password(form.password.data)
+            db.session.add(user)
+            db.session.flush()  # so user.id is available
+
+            # Create doctor profile
+            doctor = Doctor(
+                user=user,
+                first_name=form.first_name.data,
+                last_name=form.last_name.data,
+                specialty=form.specialty.data,
+                city=form.city.data,
+                state=form.state.data
+            )
+            db.session.add(doctor)
+            db.session.flush()
+
+            # Time windows for availability
+            TimeWindow.query.filter_by(doctor_id=doctor.id).delete()
+            for tw in form.time_windows.entries:
+                if tw.form.start_time.data and tw.form.end_time.data:
+                    new_tw = TimeWindow(
+                        doctor_id=doctor.id,
+                        start_time=tw.form.start_time.data,
+                        end_time=tw.form.end_time.data
+                    )
+                    db.session.add(new_tw)
+
+            db.session.commit()
+            flash("Doctor added successfully.", "success")
+            return redirect(url_for('doctors'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error adding doctor: {e}", "danger")
+
+    return render_template(
+        "edit_doctor.html",
+        form=form,
+        doctor=None,
+        existing_windows=existing_windows,
+        is_new=True
+    )
+
+@app.route('/register_doctor', methods=['GET', 'POST'])
+@login_required
+def register_doctor():
+    if current_user.role.name != "admin":
+        flash("You do not have permission to access this page.", "danger")
+        return redirect(url_for('dashboard'))
+
+    form = RegisterForm()
+    if form.validate_on_submit():
+        try:
+            doctor_role = Role.query.filter_by(name="doctor").first()
+            if not doctor_role:
+                doctor_role = Role(name="doctor")
+                db.session.add(doctor_role)
+                db.session.commit()
+
+            user = User(
+                username=form.username.data,
+                email=form.email.data,
+                role=doctor_role
+            )
+            user.set_password(form.password.data)
+            db.session.add(user)
+            db.session.flush()
+
+            # basic doctor profile
+            doctor = Doctor(
+                user=user,
+                first_name=form.username.data,
+                last_name="",
+                specialty="",
+                city="",
+                state=""
+            )
+            db.session.add(doctor)
+            db.session.commit()
+
+            flash("Doctor account created successfully.", "success")
+            return redirect(url_for('home'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error creating doctor account: {e}", "danger")
+
+    return render_template("register_doctor.html", form=form)
+
+
+@app.route('/register_client', methods=['GET', 'POST'])
+@login_required
+def register_client():
+    if current_user.role.name != "admin":
+        flash("You do not have permission to access this page.", "danger")
+        return redirect(url_for('dashboard'))
+
+    form = RegisterForm()
+    if form.validate_on_submit():
+        try:
+            client_role = Role.query.filter_by(name="client").first()
+            if not client_role:
+                client_role = Role(name="client")
+                db.session.add(client_role)
+                db.session.commit()
+
+            user = User(
+                username=form.username.data,
+                email=form.email.data,
+                role=client_role
+            )
+            user.set_password(form.password.data)
+            db.session.add(user)
+            db.session.flush()
+
+            client = Client(
+                user=user,
+                company_name=form.username.data,
+                contact_name=form.username.data,
+                city="",
+                state=""
+            )
+            db.session.add(client)
+            db.session.commit()
+
+            flash("Client account created successfully.", "success")
+            return redirect(url_for('home'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error creating client account: {e}", "danger")
+
+    return render_template("register_client.html", form=form)
+
+@app.route('/send_job_to_doctor/<int:doctor_id>', methods=['GET', 'POST'])
+@login_required
+def send_job_to_doctor(doctor_id):
+    if current_user.role.name != "client":
+        flash("You are not authorized to send jobs.", "danger")
+        return redirect(url_for('dashboard'))
+
+    doctor = Doctor.query.get_or_404(doctor_id)
+    client = current_user.client_profile
+
+    jobs = Job.query.filter_by(client_id=client.id).all()
+    if request.method == "POST":
+        job_id = request.form.get("job_id")
+        job = Job.query.get(job_id)
+        if not job:
+            flash("Job not found.", "danger")
+        else:
+            # create an invite / message / some link record
+            invite = DoctorJobInvite(
+                doctor_id=doctor.id,
+                job_id=job.id,
+                status="pending"
+            )
+            db.session.add(invite)
+            db.session.commit()
+            flash("Job sent to doctor successfully.", "success")
+            return redirect(url_for('doctors'))
+
+    return render_template("send_job_to_doctor.html", doctor=doctor, jobs=jobs)
+
+
+@app.route('/handle_invite/<int:call_id>', methods=['POST'])
+@login_required
+def handle_invite(call_id):
+    # logic to accept/decline an invite or scheduled call
+    scheduled_call = ScheduledCall.query.get_or_404(call_id)
+
+    action = request.form.get("action")
+    if action == "accept":
+        scheduled_call.status = "accepted"
+    elif action == "decline":
+        scheduled_call.status = "declined"
+    db.session.commit()
+    flash("Invite response recorded.", "success")
+
+    # redirect based on role
+    if current_user.role.name == "doctor":
+        return redirect(url_for('doctor_dashboard'))
+    return redirect(url_for('client_dashboard'))
+
+
+@app.route('/calls')
+@login_required
+def calls():
+    if current_user.role.name == "doctor":
+        calls = ScheduledCall.query.filter_by(doctor_id=current_user.doctor_profile.id).all()
+    elif current_user.role.name == "client":
+        calls = ScheduledCall.query.join(Job).filter(Job.client_id == current_user.client_profile.id).all()
+    else:
+        calls = ScheduledCall.query.all()
+
+    return render_template("calls.html", calls=calls)
+
+
 @app.route('/public_register_client', methods=['POST'])
 def public_register_client():
     data = request.form
@@ -2508,6 +2732,7 @@ threading.Thread(target=open_browser).start()
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
 
 
 
