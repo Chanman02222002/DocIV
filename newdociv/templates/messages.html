@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2 class="mb-4">Messages</h2>
+
+<div class="list-group">
+
+    {% for msg in messages %}
+    <div class="list-group-item">
+        <div class="d-flex justify-content-between">
+            <strong>
+                {% if msg.sender %}
+                    {{ msg.sender.full_name }}
+                {% else %}
+                    System
+                {% endif %}
+            </strong>
+
+            <small class="text-muted">
+                {{ msg.timestamp.strftime('%Y-%m-%d %I:%M %p') }}
+            </small>
+        </div>
+
+        <p class="mt-2 mb-1">{{ msg.content }}</p>
+
+        {% if msg.message_type == "reschedule_request" %}
+            <a href="/doctor/call/{{ msg.related_call_id }}" class="btn btn-primary btn-sm mt-2">
+                Review Request
+            </a>
+        {% endif %}
+    </div>
+    {% endfor %}
+
+</div>
+
+{% if messages|length == 0 %}
+<p class="text-muted mt-4">No messages yet.</p>
+{% endif %}
+
+{% endblock %}
