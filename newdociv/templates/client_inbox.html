@@ -1,1 +1,28 @@
-<!-- client_inbox template content -->
+{% extends 'base.html' %}
+{% block content %}
+    <h2>{{ title or "Client Inbox" }}</h2>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>From</th>
+                <th>Message</th>
+                <th>Timestamp</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for msg in messages %}
+            <tr>
+                <td>{{ msg.sender.username }}</td>
+                <td>
+                    {{ msg.content }}
+                    {% if msg.message_type == 'interest' %}
+                        <a href="{{ url_for('send_invite', doctor_id=msg.doctor_id, job_id=msg.job_id) }}" class="btn btn-primary btn-sm">Send Call Invite</a>
+                        <a href="{{ url_for('doctor_profile', doctor_id=msg.doctor_id) }}" class="btn btn-info btn-sm">View Doctor Profile</a>
+                    {% endif %}
+                </td>
+                <td>{{ msg.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
