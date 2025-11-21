@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>DocIV – Healthcare CRM</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- If you have a CSS file in /static, you can link it here -->
+    <!-- <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}"> -->
+    <style>
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #050816;
+            color: #f9fafb;
+            display: flex;
+            min-height: 100vh;
+            align-items: center;
+            justify-content: center;
+        }
+        .wrapper {
+            max-width: 900px;
+            width: 100%;
+            padding: 40px 24px;
+        }
+        .card {
+            background: radial-gradient(circle at top left, #2563eb55, #111827 45%, #020617);
+            border-radius: 24px;
+            padding: 32px 24px 28px;
+            box-shadow:
+                0 20px 40px rgba(0, 0, 0, 0.45),
+                0 0 0 1px rgba(148, 163, 184, 0.08);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(148, 163, 184, 0.4);
+            color: #e5e7eb;
+            margin-bottom: 16px;
+        }
+        .badge-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: #22c55e;
+            box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.25);
+        }
+        h1 {
+            font-size: clamp(32px, 4vw, 40px);
+            margin: 0 0 12px;
+        }
+        h1 span {
+            background: linear-gradient(135deg, #38bdf8, #a855f7, #f97316);
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+        p.lead {
+            margin: 0 0 24px;
+            font-size: 15px;
+            color: #cbd5f5;
+            max-width: 620px;
+        }
+        .split {
+            display: grid;
+            grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.8fr);
+            gap: 24px;
+            margin-top: 16px;
+        }
+        @media (max-width: 768px) {
+            .split {
+                grid-template-columns: 1fr;
+            }
+        }
+        .pill-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .pill {
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            border: 1px solid rgba(148, 163, 184, 0.5);
+            color: #e5e7eb;
+        }
+        .cta-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 8px;
+            align-items: center;
+        }
+        .btn-primary {
+            border: none;
+            border-radius: 999px;
+            padding: 10px 18px;
+            font-size: 14px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #2563eb, #4f46e5);
+            color: #f9fafb;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+        .btn-secondary {
+            border-radius: 999px;
+            padding: 9px 16px;
+            font-size: 13px;
+            cursor: pointer;
+            border: 1px solid rgba(148, 163, 184, 0.6);
+            color: #e5e7eb;
+            background: transparent;
+            text-decoration: none;
+        }
+        .btn-primary span.chevron {
+            font-size: 18px;
+            line-height: 1;
+        }
+        .stat-card {
+            border-radius: 18px;
+            padding: 14px 16px;
+            border: 1px solid rgba(148, 163, 184, 0.45);
+            background: radial-gradient(circle at top, rgba(59, 130, 246, 0.22), rgba(15, 23, 42, 0.98));
+            font-size: 13px;
+            color: #d1d5db;
+        }
+        .stat-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.09em;
+            color: #9ca3af;
+            margin-bottom: 4px;
+        }
+        .stat-main {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: #f9fafb;
+        }
+        .stat-footnote {
+            font-size: 11px;
+            color: #9ca3af;
+        }
+        footer {
+            margin-top: 18px;
+            font-size: 11px;
+            color: #9ca3af;
+        }
+    </style>
+</head>
+<body>
+<div class="wrapper">
+    <div class="card">
+        <div class="badge">
+            <div class="badge-dot"></div>
+            <span>DocIV · Healthcare CRM Portal</span>
+        </div>
+
+        <h1>
+            Streamlined scheduling & outreach <span>for busy practices.</span>
+        </h1>
+
+        <p class="lead">
+            DocIV brings doctors, recruiters, and clients into a single workspace:
+            track interest, manage follow-ups, and coordinate calls without losing
+            anything in email threads or spreadsheets.
+        </p>
+
+        <div class="split">
+            <!-- Left: actions -->
+            <div>
+                <div class="pill-list">
+                    <div class="pill">Smart lead tracking</div>
+                    <div class="pill">Call scheduling</div>
+                    <div class="pill">Doctor &amp; client portals</div>
+                </div>
+
+                <div class="cta-row">
+                    <a href="{{ url_for('login') }}" class="btn-primary">
+                        Log in to your account
+                        <span class="chevron">→</span>
+                    </a>
+                    <a href="{{ url_for('register') }}" class="btn-secondary">
+                        Request access
+                    </a>
+                </div>
+            </div>
+
+            <!-- Right: small "stat" card -->
+            <div>
+                <div class="stat-card">
+                    <div class="stat-label">Today’s pipeline</div>
+                    <div class="stat-main">Live calls & follow-ups</div>
+                    <div class="stat-footnote">
+                        Use the dashboard to see upcoming meetings, reschedule requests,
+                        and doctor interest at a glance.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            &copy; {{ current_year }} DocIV. All rights reserved.
+        </footer>
+    </div>
+</div>
+</body>
+</html>
