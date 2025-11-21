@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Client Dashboard – DocIV{% endblock %}
+
+{% block content %}
+<h2 class="mb-3">Client Dashboard</h2>
+
+<h4 class="mt-4">Upcoming Calls</h4>
+{% if upcoming_calls %}
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead>
+        <tr>
+          <th>Date / Time</th>
+          <th>Doctor</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for call in upcoming_calls %}
+        <tr>
+          <td>{{ call.datetime.strftime("%Y-%m-%d %H:%M") }}</td>
+          <td>{{ call.doctor.name if call.doctor else "N/A" }}</td>
+          <td>
+            {% if call.canceled %}
+              <span class="badge bg-danger">Canceled</span>
+            {% elif call.reschedule_requested %}
+              <span class="badge bg-warning text-dark">Reschedule pending</span>
+            {% else %}
+              <span class="badge bg-success">Scheduled</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <p class="text-muted">No upcoming calls.</p>
+{% endif %}
+
+<h4 class="mt-4">Messages</h4>
+{% if recent_messages %}
+  <ul class="list-group">
+    {% for msg in recent_messages %}
+      <li class="list-group-item d-flex justify-content-between">
+        <div>
+          <strong>{{ msg.sender.name if msg.sender else "System" }}:</strong>
+          {{ msg.content }}
+        </div>
+        <small class="text-muted">
+          {{ msg.timestamp.strftime("%Y-%m-%d %H:%M") if msg.timestamp else "" }}
+        </small>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p class="text-muted">No recent messages.</p>
+{% endif %}
+{% endblock %}
