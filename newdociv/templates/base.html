@@ -202,13 +202,11 @@
                         {% endif %}
 
                     {% elif current_user.role == 'admin' %}
-                        <a class="nav-link text-white" href="{{ url_for('public_register_doctor') }}">Create Doctor Login</a>
-                        <a class="nav-link text-white" href="{{ url_for('public_register_client') }}">Create Client Login</a>
-                        <a class="nav-link text-white" href="{{ url_for('public_register_doctor') }}">Add Doctor</a>
-                        <a class="nav-link text-white" href="{{ url_for('doctors') }}">View Doctors</a>
+                        <a class="nav-link text-white" href="{{ url_for('admin_dashboard') }}">Dashboard</a>
                         <a class="nav-link text-white" href="{{ url_for('post_job') }}">Post Job</a>
+                        <a class="nav-link text-white" href="{{ url_for('doctors') }}">View Doctors</a>
                         <a class="nav-link text-white" href="{{ url_for('admin_analytics') }}">Analytics</a>
-                        <a class="nav-link text-white position-relative" href="{{ url_for('admin_inbox') }}">
+                        <a class="nav-link text-white position-relative" href="{{ url_for('inbox') }}">
                             Inbox
                             {% if unread_count > 0 %}
                             <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
@@ -219,6 +217,7 @@
                         <a class="nav-link text-white" href="{{ url_for('logout') }}">Logout</a>
 
                     {% elif current_user.role == 'client' %}
+                        <a class="nav-link text-white" href="{{ url_for('client_dashboard') }}">Dashboard</a>
                         <a class="nav-link text-white" href="{{ url_for('post_job') }}">Post Job</a>
                         <a class="nav-link text-white" href="{{ url_for('client_my_jobs') }}">My Jobs</a>
                         <a class="nav-link text-white" href="{{ url_for('schedule_call') }}">Schedule Call</a>
@@ -226,6 +225,9 @@
                         <a class="nav-link text-white" href="{{ url_for('doctors') }}">View Doctors</a>
                         <a class="nav-link text-white position-relative" href="{{ url_for('client_inbox') }}">
                             Inbox
+                        </a>
+                        <a class="nav-link text-white" href="{{ url_for('client_analytics') }}">Analytics</a>
+                        
                             {% if unread_count > 0 %}
                             <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
                                 {{ unread_count }}
