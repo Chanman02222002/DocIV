@@ -921,40 +921,7 @@ def doctor_call_details(call_id):
     return render_template("doctor_call_details.html", call=call)
 
 
-# ============================================================
-#                 DOCTOR HANDLE RESCHEDULE APPROVAL
-# ============================================================
 
-@app.route('/doctor/handle_reschedule/<int:call_id>', methods=['GET', 'POST'])
-@login_required
-def doctor_handle_reschedule(call_id):
-    call = ScheduledCall.query.get_or_404(call_id)
-
-    if current_user.role != "doctor" or call.doctor.user.id != current_user.id:
-        flash("Unauthorized", "danger")
-        return redirect(url_for('doctor_dashboard'))
-
-    if request.method == "POST":
-        action = request.form.get("action")
-
-        if action == "accept":
-            call.datetime = call.reschedule_datetime
-            call.reschedule_requested = False
-            call.reschedule_note = None
-            call.reschedule_datetime = None
-            db.session.commit()
-            flash("Reschedule accepted.", "success")
-
-        elif action == "reject":
-            call.reschedule_requested = False
-            call.reschedule_note = None
-            call.reschedule_datetime = None
-            db.session.commit()
-            flash("Reschedule rejected.", "warning")
-
-        return redirect(url_for('doctor_dashboard'))
-
-    return render_template("handle_reschedule.html", call=call)
 
 
 # ============================================================
@@ -3094,4 +3061,5 @@ threading.Thread(target=open_browser).start()
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
 
