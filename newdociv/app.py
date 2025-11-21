@@ -574,6 +574,23 @@ def public_register_client():
     flash("Client account created!", "success")
     return redirect(url_for('client_dashboard'))
 
+@app.route('/admin/inbox')
+@login_required
+def admin_inbox():
+    if current_user.role != "admin":
+        flash("Unauthorized", "danger")
+        return redirect(url_for("dashboard"))
+
+    messages = Message.query.filter_by(
+        recipient_id=current_user.id
+    ).order_by(Message.timestamp.desc()).all()
+
+    for msg in messages:
+        if not msg.read:
+            msg.read = True
+    db.session.commit()
+
+    return render_template("admin_inbox.html", messages=messages)
 
 @app.route('/public_register_doctor', methods=['POST'])
 def public_register_doctor():
@@ -2491,6 +2508,7 @@ threading.Thread(target=open_browser).start()
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
 
 
 
