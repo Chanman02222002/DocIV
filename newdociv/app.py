@@ -488,7 +488,12 @@ def login():
         return redirect(url_for('dashboard'))
 
     return render_template('login.html', form=form)
-
+    
+@app.route("/doctors")
+@login_required
+def doctors():
+    all_doctors = Doctor.query.all()
+    return render_template("doctors.html", doctors=all_doctors)
 
 @app.route('/logout')
 @login_required
@@ -2486,6 +2491,7 @@ threading.Thread(target=open_browser).start()
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
 
 
 
