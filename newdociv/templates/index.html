@@ -1,1 +1,7 @@
-<h1>Beca Staffing CRM Dashboard</h1>
+{% extends "base.html" %}{% block content %}
+    <h1>Beca Staffing CRM Dashboard</h1>
+    <a class="btn btn-success" href="/add_doctor">Add Doctor</a>
+    <a class="btn btn-info" href="/schedule_call">Schedule Call with Doctor</a>
+    <a class="btn btn-primary" href="/calls">View Scheduled Calls</a>
+    <a class="btn btn-secondary" href="/doctors">View Doctors</a>
+{% endblock %}
