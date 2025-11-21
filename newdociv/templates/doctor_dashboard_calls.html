@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Scheduled Calls</h2>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Client</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th>Reschedule</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for call in calls %}
+        <tr>
+            <td>{{ call.client.user.username }}</td>
+            <td>{{ call.datetime.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>{{ call.status }}</td>
+            <td>
+                <a class="btn btn-warning btn-sm"
+                   href="{{ url_for('doctor_call_details', call_id=call.id) }}">
+                   Manage
+                </a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}
