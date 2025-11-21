@@ -1,1 +1,39 @@
-<!-- edit_call template content -->
+{% extends "base.html" %}
+{% block content %}
+    <h2>Edit Scheduled Call</h2>
+    <form method="post">
+        {{ form.hidden_tag() }}
+
+        <div class="mb-3">
+            {{ form.doctor_id.label }}
+            {{ form.doctor_id(class="form-select") }}
+        </div>
+
+        <div class="mb-3">
+            {{ form.datetime.label }}
+            {{ form.datetime(class="form-control", id="datetime") }}
+        </div>
+
+        <div class="mb-3">
+            {{ form.reason.label }}
+            {{ form.reason(class="form-control") }}
+        </div>
+
+        {{ form.submit(class="btn btn-success") }}
+    </form>
+
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            $('.form-select').select2({
+                placeholder: "Select Doctor (Name | Email | Specialty)",
+                allowClear: true,
+                width: '100%'
+            });
+        });
+        flatpickr("#datetime", {enableTime: true, dateFormat: "Y-m-d\\TH:i"});
+    </script>
+{% endblock %}
