@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Request Reschedule</h2>
+
+<p><strong>Current Time:</strong> {{ call.datetime.strftime('%Y-%m-%d %H:%M') }}</p>
+
+<form method="post">
+    <label>New Proposed Time:</label>
+    <input type="datetime-local" name="new_datetime" class="form-control" required>
+
+    <label>Reason:</label>
+    <textarea name="note" class="form-control" required></textarea>
+
+    <button type="submit" class="btn btn-primary mt-3">Submit Request</button>
+</form>
+
+{% endblock %}
