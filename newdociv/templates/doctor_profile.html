@@ -1,1 +1,80 @@
-<!-- doctor_profile template content -->
+{% extends "base.html" %}
+{% block content %}
+    <h2>Doctor Profile: {{ doctor.first_name }} {{ doctor.last_name }}</h2>
+
+    <div class="card shadow p-4 mb-4">
+        <h5 class="card-title text-primary">Basic Information</h5>
+        <p><strong>Position:</strong> {{ doctor.position }}</p>
+        <p><strong>Specialty:</strong> {{ doctor.specialty }}</p>
+        <p><strong>Subspecialty:</strong> {{ doctor.subspecialty }}</p>
+        <p><strong>Email:</strong> {{ doctor.email }}</p>
+        <p><strong>Phone:</strong> {{ doctor.phone }}</p>
+        <p><strong>Alternative Phone:</strong> {{ doctor.alt_phone }}</p>
+        <p><strong>City of Residence:</strong> {{ doctor.city_of_residence }}</p>
+    </div>
+
+    {% if doctor.medical_school %}
+    <div class="card shadow p-4 mb-4">
+        <h5 class="card-title text-primary">MD/DO Education</h5>
+        <p><strong>Medical School:</strong> {{ doctor.medical_school }}</p>
+        <p><strong>Graduation:</strong> {{ doctor.med_grad_month_year }}</p>
+        <p><strong>Residency:</strong> {{ doctor.residency }}</p>
+        <p><strong>Residency Graduation:</strong> {{ doctor.residency_grad_month_year }}</p>
+        <p><strong>Fellowships:</strong> {{ doctor.fellowship }}</p>
+        <p><strong>Fellowship Graduation:</strong> {{ doctor.fellowship_grad_month_year }}</p>
+    </div>
+    {% endif %}
+
+    {% if doctor.bachelors %}
+    <div class="card shadow p-4 mb-4">
+        <h5 class="card-title text-primary">NP/PA Education</h5>
+        <p><strong>Bachelors Degree:</strong> {{ doctor.bachelors }}</p>
+        <p><strong>Bachelors Graduation:</strong> {{ doctor.bachelors_grad_month_year }}</p>
+        <p><strong>MSN:</strong> {{ doctor.msn }}</p>
+        <p><strong>MSN Graduation:</strong> {{ doctor.msn_grad_month_year }}</p>
+        <p><strong>DNP:</strong> {{ doctor.dnp }}</p>
+        <p><strong>DNP Graduation:</strong> {{ doctor.dnp_grad_month_year }}</p>
+        <p><strong>Additional Training:</strong> {{ doctor.additional_training }}</p>
+        <p><strong>Sponsorship Needed:</strong> {{ 'Yes' if doctor.sponsorship_needed else 'No' }}</p>
+    </div>
+    {% endif %}
+
+    <div class="card shadow p-4 mb-4">
+        <h5 class="card-title text-primary">Licensing & Work Preferences</h5>
+        <p><strong>Certification:</strong> {{ doctor.certification }}</p>
+        <p><strong>EMR:</strong> {{ doctor.emr }}</p>
+        <p><strong>Languages:</strong> {{ doctor.languages }}</p>
+        <p><strong>States Licensed:</strong> {{ doctor.states_licensed }}</p>
+        <p><strong>States Willing to Work:</strong> {{ doctor.states_willing_to_work }}</p>
+        <p><strong>Salary Expectations:</strong> ${{ doctor.salary_expectations }}</p>
+    </div>
+
+    <div class="card shadow p-4 mb-4">
+        <h5 class="card-title text-primary">Malpractice Cases</h5>
+        {% if malpractice_cases %}
+            {% for case in malpractice_cases %}
+                <p><strong>Incident Year:</strong> {{ case.incident_year }}</p>
+                <p><strong>Outcome:</strong> {{ case.outcome }}</p>
+                <p><strong>Payout Amount:</strong> ${{ case.payout_amount }}</p>
+                <hr>
+            {% endfor %}
+        {% else %}
+            <p>No malpractice cases reported.</p>
+        {% endif %}
+    </div>
+
+    <a href="{{ url_for('edit_doctor', doctor_id=doctor.id) }}" class="btn btn-warning">Edit Profile</a>
+    <a href="{{ url_for('send_job_to_doctor', doctor_id=doctor.id) }}" class="btn btn-info">Send Job Posting</a>
+
+    {% if current_user.role in ['client', 'admin'] %}
+        {% set first_job = current_user.jobs[0] if current_user.jobs|length > 0 else None %}
+        {% if first_job %}
+            <a href="{{ url_for('send_invite', doctor_id=doctor.id, job_id=first_job.id) }}"
+               class="btn btn-success">Schedule Call</a>
+        {% else %}
+            <button class="btn btn-secondary" disabled title="Post a job first">Schedule Call</button>
+        {% endif %}
+    {% endif %}
+
+    <a href="{{ url_for('doctors') }}" class="btn btn-secondary">Back to Doctors List</a>
+{% endblock %}
