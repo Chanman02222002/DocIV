@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+    <h2>Create Doctor Account</h2>
+    <form method="post">
+        {{ form.hidden_tag() }}
+        {{ form.username.label }} {{ form.username(class="form-control") }}
+        {{ form.email.label }} {{ form.email(class="form-control") }}
+        {{ form.password.label }} {{ form.password(class="form-control") }}
+        {{ form.submit(class="btn btn-primary mt-3") }}
+    </form>
+{% endblock %}
