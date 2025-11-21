@@ -1640,65 +1640,6 @@ def handle_invite(call_id):
     return redirect(url_for('doctor_dashboard'))
 
 
-# ============================================================
-#          DOCTOR: CALL DETAILS (CANCEL / RESCHEDULE REQUEST)
-# ============================================================
-
-@app.route('/doctor/call/<int:call_id>', methods=['GET', 'POST'])
-@login_required
-def doctor_call_details(call_id):
-    """Doctor views call details and may cancel or request reschedule."""
-    if current_user.role != "doctor":
-        flash("Unauthorized.", "danger")
-        return redirect(url_for('dashboard'))
-
-    call = ScheduledCall.query.get_or_404(call_id)
-
-    if call.doctor_id != current_user.doctor.id:
-        flash("Unauthorized.", "danger")
-        return redirect(url_for('doctor_dashboard'))
-
-    if request.method == "POST":
-        action = request.form.get("action")
-
-        # Doctor cancels meeting
-        if action == "cancel":
-            call.canceled = True
-            db.session.commit()
-            flash("Meeting canceled.", "success")
-            return redirect(url_for('doctor_dashboard'))
-
-        # Doctor submits reschedule request
-        elif action == "reschedule":
-            new_dt_str = request.form.get("reschedule_datetime")
-            note       = request.form.get("reschedule_note")
-
-            new_dt = datetime.strptime(new_dt_str, "%Y-%m-%dT%H:%M")
-
-            call.reschedule_requested = True
-            call.reschedule_datetime = new_dt
-            call.reschedule_note = note
-
-            db.session.commit()
-
-            # Notify client
-            msg = Message(
-                sender_id=current_user.id,
-                recipient_id=call.scheduled_by_id,
-                content=(
-                    f"Reschedule requested for {call.datetime.strftime('%Y-%m-%d %H:%M')} "
-                    f"to {new_dt.strftime('%Y-%m-%d %H:%M')} — Reason: {note}"
-                ),
-                message_type="reschedule_request"
-            )
-            db.session.add(msg)
-            db.session.commit()
-
-            flash("Reschedule request sent.", "success")
-            return redirect(url_for('doctor_dashboard'))
-
-    return render_template("doctor_call_details.html", call=call)
-
 
 # ============================================================
 #        DOCTOR: ACCEPT / REJECT RESCHEDULE APPROVAL PAGE
@@ -3153,3 +3094,4 @@ threading.Thread(target=open_browser).start()
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
