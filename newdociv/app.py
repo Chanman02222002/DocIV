@@ -1699,9 +1699,6 @@ def edit_doctor(doctor_id):
 #                 DASHBOARD ROUTING LOGIC
 # ============================================================
 
-@app.route('/dashboard')
-@login_required
-def dashboard():
     """Redirect user to correct dashboard based on role."""
     if current_user.role == "admin":
         return redirect(url_for('admin_dashboard'))
@@ -1735,9 +1732,6 @@ def admin_dashboard():
 #                  CLIENT DASHBOARD + CALENDAR
 # ============================================================
 
-@app.route('/client/dashboard')
-@login_required
-def client_dashboard():
     if current_user.role != "client":
         flash("Unauthorized", "danger")
         return redirect(url_for('dashboard'))
@@ -1779,9 +1773,6 @@ def client_dashboard():
 #                  DOCTOR DASHBOARD + CALENDAR
 # ============================================================
 
-@app.route('/doctor/dashboard')
-@login_required
-def doctor_dashboard():
     if current_user.role != "doctor":
         flash("Unauthorized", "danger")
         return redirect(url_for('dashboard'))
@@ -1920,9 +1911,6 @@ def doctor_handle_invite(call_id):
 #                      DOCTOR CALL DETAILS
 # ============================================================
 
-@app.route('/doctor/call/<int:call_id>', methods=['GET', 'POST'])
-@login_required
-def doctor_call_details(call_id):
     if current_user.role != "doctor":
         flash("Unauthorized", "danger")
         return redirect(url_for('dashboard'))
@@ -2130,9 +2118,6 @@ def download_job_applicants(job_id):
 #                   MY JOBS — CLIENT VIEW
 # ============================================================
 
-@app.route('/client/my_jobs')
-@login_required
-def client_my_jobs():
     if current_user.role != "client":
         flash("Unauthorized access!", "danger")
         return redirect(url_for('dashboard'))
@@ -2160,8 +2145,6 @@ def client_my_jobs():
 #             DOCTOR PROFILE PAGE (PUBLIC TO CLIENTS)
 # ============================================================
 
-@app.route('/doctor/<int:doctor_id>')
-def doctor_profile(doctor_id):
     doctor = Doctor.query.get_or_404(doctor_id)
     malpractice_cases = json.loads(doctor.malpractice_cases or "[]")
 
@@ -2247,9 +2230,6 @@ def view_message(message_id):
 #               SEND A MANUAL MESSAGE (CLIENT/DOCTOR)
 # ============================================================
 
-@app.route("/message/send/<int:recipient_id>", methods=["GET", "POST"])
-@login_required
-def send_message(recipient_id):
     recipient = User.query.get_or_404(recipient_id)
     form = MessageForm()
 
@@ -2305,9 +2285,6 @@ def message_thread(user_id):
 #        EXTERNAL CALLS TO SEND INTEREST MESSAGES
 # ============================================================
 
-@app.route('/doctor/job/<int:job_id>/express_interest', methods=['POST'])
-@login_required
-def express_interest(job_id):
     """Doctor expresses interest in a job (client gets notified)."""
     job = Job.query.get_or_404(job_id)
 
@@ -2330,14 +2307,10 @@ def express_interest(job_id):
 #                     LANDING + AUTH PAGES
 # ============================================================
 
-@app.route("/")
-def landing_page():
     """Public landing page."""
     return render_template("landing_page.html", current_year=datetime.now().year)
 
 
-@app.route("/login", methods=["GET", "POST"])
-def login():
     if current_user.is_authenticated:
         return redirect(url_for("dashboard"))
 
@@ -2356,9 +2329,6 @@ def login():
     return render_template("login.html", form=form)
 
 
-@app.route("/logout")
-@login_required
-def logout():
     logout_user()
     flash("Logged out successfully.", "success")
     return redirect(url_for("login"))
@@ -2372,8 +2342,6 @@ def create_account():
 #               PUBLIC CLIENT REGISTRATION
 # ============================================================
 
-@app.route('/public_register_client', methods=['POST'])
-def public_register_client():
     data = request.form
 
     username = data.get("username", "").strip()
@@ -2404,8 +2372,6 @@ def public_register_client():
 #               PUBLIC DOCTOR REGISTRATION
 # ============================================================
 
-@app.route('/public_register_doctor', methods=['POST'])
-def public_register_doctor():
     data = request.form
 
     username = data.get("username", "").strip()
@@ -2453,9 +2419,6 @@ def public_register_doctor():
 #           ADMIN-ONLY — CREATE INTERNAL USERS
 # ============================================================
 
-@app.route("/register", methods=["GET", "POST"])
-@login_required
-def register():
     if current_user.role != "admin":
         flash("Only admins may create internal users.", "danger")
         return redirect(url_for("dashboard"))
@@ -2522,6 +2485,11 @@ threading.Thread(target=open_browser).start()
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
+
+
+
+
 
 
 
