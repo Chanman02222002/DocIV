@@ -1,1 +1,21 @@
-<!-- post_job template content -->
+{% extends "base.html" %}
+{% block content %}
+    <h2>Post a New Job</h2>
+    <form method="post">
+        {{ form.hidden_tag() }}
+        <div class="mb-3">
+            {{ form.title.label }} {{ form.title(class="form-control") }}
+        </div>
+        <div class="mb-3">
+            {{ form.location.label }} {{ form.location(class="form-control") }}
+        </div>
+        <div class="mb-3">
+            {{ form.salary.label }} {{ form.salary(class="form-control") }}
+        </div>
+        <div class="mb-3">
+            {{ form.description.label }} {{ form.description(class="form-control") }}
+        </div>
+        {{ form.submit(class="btn btn-success mt-3") }}
+        <a href="{{ url_for('scrape_jobs') }}" class="btn btn-warning mt-3">Scrape Jobs from DocCafe</a>
+    </form>
+{% endblock %}
