@@ -16,3 +16,5 @@ webdriver-manager
 pandas
 xlrd
 openpyxl
+geopy
+
