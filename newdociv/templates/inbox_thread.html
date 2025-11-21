@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Message Thread</h2>
+
+<div class="card p-3">
+
+    {% for message in thread %}
+    <div class="mb-3 border-bottom pb-2">
+        <strong>{{ message.sender.username }}</strong> — 
+        <small>{{ message.timestamp.strftime('%Y-%m-%d %H:%M') }}</small>
+        <p class="mt-2">{{ message.content }}</p>
+    </div>
+    {% endfor %}
+
+</div>
+
+<form method="post" class="mt-3">
+    <textarea class="form-control" name="content" placeholder="Write a reply..." required></textarea>
+    <button type="submit" class="btn btn-primary mt-2">Send</button>
+</form>
+
+{% endblock %}
