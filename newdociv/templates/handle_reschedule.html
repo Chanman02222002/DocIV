@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2 class="mb-4">Review Reschedule Request</h2>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+
+        <h4>Client: {{ call.client.user.full_name }}</h4>
+
+        <p><strong>Original Time:</strong> {{ call.datetime.strftime('%Y-%m-%d %I:%M %p') }}</p>
+
+        <div class="alert alert-warning mt-3">
+            <strong>Requested New Time:</strong><br>
+            {{ call.reschedule_datetime.strftime('%Y-%m-%d %I:%M %p') }}<br>
+            <strong>Note:</strong> {{ call.reschedule_note }}
+        </div>
+
+        <form method="POST" class="mt-4">
+            <button class="btn btn-success" name="action" value="accept">Accept</button>
+            <button class="btn btn-danger ms-2" name="action" value="reject">Reject</button>
+        </form>
+
+        <a href="/doctor/dashboard" class="btn btn-outline-secondary mt-4">Back</a>
+
+    </div>
+</div>
+
+{% endblock %}
