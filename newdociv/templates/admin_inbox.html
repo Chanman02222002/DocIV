@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container mt-4">
+    <h2 class="mb-4 text-center fw-bold">📨 Admin Inbox</h2>
+
+    {% if messages %}
+        <div class="list-group shadow">
+
+            {% for message in messages %}
+            <a href="{{ url_for('view_message', message_id=message.id) }}"
+               class="list-group-item list-group-item-action">
+
+                <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1 fw-bold">
+                        {{ message.sender.username if message.sender else "Unknown Sender" }}
+                    </h5>
+                    <small>{{ message.timestamp.strftime("%Y-%m-%d %H:%M") }}</small>
+                </div>
+
+                <p class="mb-1 text-muted">
+                    {{ message.content[:100] }}{% if message.content|length > 100 %}...{% endif %}
+                </p>
+
+                <span class="badge bg-primary">
+                    {{ message.message_type|capitalize }}
+                </span>
+
+            </a>
+            {% endfor %}
+
+        </div>
+
+    {% else %}
+        <p class="text-center mt-4 text-muted">No messages yet.</p>
+    {% endif %}
+</div>
+
+{% endblock %}
