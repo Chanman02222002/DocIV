@@ -1,1 +1,20 @@
-<!-- view_job template content -->
+{% extends "base.html" %}
+{% block content %}
+    <div class="card shadow p-4">
+        <h3>{{ job.title }}</h3>
+        <p><strong>Location:</strong> {{ job.location }}</p>
+        <p><strong>Salary:</strong> {{ job.salary }}</p>
+        <p><strong>Description:</strong><br>{{ job.description }}</p>
+
+        {% if already_interested %}
+            <div class="alert alert-info mt-3">You've already expressed interest in this job.</div>
+            <button class="btn btn-secondary mt-2" disabled>Interest Already Expressed</button>
+        {% else %}
+            <form method="post">
+                <button class="btn btn-success mt-2">Express Interest</button>
+            </form>
+        {% endif %}
+
+        <a href="{{ url_for('doctor_jobs') }}" class="btn btn-secondary mt-3">Back to Jobs</a>
+    </div>
+{% endblock %}
