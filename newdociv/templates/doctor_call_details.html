@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2 class="mb-4">Call Details</h2>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+
+        <h4>Client: {{ call.client.user.full_name }}</h4>
+        <p><strong>Date:</strong> {{ call.datetime.strftime('%Y-%m-%d') }}</p>
+        <p><strong>Time:</strong> {{ call.datetime.strftime('%I:%M %p') }}</p>
+
+        {% if call.reschedule_requested %}
+            <div class="alert alert-warning mt-3">
+                <strong>Client requested reschedule:</strong><br>
+                New time: {{ call.reschedule_datetime.strftime('%Y-%m-%d %I:%M %p') }}<br>
+                Note: {{ call.reschedule_note }}
+            </div>
+
+            <a href="/doctor/handle_reschedule/{{ call.id }}" 
+               class="btn btn-primary mt-2">Review Reschedule Request</a>
+        {% endif %}
+
+        <hr>
+
+        <a href="/doctor/inbox" class="btn btn-outline-secondary mt-2">Back to Inbox</a>
+    </div>
+</div>
+
+{% endblock %}
