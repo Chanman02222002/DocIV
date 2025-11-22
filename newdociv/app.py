@@ -1221,7 +1221,7 @@ def client_dashboard():
             "status": status,
         })
 
-     return render_template(
+    return render_template(
         "client_dashboard.html",
         events=events,
         reschedule_requests=reschedule_requests
@@ -2870,6 +2870,7 @@ threading.Thread(target=open_browser).start()
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
 
 
 
