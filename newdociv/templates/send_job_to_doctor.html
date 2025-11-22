@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-3">Send Job to {{ doctor.first_name }} {{ doctor.last_name }}</h2>
+    <form method="post">
+        <div class="mb-3">
+            <label for="job_id" class="form-label">Select Job</label>
+            <select id="job_id" name="job_id" class="form-select">
+                {% for job in jobs %}
+                <option value="{{ job.id }}">{{ job.title }} - {{ job.location }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Send</button>
+        <a href="{{ url_for('doctors') }}" class="btn btn-secondary ms-2">Cancel</a>
+    </form>
+</div>
+{% endblock %}
