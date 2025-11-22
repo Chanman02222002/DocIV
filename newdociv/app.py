@@ -737,7 +737,6 @@ def send_job_to_doctor(doctor_id):
 
     return render_template("send_job_to_doctor.html", doctor=doctor, jobs=jobs)
 
-
 @app.route('/handle_invite/<int:call_id>', methods=['POST'])
 @login_required
 def handle_invite(call_id):
@@ -746,14 +745,17 @@ def handle_invite(call_id):
 
     action = request.form.get("action")
     if action == "accept":
-        scheduled_call.status = "accepted"
+        scheduled_call.invite_status = "Accepted"
     elif action == "decline":
-        scheduled_call.status = "declined"
+        scheduled_call.invite_status = "Declined"
     db.session.commit()
     flash("Invite response recorded.", "success")
 
-    # redirect based on role
-    if current_user.role.name == "doctor":
+    role_value = getattr(current_user, "role", None)
+    if hasattr(role_value, "name"):
+        role_value = role_value.name
+
+    if role_value == "doctor":
         return redirect(url_for('doctor_dashboard'))
     return redirect(url_for('client_dashboard'))
 
@@ -1184,9 +1186,9 @@ def doctor_profile(doctor_id):
 #                    CLIENT DASHBOARD + EVENTS
 # ============================================================
 
-@app.route('/client/dashboard')
-@login_required
-def client_dashboard():
+@app.route('/client/dashboard')␊
+@login_required␊
+def client_dashboard():␊
     if current_user.role != "client":
         flash("Unauthorized", "danger")
         return redirect(url_for('dashboard'))
@@ -1219,10 +1221,36 @@ def client_dashboard():
             "status": status,
         })
 
-    return render_template(
+     return render_template(
         "client_dashboard.html",
         events=events,
         reschedule_requests=reschedule_requests
+    )
+
+
+@app.route('/client/call/<int:call_id>')
+@login_required
+def client_call_details(call_id):
+    """View a scheduled call that the current client created."""
+    role_value = getattr(current_user, "role", None)
+    if hasattr(role_value, "name"):
+        role_value = role_value.name
+
+    if role_value != "client":
+        flash("Unauthorized", "danger")
+        return redirect(url_for('dashboard'))
+
+    call = ScheduledCall.query.get_or_404(call_id)
+    if call.scheduled_by_id != current_user.id:
+        flash("Unauthorized", "danger")
+        return redirect(url_for('dashboard'))
+
+    call_status, _ = get_call_status(call)
+
+    return render_template(
+        "client_call_details.html",
+        call=call,
+        call_status=call_status,
     )
 
 
@@ -1256,7 +1284,7 @@ def client_inbox():
 
 @app.route('/post_job', methods=['GET', 'POST'])
 @login_required
-def post_job():
+def post_job():␊
     if current_user.role not in ["client", "admin"]:
         flash("Unauthorized", "danger")
         return redirect(url_for('dashboard'))
@@ -1286,6 +1314,19 @@ def post_job():
         return redirect(url_for('client_dashboard'))
 
     return render_template("post_job.html", form=form)
+
+
+@app.route('/scrape_jobs')
+@login_required
+def scrape_jobs():
+    """Placeholder route for job scraping button."""
+    if current_user.role not in ["client", "admin"]:
+        flash("Unauthorized", "danger")
+        return redirect(url_for('dashboard'))
+
+    flash("Job scraping is not configured in this environment.", "info")
+    return redirect(url_for('post_job'))
+
 
 
 # ============================================================
@@ -2073,19 +2114,28 @@ def schedule_call():
         flash("Unauthorized", "danger")
         return redirect(url_for('dashboard'))
 
-    form = ScheduledCallForm()
+    form = ScheduleCallForm()
     doctors = Doctor.query.order_by(Doctor.last_name.asc()).all()
     form.doctor_id.choices = [(d.id, f"{d.first_name} {d.last_name} | {d.email}") for d in doctors]
 
+    if current_user.role == "admin":
+        jobs = Job.query.order_by(Job.title.asc()).all()
+    else:
+        jobs = Job.query.filter_by(poster_id=current_user.id).order_by(Job.title.asc()).all()
+
+    job_choices = [(0, "No linked job")]
+    job_choices.extend((j.id, f"{j.title} ({j.location or 'Remote'})") for j in jobs)
+    form.job_id.choices = job_choices
+
     if form.validate_on_submit():
-        call = ScheduledCall(
-            doctor_id=form.doctor_id.data,
-            scheduled_by_id=current_user.id,
-            job_id=None,
-            datetime=form.datetime.data,
-            reason=form.reason.data,
-            invite_status="Pending"
-        )
+        call = ScheduledCall(␊
+            doctor_id=form.doctor_id.data,␊
+            scheduled_by_id=current_user.id,␊
+            job_id=form.job_id.data or None,
+            datetime=form.datetime.data,␊
+            reason=form.reason.data,␊
+            invite_status="Pending"␊
+        )␊
 
         db.session.add(call)
         db.session.commit()
@@ -2104,16 +2154,76 @@ def schedule_call():
             'admin_dashboard' if current_user.role == "admin" else 'client_dashboard'
         ))
 
-    return render_template("schedule_call.html", form=form)
+    return redirect(url_for('doctor_dashboard'))
+
+
+@app.route('/edit_call/<int:call_id>', methods=['GET', 'POST'])
+@login_required
+def edit_call(call_id):
+    """Allow admins, clients, or the assigned doctor to adjust a scheduled call."""
+    call = ScheduledCall.query.get_or_404(call_id)
+
+    role_value = getattr(current_user, "role", None)
+    if hasattr(role_value, "name"):
+        role_value = role_value.name
+
+    is_admin = role_value == "admin"
+    is_client_owner = role_value == "client" and call.scheduled_by_id == current_user.id
+    is_doctor = role_value == "doctor" and getattr(current_user, "doctor", None) and call.doctor_id == current_user.doctor.id
+
+    if not any([is_admin, is_client_owner, is_doctor]):
+        flash("Unauthorized", "danger")
+        return redirect(url_for('dashboard'))
+
+    form = ScheduleCallForm()
+
+    doctors = Doctor.query.order_by(Doctor.last_name.asc()).all()
+    form.doctor_id.choices = [(d.id, f"{d.first_name} {d.last_name} | {d.email}") for d in doctors]
+
+    if is_admin:
+        jobs = Job.query.order_by(Job.title.asc()).all()
+    elif role_value == "client":
+        jobs = Job.query.filter_by(poster_id=current_user.id).order_by(Job.title.asc()).all()
+    else:
+        jobs = []
+
+    job_choices = [(0, "No linked job")]
+    job_choices.extend((j.id, f"{j.title} ({j.location or 'Remote'})") for j in jobs)
+    if call.job_id and all(j_id != call.job_id for j_id, _ in job_choices):
+        job_choices.append((call.job_id, call.job.title if call.job else "Linked Job"))
+    form.job_id.choices = job_choices
+
+    if request.method == 'GET':
+        form.doctor_id.data = call.doctor_id
+        form.job_id.data = call.job_id or 0
+        form.datetime.data = call.datetime
+        form.reason.data = call.reason
+
+    if form.validate_on_submit():
+        call.doctor_id = form.doctor_id.data
+        call.job_id = form.job_id.data or None
+        call.datetime = form.datetime.data
+        call.reason = form.reason.data
+        db.session.commit()
+
+        flash("Call updated!", "success")
+
+        if is_admin:
+            return redirect(url_for('admin_dashboard'))
+        if role_value == "doctor":
+            return redirect(url_for('doctor_dashboard'))
+        return redirect(url_for('client_dashboard'))
+
+    return render_template("edit_call.html", form=form)
 
 
 # ============================================================
 #                  DOCTOR INVITE RESPONSE
 # ============================================================
 
-@app.route('/doctor/handle_invite/<int:call_id>', methods=['POST'])
-@login_required
-def doctor_handle_invite(call_id):
+@app.route('/doctor/handle_invite/<int:call_id>', methods=['POST'])␊
+@login_required␊
+def doctor_handle_invite(call_id):␊
     if current_user.role != "doctor":
         flash("Unauthorized", "danger")
         return redirect(url_for('dashboard'))
@@ -2506,9 +2616,9 @@ def view_message(message_id):
 #                 MESSAGE THREAD BETWEEN TWO USERS
 # ============================================================
 
-@app.route("/messages/thread/<int:user_id>")
-@login_required
-def message_thread(user_id):
+@app.route("/messages/thread/<int:user_id>")␊
+@login_required␊
+def message_thread(user_id):␊
     """View a 1-on-1 conversation thread."""
     other = User.query.get_or_404(user_id)
 
@@ -2518,6 +2628,34 @@ def message_thread(user_id):
     ).order_by(Message.timestamp.asc()).all()
 
     # Mark unread as read
+    unread = [m for m in thread if m.recipient_id == current_user.id and not m.read]
+    for m in unread:
+        m.read = True
+
+    if unread:
+        db.session.commit()
+
+    return render_template("message_thread.html", thread=thread, other=other)
+
+
+@app.route("/messages/view/<int:message_id>")
+@login_required
+def view_thread(message_id):
+    """Entry point from inbox lists to view a conversation thread."""
+    msg = Message.query.get_or_404(message_id)
+
+    if current_user.id not in [msg.sender_id, msg.recipient_id]:
+        flash("Unauthorized", "danger")
+        return redirect(url_for("inbox"))
+
+    other_id = msg.sender_id if msg.sender_id != current_user.id else msg.recipient_id
+    other = User.query.get_or_404(other_id)
+
+    thread = Message.query.filter(
+        ((Message.sender_id == current_user.id) & (Message.recipient_id == other.id)) |
+        ((Message.sender_id == other.id) & (Message.recipient_id == current_user.id))
+    ).order_by(Message.timestamp.asc()).all()
+
     unread = [m for m in thread if m.recipient_id == current_user.id and not m.read]
     for m in unread:
         m.read = True
@@ -2732,6 +2870,7 @@ threading.Thread(target=open_browser).start()
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
 
 
 
