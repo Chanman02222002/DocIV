@@ -4,7 +4,7 @@
 
     <p><strong>Doctor:</strong> Dr. {{ call.doctor.first_name }} {{ call.doctor.last_name }}</p>
     <p><strong>Date/Time:</strong> {{ call.datetime.strftime('%Y-%m-%d %H:%M') }}</p>
-    <p><strong>Status:</strong> {{ call.status }}</p>
+     <p><strong>Status:</strong> {{ call_status }}</p>
 
     {% if call.reschedule_requested %}
         <div class="alert alert-warning">
