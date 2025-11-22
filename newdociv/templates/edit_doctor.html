@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">{{ 'New Doctor' if is_new else 'Edit Doctor' }}</h2>
+    <form method="post">
+        {{ form.hidden_tag() }}
+        {% for field in form %}
+            {% if field.type not in ['CSRFTokenField', 'SubmitField'] %}
+            <div class="mb-3">
+                {{ field.label }}
+                {{ field(class="form-control") }}
+                {% if field.errors %}
+                    <div class="text-danger small">{{ field.errors[0] }}</div>
+                {% endif %}
+            </div>
+            {% endif %}
+        {% endfor %}
+        {{ form.submit(class="btn btn-primary") }}
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary ms-2">Back</a>
+    </form>
+</div>
+{% endblock %}
