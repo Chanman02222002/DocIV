@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Sent Messages</h2>
+    {% if messages %}
+    <div class="list-group">
+        {% for msg in messages %}
+        <div class="list-group-item">
+            <div class="d-flex w-100 justify-content-between">
+                <h5 class="mb-1">To: {{ msg.recipient.username if msg.recipient else 'Unknown' }}</h5>
+                <small class="text-muted">{{ msg.timestamp.strftime('%Y-%m-%d %I:%M %p') }}</small>
+            </div>
+            <p class="mb-1">{{ msg.content }}</p>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+        <p class="text-muted">You haven't sent any messages.</p>
+    {% endif %}
+</div>
+{% endblock %}
