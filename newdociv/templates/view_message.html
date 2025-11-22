@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-3">Message</h2>
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">From: {{ message.sender.username if message.sender else 'System' }}</h5>
+            <h6 class="card-subtitle mb-2 text-muted">{{ message.timestamp.strftime('%Y-%m-%d %I:%M %p') }}</h6>
+            <p class="card-text">{{ message.content }}</p>
+            <a href="{{ url_for('inbox') }}" class="card-link">Back to Inbox</a>
+            <a href="{{ url_for('view_conversation', user_id=message.sender.id if message.sender else message.recipient.id) }}" class="card-link">Open Conversation</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
