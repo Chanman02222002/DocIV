@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">{{ title or 'Inbox' }}</h2>
+    {% if messages %}
+    <div class="list-group">
+        {% for msg in messages %}
+        <a class="list-group-item list-group-item-action" href="{{ url_for('view_message', message_id=msg.id) }}">
+            <div class="d-flex w-100 justify-content-between">
+                <h5 class="mb-1">{{ msg.sender.username if msg.sender else 'System' }}</h5>
+                <small class="text-muted">{{ msg.timestamp.strftime('%Y-%m-%d %I:%M %p') }}</small>
+            </div>
+            <p class="mb-1">{{ msg.content[:120] }}{% if msg.content|length > 120 %}...{% endif %}</p>
+            {% if not msg.read %}
+            <span class="badge bg-primary">Unread</span>
+            {% endif %}
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+        <p class="text-muted">No messages.</p>
+    {% endif %}
+</div>
+{% endblock %}
