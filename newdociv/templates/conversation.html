@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-3">Conversation with {{ other.username }}</h2>
+    <div class="list-group mb-4">
+        {% for msg in messages %}
+        <div class="list-group-item {% if msg.sender_id == current_user.id %}list-group-item-info{% endif %}">
+            <div class="d-flex justify-content-between">
+                <strong>{{ msg.sender.username if msg.sender else 'System' }}</strong>
+                <small class="text-muted">{{ msg.timestamp.strftime('%Y-%m-%d %I:%M %p') }}</small>
+            </div>
+            <p class="mb-1">{{ msg.content }}</p>
+        </div>
+        {% endfor %}
+        {% if not messages %}
+            <div class="list-group-item text-muted">No messages yet.</div>
+        {% endif %}
+    </div>
+    <a class="btn btn-primary" href="{{ url_for('send_message', recipient_id=other.id) }}">Send a Message</a>
+    <a class="btn btn-secondary ms-2" href="{{ url_for('inbox') }}">Back to Inbox</a>
+</div>
+{% endblock %}
