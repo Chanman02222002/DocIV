@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-3">Send Message to {{ recipient.username }}</h2>
+    <form method="post">
+        {{ form.hidden_tag() }}
+        <div class="mb-3">
+            {{ form.content.label }}
+            {{ form.content(class="form-control", rows=4) }}
+        </div>
+        {{ form.submit(class="btn btn-primary") }}
+        <a href="{{ url_for('view_conversation', user_id=recipient.id) }}" class="btn btn-secondary ms-2">Back</a>
+    </form>
+</div>
+{% endblock %}
