@@ -1186,9 +1186,9 @@ def doctor_profile(doctor_id):
 #                    CLIENT DASHBOARD + EVENTS
 # ============================================================
 
-@app.route('/client/dashboard')␊
-@login_required␊
-def client_dashboard():␊
+@app.route('/client/dashboard')
+@login_required
+def client_dashboard():
     if current_user.role != "client":
         flash("Unauthorized", "danger")
         return redirect(url_for('dashboard'))
@@ -1284,7 +1284,7 @@ def client_inbox():
 
 @app.route('/post_job', methods=['GET', 'POST'])
 @login_required
-def post_job():␊
+def post_job():
     if current_user.role not in ["client", "admin"]:
         flash("Unauthorized", "danger")
         return redirect(url_for('dashboard'))
@@ -2128,14 +2128,14 @@ def schedule_call():
     form.job_id.choices = job_choices
 
     if form.validate_on_submit():
-        call = ScheduledCall(␊
-            doctor_id=form.doctor_id.data,␊
-            scheduled_by_id=current_user.id,␊
+        call = ScheduledCall(
+            doctor_id=form.doctor_id.data,
+            scheduled_by_id=current_user.id,
             job_id=form.job_id.data or None,
-            datetime=form.datetime.data,␊
-            reason=form.reason.data,␊
-            invite_status="Pending"␊
-        )␊
+            datetime=form.datetime.data,
+            reason=form.reason.data,
+            invite_status="Pending"
+        )
 
         db.session.add(call)
         db.session.commit()
@@ -2221,9 +2221,9 @@ def edit_call(call_id):
 #                  DOCTOR INVITE RESPONSE
 # ============================================================
 
-@app.route('/doctor/handle_invite/<int:call_id>', methods=['POST'])␊
-@login_required␊
-def doctor_handle_invite(call_id):␊
+@app.route('/doctor/handle_invite/<int:call_id>', methods=['POST'])
+@login_required
+def doctor_handle_invite(call_id):
     if current_user.role != "doctor":
         flash("Unauthorized", "danger")
         return redirect(url_for('dashboard'))
@@ -2616,9 +2616,9 @@ def view_message(message_id):
 #                 MESSAGE THREAD BETWEEN TWO USERS
 # ============================================================
 
-@app.route("/messages/thread/<int:user_id>")␊
-@login_required␊
-def message_thread(user_id):␊
+@app.route("/messages/thread/<int:user_id>")
+@login_required
+def message_thread(user_id):
     """View a 1-on-1 conversation thread."""
     other = User.query.get_or_404(user_id)
 
@@ -2870,6 +2870,7 @@ threading.Thread(target=open_browser).start()
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
 
 
 
