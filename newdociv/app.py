@@ -523,7 +523,7 @@ app.jinja_loader = DictLoader({
         <nav class="navbar navbar-expand-lg navbar-dark">
             <div class="container">
                 <a class="navbar-brand d-flex align-items-center" href="{{ url_for('landing_page') if request.endpoint == 'login' else url_for('dashboard') }}">
-                    <img src="{{ url_for('static', filename='docivlogo.png') }}" alt="Logo">
+                    <img src="{{ url_for('static', filename='jobsdirectmedicalcutright.png') }}" alt="Logo">
                     Healthcare Systems
                 </a>
                 <div class="navbar-nav ms-auto">
@@ -724,7 +724,7 @@ app.jinja_loader = DictLoader({
         </style>
 
         <div class="login-container">
-            <img src="{{ url_for('static', filename='docivlogo.png') }}" alt="Logo" class="login-logo">
+            <img src="{{ url_for('static', filename='jobsdirectmedicalcutright.png') }}" alt="Logo" class="login-logo">
             <div class="login-title">Welcome Back</div>
             <div class="login-subtext">Log in to your account to access your dashboard.</div>
 
@@ -1559,7 +1559,7 @@ app.jinja_loader = DictLoader({
         <div class="hero text-center">
             <div class="container" style="padding-bottom: 200px;">  
                 <!-- was 60px-->
-                <img id="hero-logo" src="{{ url_for('static', filename='docivlogo.png') }}" alt="DocIV Logo" class="img-fluid mb-4" style="max-width: 500px; transition: transform 0.3s ease;">
+                 <img id="hero-logo" src="{{ url_for('static', filename='jobsdirectmedicalcutright.png') }}" alt="DocIV Logo" class="img-fluid mb-4" style="max-width: 500px; transition: transform 0.3s ease;">
                 <p class="lead">A direct line from the <span class="highlight">Doctor</span> to the <span class="highlight">Hospital</span>, eliminating annoying recruiters forever.</p>
                 <div class="mt-4">
                     <a href="{{ url_for('login') }}" class="btn btn-custom">Physician Login</a>
@@ -4314,6 +4314,7 @@ with app.app_context():
 # Run the app
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
