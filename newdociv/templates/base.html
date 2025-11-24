@@ -172,8 +172,8 @@
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="{{ url_for('landing_page') if request.endpoint == 'login' else url_for('dashboard') }}">
-                <img src="{{ url_for('static', filename='docivlogo.png') }}" alt="Logo">
-                Healthcare Systems
+                <img src="{{ url_for('static', filename='jobsdirectmedicalcutright.png') }}" alt="Logo">
+                
             </a>
             <div class="navbar-nav ms-auto">
                 {% if current_user.is_authenticated %}
