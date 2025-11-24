@@ -1530,9 +1530,43 @@ app.jinja_loader = DictLoader({
                 text-align: center;
             }
 
+            :root {
+                --brand-teal: #8ecad4;
+                --brand-teal-dark: #5aa4b3;
+                --brand-teal-soft: #e8f5f7;
+                --brand-charcoal: #1f2b2f;
+            }
+
+            .hero {
+                background: linear-gradient(180deg, #f6fbfc 0%, var(--brand-teal-soft) 100%);
+                color: var(--brand-charcoal);
+                padding-top: 80px;
+                padding-bottom: 40px;
+            }
+
+            .highlight {
+                color: var(--brand-teal-dark);
+            }
+
+            .btn-custom {
+                background-color: var(--brand-teal-dark);
+                color: #fff;
+                border: none;
+                padding: 12px 26px;
+                border-radius: 40px;
+                box-shadow: 0 10px 30px rgba(90, 164, 179, 0.28);
+                transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+            }
+
+            .btn-custom:hover {
+                background-color: var(--brand-teal);
+                transform: translateY(-2px);
+                box-shadow: 0 14px 36px rgba(90, 164, 179, 0.35);
+            }
+
             .plus-sign {
                 font-size: 3rem;
-                color: #6c63ff;
+                color: var(--brand-teal-dark);
                 margin-left: 15px;
             }
 
@@ -1569,7 +1603,7 @@ app.jinja_loader = DictLoader({
         </div>
 
         <!-- Problem Statement -->
-        <div class="section text-white" style="background-color: #7f7dff; text-align: left; padding: 30px 0;">
+          <div class="section text-white" style="background-color: var(--brand-teal-dark); text-align: left; padding: 30px 0;">
             <div class="container">
                 <h2 class="mb-4" style="margin-left: 20px;">Cut Out the Noise</h2>
                 <p style="max-width: 800px; margin-left: 20px;">
@@ -1670,7 +1704,10 @@ app.jinja_loader = DictLoader({
                     labels: ['Feel overwhelmed by recruiters'],
                     datasets: [{
                         data: [73],
-                        backgroundColor:  '#7f7dff'
+                        backgroundColor:  '#5aa4b3'
+                    }]
+                },
+                options: {
                     }]
                 },
                 options: {
@@ -1706,7 +1743,7 @@ app.jinja_loader = DictLoader({
                     labels: ['Prefer Direct', 'Prefer Recruiters'],
                     datasets: [{
                         data: [90, 10],
-                        backgroundColor: ['#7f7dff', '#e0e0e0']
+                        backgroundColor: ['#5aa4b3', '#d4e9ed']
                     }]
                 },
                 options: {
@@ -4314,6 +4351,7 @@ with app.app_context():
 # Run the app
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
