@@ -524,7 +524,7 @@ app.jinja_loader = DictLoader({
             <div class="container">
                 <a class="navbar-brand d-flex align-items-center" href="{{ url_for('landing_page') if request.endpoint == 'login' else url_for('dashboard') }}">
                     <img src="{{ url_for('static', filename='jobsdirectmedicalcutright.png') }}" alt="Logo">
-                    Healthcare Systems
+                
                 </a>
                 <div class="navbar-nav ms-auto">
                     {% if current_user.is_authenticated %}
@@ -4314,6 +4314,7 @@ with app.app_context():
 # Run the app
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
