@@ -361,6 +361,12 @@ app.jinja_loader = DictLoader({
         <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet"/>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
         <style>
+            :root {
+                --brand-teal: #8ecad4;
+                --brand-teal-dark: #5aa4b3;
+                --brand-teal-soft: #e8f5f7;
+            }
+
             body {
                 background-color: #ffffff;
                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -377,10 +383,9 @@ app.jinja_loader = DictLoader({
 
             .form-control:focus,
             .form-select:focus {
-                border-color: #00a0e9;
-                box-shadow: 0 0 0 0.15rem rgba(0, 160, 233, 0.4);
+                border-color: var(--brand-teal-dark);
+                box-shadow: 0 0 0 0.15rem rgba(90, 164, 179, 0.4);
             }
-
             label {
                 font-weight: 600;
                 color: #333;
@@ -430,8 +435,7 @@ app.jinja_loader = DictLoader({
             }
 
             .footer a:hover {
-                color: #00a0e9;
-            }
+                color: var(--brand-teal-dark);
 
             .alert {
                 border-radius: 10px;
@@ -452,8 +456,8 @@ app.jinja_loader = DictLoader({
                 top: 6px;         /* Adjust down for vertical center of pin head */
                 left: 5px;        /* Adjust for horizontal center of pin head */
                 background: #fff;
-                color: #0066cc;
-                border: 2px solid #0066cc;
+                color: var(--brand-teal-dark);
+                border: 2px solid var(--brand-teal-dark);
                 border-radius: 50%;
                 width: 20px;
                 height: 20px;
@@ -474,18 +478,19 @@ app.jinja_loader = DictLoader({
                 min-width: 220px;
                 border-radius: 14px;
                 background: #fff;
-                box-shadow: 0 8px 36px rgba(0,0,0,0.09), 0 1.5px 6px #0066cc20;
+                box-shadow: 0 8px 36px rgba(0,0,0,0.09), 0 1.5px 6px rgba(90, 164, 179, 0.16);
                 padding: 0;
                 overflow: hidden;
-            }
+            }␊
             .custom-popup-header {
-                background: #0066cc;
+                background: var(--brand-teal-dark);
                 color: #fff;
                 font-weight: bold;
                 padding: 14px 18px;
                 font-size: 1.08em;
                 border-bottom: 1.5px solid #eaf2fb;
             }
+            
             .custom-job-list {
                 max-height: 230px;    /* This enables scrolling for long lists */
                 overflow-y: auto;
@@ -500,7 +505,7 @@ app.jinja_loader = DictLoader({
             }
             .custom-job-title {
                 font-weight: 600;
-                color: #0066cc;
+                color: var(--brand-teal-dark);
                 font-size: 1em;
                 margin-bottom: 0;
             }
@@ -509,7 +514,7 @@ app.jinja_loader = DictLoader({
                 font-size: 0.97em;
             }
             .custom-view-job {
-                color: #0066cc;
+                color: var(--brand-teal-dark);
                 font-weight: bold;
                 text-decoration: underline;
                 font-size: 0.97em;
@@ -636,8 +641,14 @@ app.jinja_loader = DictLoader({
         {% block content %}
 
         <style>
+            :root {
+                --brand-teal: #8ecad4;
+                --brand-teal-dark: #5aa4b3;
+                --brand-teal-soft: #e8f5f7;
+            }
+
             body {
-                background: linear-gradient(120deg, #eaf2fb 0%, #f8f9fa 100%);
+                background: linear-gradient(120deg, var(--brand-teal-soft) 0%, #f8f9fa 100%);
             }
             .login-container {
                 max-width: 420px;
@@ -661,7 +672,7 @@ app.jinja_loader = DictLoader({
                 font-weight: 700;
                 font-size: 2rem;
                 margin-bottom: 12px;
-                color: #0066cc;
+                color: var(--brand-teal-dark);
             }
             .login-subtext {
                 color: #555;
@@ -679,24 +690,24 @@ app.jinja_loader = DictLoader({
                 transition: border-color 0.2s;
             }
             .form-control:focus {
-                border-color: #0066cc;
-                box-shadow: 0 0 0 0.09rem #7f7dff60;
+                border-color: var(--brand-teal-dark);
+                box-shadow: 0 0 0 0.09rem rgba(90, 164, 179, 0.35);
             }
             .btn-login {
-                background: #0066cc;
+                background: var(--brand-teal-dark);
                 color: #fff;
                 padding: 13px 0;
                 width: 100%;
                 border-radius: 50px;
                 font-weight: 600;
                 font-size: 1.18em;
-                box-shadow: 0 2px 8px #0066cc20;
+                box-shadow: 0 2px 8px rgba(90, 164, 179, 0.25);
                 margin-top: 10px;
                 margin-bottom: 6px;
                 transition: background 0.15s;
             }
             .btn-login:hover {
-                background: #004c99;
+                background: #4c8f9f;
             }
             .login-links {
                 display: flex;
@@ -706,12 +717,12 @@ app.jinja_loader = DictLoader({
             }
             .login-links a {
                 font-size: 0.97em;
-                color: #0066cc;
+                color: var(--brand-teal-dark);
                 text-decoration: none;
                 transition: color 0.15s;
             }
             .login-links a:hover {
-                color: #004c99;
+                color: #4c8f9f;
                 text-decoration: underline;
             }
             @media (max-width: 540px) {
@@ -1705,9 +1716,6 @@ app.jinja_loader = DictLoader({
                     datasets: [{
                         data: [73],
                         backgroundColor:  '#5aa4b3'
-                    }]
-                },
-                options: {
                     }]
                 },
                 options: {
@@ -4351,6 +4359,7 @@ with app.app_context():
 # Run the app
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
