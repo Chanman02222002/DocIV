@@ -4073,9 +4073,11 @@ def edit_doctor(doctor_id):
             doctor.residency_grad_month_year = form.residency_grad_month_year.data
 
             # Handle Fellowships dynamically
-            num_fellowships = int(form.num_fellowships.data)
+            num_fellowships = int(form.num_fellowships.data or 0)
             doctor.fellowship = ",".join(form.fellowship.data[:num_fellowships])
-            doctor.fellowship_grad_month_year = ",".join(form.fellowship_grad_month_year.data[:num_fellowships])
+            doctor.fellowship_grad_month_year = ",".join(
+                form.fellowship_grad_month_year.data[:num_fellowships]
+            )
 
             doctor.bachelors = form.bachelors.data
             doctor.bachelors_grad_month_year = form.bachelors_grad_month_year.data
@@ -4087,7 +4089,7 @@ def edit_doctor(doctor_id):
             doctor.sponsorship_needed = form.sponsorship_needed.data or False
 
             # Handle Malpractice Cases dynamically
-            num_cases = int(form.num_malpractice_cases.data)
+            num_cases = int(form.num_malpractice_cases.data or 0)
             malpractice_data = []
             for case_form in form.malpractice_cases.entries[:num_cases]:
                 malpractice_data.append({
@@ -4107,8 +4109,8 @@ def edit_doctor(doctor_id):
                 doctor.last_clinically_active = None
             doctor.emr = form.emr.data
             doctor.languages = form.languages.data
-            doctor.states_licensed = ",".join(form.states_licensed.data)
-            doctor.states_willing_to_work = ",".join(form.states_willing_to_work.data)
+            doctor.states_licensed = ",".join(form.states_licensed.data or [])
+            doctor.states_willing_to_work = ",".join(form.states_willing_to_work.data or [])
             doctor.salary_expectations = form.salary_expectations.data or 0.0
 
             db.session.commit()
@@ -4359,6 +4361,7 @@ with app.app_context():
 # Run the app
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
