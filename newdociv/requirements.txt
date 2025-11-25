@@ -1,6 +1,7 @@
 Flask
 flask_sqlalchemy
 Flask-WTF
+email-validator
 WTForms
 flask_login
 gunicorn
@@ -17,4 +18,5 @@ pandas
 xlrd
 openpyxl
 geopy
+
 
