@@ -663,8 +663,8 @@ app.jinja_loader = DictLoader({
                 animation: fadeIn 1s;
             }
             .login-logo {
-                width: 180px;
-                height: 180px;
+                width: 270px;
+                height: 270px;
                 object-fit: contain;
                 margin-bottom: 2px;
             }
@@ -4359,6 +4359,7 @@ with app.app_context():
 # Run the app
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
