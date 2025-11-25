@@ -666,7 +666,7 @@ app.jinja_loader = DictLoader({
                 width: 180px;
                 height: 180px;
                 object-fit: contain;
-                margin-bottom: 18px;
+                margin-bottom: 2px;
             }
             .login-title {
                 font-weight: 700;
@@ -4359,6 +4359,7 @@ with app.app_context():
 # Run the app
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
