@@ -481,7 +481,7 @@ app.jinja_loader = DictLoader({
                 box-shadow: 0 8px 36px rgba(0,0,0,0.09), 0 1.5px 6px rgba(90, 164, 179, 0.16);
                 padding: 0;
                 overflow: hidden;
-            }␊
+            }
             .custom-popup-header {
                 background: var(--brand-teal-dark);
                 color: #fff;
@@ -4361,6 +4361,7 @@ with app.app_context():
 # Run the app
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
