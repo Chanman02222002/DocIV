@@ -919,34 +919,43 @@ app.jinja_loader = DictLoader({
             <div class="mb-3">{{ form.alt_phone.label }} {{ form.alt_phone(class="form-control") }}</div>
             <div class="mb-3">{{ form.city_of_residence.label }} {{ form.city_of_residence(class="form-control") }}</div>
 
-            <h4>MD/DO Information</h4>
-            <div class="mb-3">{{ form.medical_school.label }} {{ form.medical_school(class="form-control") }}</div>
-            <div class="mb-3">{{ form.med_grad_month_year.label }} {{ form.med_grad_month_year(class="form-control") }}</div>
-            <div class="mb-3">{{ form.residency.label }} {{ form.residency(class="form-control") }}</div>
-            <div class="mb-3">{{ form.residency_grad_month_year.label }} {{ form.residency_grad_month_year(class="form-control") }}</div>
+            <div class="position-section md-do-fields">
+                <h4>MD/DO Information</h4>
+                <div class="mb-3">{{ form.medical_school.label }} {{ form.medical_school(class="form-control") }}</div>
+                <div class="mb-3">{{ form.med_grad_month_year.label }} {{ form.med_grad_month_year(class="form-control") }}</div>
+                <div class="mb-3">{{ form.residency.label }} {{ form.residency(class="form-control") }}</div>
+                <div class="mb-3">{{ form.residency_grad_month_year.label }} {{ form.residency_grad_month_year(class="form-control") }}</div>
 
-            <h4>Fellowships</h4>
-            <div class="mb-3">
-                {{ form.num_fellowships.label }} {{ form.num_fellowships(class="form-select", id="num_fellowships") }}
-            </div>
-            <div id="fellowship_fields">
-                {% for fellowship_field, date_field in zip(form.fellowship, form.fellowship_grad_month_year) %}
-                <div class="border p-3 mb-3 rounded fellowship-case">
-                    <div class="mb-2">{{ fellowship_field.label }} {{ fellowship_field(class="form-control") }}</div>
-                    <div class="mb-2">{{ date_field.label }} {{ date_field(class="form-control") }}</div>
+                <h4>Fellowships</h4>
+                <div class="mb-3">
+                    {{ form.num_fellowships.label }} {{ form.num_fellowships(class="form-select", id="num_fellowships") }}
                 </div>
-                {% endfor %}
+                <div id="fellowship_fields">
+                    {% for fellowship_field, date_field in zip(form.fellowship, form.fellowship_grad_month_year) %}
+                    <div class="border p-3 mb-3 rounded fellowship-case">
+                        <div class="mb-2">{{ fellowship_field.label }} {{ fellowship_field(class="form-control") }}</div>
+                        <div class="mb-2">{{ date_field.label }} {{ date_field(class="form-control") }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+
             </div>
 
-            <h4>NP/PA Information</h4>
-            <div class="mb-3">{{ form.bachelors.label }} {{ form.bachelors(class="form-control") }}</div>
-            <div class="mb-3">{{ form.bachelors_grad_month_year.label }} {{ form.bachelors_grad_month_year(class="form-control") }}</div>
-            <div class="mb-3">{{ form.msn.label }} {{ form.msn(class="form-control") }}</div>
-            <div class="mb-3">{{ form.msn_grad_month_year.label }} {{ form.msn_grad_month_year(class="form-control") }}</div>
-            <div class="mb-3">{{ form.dnp.label }} {{ form.dnp(class="form-control") }}</div>
-            <div class="mb-3">{{ form.dnp_grad_month_year.label }} {{ form.dnp_grad_month_year(class="form-control") }}</div>
-            <div class="mb-3">{{ form.additional_training.label }} {{ form.additional_training(class="form-control") }}</div>
-            <div class="form-check mb-3">{{ form.sponsorship_needed(class="form-check-input") }} {{ form.sponsorship_needed.label(class="form-check-label") }}</div>
+            <div class="position-section np-pa-fields">
+                <h4>NP/PA Information</h4>
+                <div class="mb-3">{{ form.bachelors.label }} {{ form.bachelors(class="form-control") }}</div>
+                <div class="mb-3">{{ form.bachelors_grad_month_year.label }} {{ form.bachelors_grad_month_year(class="form-control") }}</div>
+                <div class="mb-3">{{ form.msn.label }} {{ form.msn(class="form-control") }}</div>
+                <div class="mb-3">{{ form.msn_grad_month_year.label }} {{ form.msn_grad_month_year(class="form-control") }}</div>
+                <div class="mb-3">{{ form.dnp.label }} {{ form.dnp(class="form-control") }}</div>
+                <div class="mb-3">{{ form.dnp_grad_month_year.label }} {{ form.dnp_grad_month_year(class="form-control") }}</div>
+            </div>
+
+            <div class="position-section position-shared">
+                <h5>Additional Training & Sponsorship</h5>
+                <div class="mb-3">{{ form.additional_training.label }} {{ form.additional_training(class="form-control") }}</div>
+                <div class="form-check mb-3">{{ form.sponsorship_needed(class="form-check-input") }} {{ form.sponsorship_needed.label(class="form-check-label") }}</div>
+            </div>
 
             <h4>Malpractice Cases</h4>
             <div class="mb-3">
@@ -995,31 +1004,47 @@ app.jinja_loader = DictLoader({
 
         <script>
             function toggleFields(selectorId, classSelector) {
-                const sel = document.getElementById(selectorId),
-                    fields = document.querySelectorAll(classSelector);
-                sel.addEventListener('change', () => {
-                    const n = parseInt(sel.value, 10);
-                    fields.forEach((el, i) => el.style.display = i < n ? 'block' : 'none');
-                });
-                sel.dispatchEvent(new Event('change'));
-            }
+                 const sel = document.getElementById(selectorId),
+                     fields = document.querySelectorAll(classSelector);
+                 sel.addEventListener('change', () => {
+                     const n = parseInt(sel.value, 10);
+                     fields.forEach((el, i) => el.style.display = i < n ? 'block' : 'none');
+                 });
+                 sel.dispatchEvent(new Event('change'));
+             }
 
-            toggleFields('num_malpractice_cases', '.malpractice-case');
-            toggleFields('num_fellowships', '.fellowship-case');
+             toggleFields('num_malpractice_cases', '.malpractice-case');
+             toggleFields('num_fellowships', '.fellowship-case');
 
-            document.getElementById('clinically_active').addEventListener('change', function () {
-                const selectedOption = this.value;
-                const lastActiveDiv = document.getElementById('last_active_field');
-                if (selectedOption === 'No') {
-                    lastActiveDiv.style.display = 'block';
-                } else {
-                    lastActiveDiv.style.display = 'none';
-                    document.getElementById("last_clinically_active").value = '';
-                }
-            });
-            document.getElementById('clinically_active').dispatchEvent(new Event('change'));
-        </script>
-        {% endblock %}''',
+             const positionSelect = document.getElementById('position');
+             const mdDoSections = document.querySelectorAll('.md-do-fields');
+             const npPaSections = document.querySelectorAll('.np-pa-fields');
+
+             function syncPositionSections() {
+                 const pos = positionSelect.value;
+                 const showMdDo = pos === 'MD' || pos === 'DO';
+                 const showNpPa = pos === 'NP' || pos === 'PA';
+
+                 mdDoSections.forEach(el => el.style.display = showMdDo ? '' : 'none');
+                 npPaSections.forEach(el => el.style.display = showNpPa ? '' : 'none');
+             }
+
+             positionSelect.addEventListener('change', syncPositionSections);
+             syncPositionSections();
+
+             document.getElementById('clinically_active').addEventListener('change', function () {
+                 const selectedOption = this.value;
+                 const lastActiveDiv = document.getElementById('last_active_field');
+                 if (selectedOption === 'No') {
+                     lastActiveDiv.style.display = 'block';
+                 } else {
+                     lastActiveDiv.style.display = 'none';
+                     document.getElementById("last_clinically_active").value = '';
+                 }
+             });
+             document.getElementById('clinically_active').dispatchEvent(new Event('change'));
+         </script>
+         {% endblock %}''',
 
     'client_my_jobs.html': '''{% extends "base.html" %}
         {% block content %}
@@ -2011,35 +2036,42 @@ app.jinja_loader = DictLoader({
             <div class="mb-3">{{ form.alt_phone.label }} {{ form.alt_phone(class="form-control") }}</div>
             <div class="mb-3">{{ form.city_of_residence.label }} {{ form.city_of_residence(class="form-control") }}</div>
 
-            <h4>MD/DO Information</h4>
-            <div class="mb-3">{{ form.medical_school.label }} {{ form.medical_school(class="form-control") }}</div>
-            <div class="mb-3">{{ form.med_grad_month_year.label }} {{ form.med_grad_month_year(class="form-control") }}</div>
-            <div class="mb-3">{{ form.residency.label }} {{ form.residency(class="form-control") }}</div>
-            <div class="mb-3">{{ form.residency_grad_month_year.label }} {{ form.residency_grad_month_year(class="form-control") }}</div>
+            <div class="position-section md-do-fields">
+                <h4>MD/DO Information</h4>
+                <div class="mb-3">{{ form.medical_school.label }} {{ form.medical_school(class="form-control") }}</div>
+                <div class="mb-3">{{ form.med_grad_month_year.label }} {{ form.med_grad_month_year(class="form-control") }}</div>
+                <div class="mb-3">{{ form.residency.label }} {{ form.residency(class="form-control") }}</div>
+                <div class="mb-3">{{ form.residency_grad_month_year.label }} {{ form.residency_grad_month_year(class="form-control") }}</div>
 
-            <h4>Fellowships</h4>
-            <div class="mb-3">
-                {{ form.num_fellowships.label }} {{ form.num_fellowships(class="form-select", id="num_fellowships") }}
-            </div>
-            <div id="fellowship_fields">
-                {% for fellowship_field, date_field in zip(form.fellowship, form.fellowship_grad_month_year) %}
-                <div class="border p-3 mb-3 rounded fellowship-case">
-                    <div class="mb-2">{{ fellowship_field.label }} {{ fellowship_field(class="form-control") }}</div>
-                    <div class="mb-2">{{ date_field.label }} {{ date_field(class="form-control") }}</div>
+                <h4>Fellowships</h4>
+                <div class="mb-3">
+                    {{ form.num_fellowships.label }} {{ form.num_fellowships(class="form-select", id="num_fellowships") }}
                 </div>
-                {% endfor %}
+                <div id="fellowship_fields">
+                    {% for fellowship_field, date_field in zip(form.fellowship, form.fellowship_grad_month_year) %}
+                    <div class="border p-3 mb-3 rounded fellowship-case">
+                        <div class="mb-2">{{ fellowship_field.label }} {{ fellowship_field(class="form-control") }}</div>
+                        <div class="mb-2">{{ date_field.label }} {{ date_field(class="form-control") }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
             </div>
 
-            <h4>NP/PA Information</h4>
-            <div class="mb-3">{{ form.bachelors.label }} {{ form.bachelors(class="form-control") }}</div>
-            <div class="mb-3">{{ form.bachelors_grad_month_year.label }} {{ form.bachelors_grad_month_year(class="form-control") }}</div>
-            <div class="mb-3">{{ form.msn.label }} {{ form.msn(class="form-control") }}</div>
-            <div class="mb-3">{{ form.msn_grad_month_year.label }} {{ form.msn_grad_month_year(class="form-control") }}</div>
-            <div class="mb-3">{{ form.dnp.label }} {{ form.dnp(class="form-control") }}</div>
-            <div class="mb-3">{{ form.dnp_grad_month_year.label }} {{ form.dnp_grad_month_year(class="form-control") }}</div>
-            <div class="mb-3">{{ form.additional_training.label }} {{ form.additional_training(class="form-control") }}</div>
-            <div class="form-check mb-3">{{ form.sponsorship_needed(class="form-check-input") }} {{ form.sponsorship_needed.label(class="form-check-label") }}</div>
+            <div class="position-section np-pa-fields">
+                <h4>NP/PA Information</h4>
+                <div class="mb-3">{{ form.bachelors.label }} {{ form.bachelors(class="form-control") }}</div>
+                <div class="mb-3">{{ form.bachelors_grad_month_year.label }} {{ form.bachelors_grad_month_year(class="form-control") }}</div>
+                <div class="mb-3">{{ form.msn.label }} {{ form.msn(class="form-control") }}</div>
+                <div class="mb-3">{{ form.msn_grad_month_year.label }} {{ form.msn_grad_month_year(class="form-control") }}</div>
+                <div class="mb-3">{{ form.dnp.label }} {{ form.dnp(class="form-control") }}</div>
+                <div class="mb-3">{{ form.dnp_grad_month_year.label }} {{ form.dnp_grad_month_year(class="form-control") }}</div>
+            </div>
 
+            <div class="position-section position-shared">
+                <h5>Additional Training & Sponsorship</h5>
+                <div class="mb-3">{{ form.additional_training.label }} {{ form.additional_training(class="form-control") }}</div>
+                <div class="form-check mb-3">{{ form.sponsorship_needed(class="form-check-input") }} {{ form.sponsorship_needed.label(class="form-check-label") }}</div>
+            </div>
             <h4>Malpractice Cases</h4>
             <div class="mb-3">
                 {{ form.num_malpractice_cases.label }} {{ form.num_malpractice_cases(class="form-select", id="num_malpractice_cases") }}
@@ -2086,7 +2118,7 @@ app.jinja_loader = DictLoader({
         </form>
 
         <script>
-        function toggleFields(selectorId, classSelector) {
+       function toggleFields(selectorId, classSelector) {
             const sel = document.getElementById(selectorId),
                 fields = document.querySelectorAll(classSelector);
             sel.addEventListener('change', () => {
@@ -2100,6 +2132,23 @@ app.jinja_loader = DictLoader({
 
         toggleFields('num_malpractice_cases', '.malpractice-case');
         toggleFields('num_fellowships', '.fellowship-case');
+
+        // Position-based field visibility
+        const positionSelect = document.getElementById('position');
+        const mdDoSections = document.querySelectorAll('.md-do-fields');
+        const npPaSections = document.querySelectorAll('.np-pa-fields');
+
+        function syncPositionSections() {
+            const pos = positionSelect.value;
+            const showMdDo = pos === 'MD' || pos === 'DO';
+            const showNpPa = pos === 'NP' || pos === 'PA';
+
+            mdDoSections.forEach(el => el.style.display = showMdDo ? '' : 'none');
+            npPaSections.forEach(el => el.style.display = showNpPa ? '' : 'none');
+        }
+
+        positionSelect.addEventListener('change', syncPositionSections);
+        syncPositionSections();
 
         // Clinically active logic
 
@@ -4363,6 +4412,7 @@ with app.app_context():
 # Run the app
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
