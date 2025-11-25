@@ -3686,7 +3686,9 @@ def doctor_edit_profile():
                 doctor.certification = form.certification.data
                 doctor.certification_specialty_area = form.certification_specialty_area.data
                 doctor.clinically_active = form.clinically_active.data
-                doctor.last_clinically_active = form.last_clinically_active.data if form.clinically_active.data == 'No' else None
+                doctor.last_clinically_active = (
+                    form.last_clinically_active.data if form.clinically_active.data == 'No' else None
+                )
                 doctor.emr = form.emr.data
                 doctor.languages = form.languages.data
                 doctor.states_licensed = ",".join(form.states_licensed.data)
@@ -4361,6 +4363,7 @@ with app.app_context():
 # Run the app
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
