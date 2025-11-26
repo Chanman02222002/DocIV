@@ -25,7 +25,7 @@ from flask_login import current_user
 from werkzeug.utils import secure_filename
 from flask_wtf.file import FileField, FileAllowed
 import openai
-import re
+import re 
 from flask import jsonify, request
 from flask_login import login_required, current_user
 from geopy.geocoders import Nominatim
@@ -33,8 +33,6 @@ from collections import defaultdict
 from flask import send_file
 import pandas as pd
 from io import BytesIO
-import requests
-from bs4 import BeautifulSoup
 
 
 
@@ -146,31 +144,6 @@ def split_city_state(value):
         if len(parts) > 1:
             state = parts[1]
     return city, state
-
-
-def fetch_doccafe_job_description(job_link):
-    """Fetch and extract the DocCafe job summary section from the given job link."""
-    if not job_link:
-        return None
-
-    try:
-        response = requests.get(job_link, timeout=10)
-        response.raise_for_status()
-    except Exception as exc:
-        print(f"Failed to fetch DocCafe job link {job_link}: {exc}")
-        return None
-
-    try:
-        soup = BeautifulSoup(response.text, "html.parser")
-        section = soup.find("section", class_="job-summary")
-        if not section:
-            return None
-
-        description_text = section.get_text(separator="\n", strip=True)
-        return re.sub(r"\n{2,}", "\n", description_text)
-    except Exception as exc:
-        print(f"Failed to parse DocCafe job summary for {job_link}: {exc}")
-        return None
 
 
 @login_manager.user_loader
@@ -3259,7 +3232,6 @@ def scrape_jobs():
         return redirect(url_for('doctor_jobs'))
 
     jobs_added = 0
-    scraped_descriptions = 0
 
     for _, row in df.iterrows():
         title = str(row.get('Job Title', '')).strip() or 'Untitled Job'
@@ -3279,12 +3251,7 @@ def scrape_jobs():
         specialty = row.get('Specialty Name')
         job_number = row.get('Job Number')
         job_status = row.get('Job Status')
-        job_link_value = row.get('Job Link')
-        job_link = ""
-        if pd.notna(job_link_value):
-            job_link = str(job_link_value).strip()
-            if job_link.lower() == "nan":
-                job_link = ""
+        job_link = row.get('Job Link')
         site = row.get('Site')
         if occupation:
             description_parts.append(f"Occupation: {occupation}")
@@ -3299,15 +3266,7 @@ def scrape_jobs():
         if site:
             description_parts.append(f"Site: {site}")
 
-        base_description = " | ".join(description_parts) if description_parts else 'N/A'
-
-        scraped_description = fetch_doccafe_job_description(job_link)
-        if scraped_description:
-            description = scraped_description
-            scraped_descriptions += 1
-        else:
-            description = base_description
-
+        description = " | ".join(description_parts) if description_parts else 'N/A'
         existing_job = Job.query.filter_by(
             title=title,
             location=location,
@@ -3331,10 +3290,7 @@ def scrape_jobs():
         db.session.commit()
         jobs_added += 1
 
-    flash(
-        f"{jobs_added} DocCafe job postings added! {scraped_descriptions} descriptions scraped from job links.",
-        "success",
-    )
+    flash(f"{jobs_added} DocCafe job postings added!", "success")
     return redirect(url_for('doctor_jobs'))
 @app.route('/post_job', methods=['GET', 'POST'])
 @login_required
@@ -4590,6 +4546,7 @@ with app.app_context():
 # Run the app
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
