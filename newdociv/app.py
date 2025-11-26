@@ -3235,7 +3235,14 @@ def scrape_jobs():
 
     for _, row in df.iterrows():
         title = str(row.get('Job Title', '')).strip() or 'Untitled Job'
-        city = str(row.get('City', '') or '').strip()
+
+        city_value = row.get('City')
+        city = ""
+        if pd.notna(city_value):
+            city = str(city_value).strip()
+            if city.lower() == "nan":
+                city = ""
+
         state = str(row.get('State', '') or '').strip()
         location = format_city_state(city, state)
 
@@ -3287,7 +3294,6 @@ def scrape_jobs():
 
     flash(f"{jobs_added} DocCafe job postings added!", "success")
     return redirect(url_for('doctor_jobs'))
-
 @app.route('/post_job', methods=['GET', 'POST'])
 @login_required
 def post_job():
@@ -4542,6 +4548,7 @@ with app.app_context():
 # Run the app
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
