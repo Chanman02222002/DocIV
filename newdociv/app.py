@@ -3206,95 +3206,87 @@ def register_doctor():
 @login_required
 def scrape_jobs():
     if current_user.role not in ['user', 'admin']:
-        flash('Unauthorized access!', 'danger') 
+        flash('Unauthorized access!', 'danger')
         return redirect(url_for('home'))
 
-    from selenium import webdriver
-    from selenium.webdriver.chrome.service import Service
-    from webdriver_manager.chrome import ChromeDriverManager
-    from selenium.webdriver.common.by import By
-    from selenium.webdriver.support.ui import WebDriverWait
-    from selenium.webdriver.support import expected_conditions as EC
-    from selenium.common.exceptions import TimeoutException, NoSuchElementException, ElementClickInterceptedException
-    from bs4 import BeautifulSoup
-    import time
+    csv_path = Path(__file__).resolve().parent / "DocCafe job export.csv"
 
-    URL = 'https://www.doccafe.com/company/jobs'  
+    if not csv_path.exists():
+        flash(f"DocCafe export not found at {csv_path.name}.", "danger")
+        return redirect(url_for('doctor_jobs'))
 
-    options = webdriver.ChromeOptions()
-    options.add_argument('--start-maximized')
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    required_columns = {
+        'Occupation Name', 'Specialty Name', 'State', 'City', 'Job Title',
+        'Job Number', 'Job Status', 'Job Link', 'Site'
+    }
 
-    driver.get(URL)
+    try:
+        df = pd.read_csv(csv_path)
+    except Exception as exc:
+        flash(f"Unable to read DocCafe export: {exc}", "danger")
+        return redirect(url_for('doctor_jobs'))
 
-    input("✅ Please log into Doc Cafe now. Once you've logged in, press Enter to continue scraping...")
+    missing = required_columns - set(df.columns)
+    if missing:
+        flash(f"DocCafe export is missing columns: {', '.join(sorted(missing))}", "danger")
+        return redirect(url_for('doctor_jobs'))
 
     jobs_added = 0
 
-    try:
-        while True:
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.CLASS_NAME, "col-lg-8"))
-            )
+    for _, row in df.iterrows():
+        title = str(row.get('Job Title', '')).strip() or 'Untitled Job'
+        city = str(row.get('City', '') or '').strip()
+        state = str(row.get('State', '') or '').strip()
+        location = format_city_state(city, state)
 
-            soup = BeautifulSoup(driver.page_source, 'html.parser')
-            job_elements = soup.find_all('div', class_='col-lg-8 col-sm-11 col-xs-10 no-padding-left')
+        description_parts = []
+        occupation = row.get('Occupation Name')
+        specialty = row.get('Specialty Name')
+        job_number = row.get('Job Number')
+        job_status = row.get('Job Status')
+        job_link = row.get('Job Link')
+        site = row.get('Site')
 
-            for job in job_elements:
-                link_tag = job.find('h4').find('a', href=True)
-                job_url = link_tag['href']
-                job_title_tag = link_tag.find('span')
-                job_title = job_title_tag.get_text(strip=True) if job_title_tag else 'N/A'
+        if occupation:
+            description_parts.append(f"Occupation: {occupation}")
+        if specialty:
+            description_parts.append(f"Specialty: {specialty}")
+        if job_number:
+            description_parts.append(f"Job Number: {job_number}")
+        if job_status:
+            description_parts.append(f"Status: {job_status}")
+        if job_link:
+            description_parts.append(f"Link: {job_link}")
+        if site:
+            description_parts.append(f"Site: {site}")
 
-                # Open job detail page
-                driver.execute_script("window.open(arguments[0]);", job_url)
-                driver.switch_to.window(driver.window_handles[1])
+        description = " | ".join(description_parts) if description_parts else 'N/A'
 
-                WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.CLASS_NAME, "job-summary"))
-                )
+        existing_job = Job.query.filter_by(
+            title=title,
+            location=location,
+            poster_id=current_user.id
+        ).first()
 
-                job_soup = BeautifulSoup(driver.page_source, 'html.parser')
+        if existing_job:
+            continue
 
-                pay = job_soup.find('span', class_='job-salary-amount').get_text(strip=True) if job_soup.find('span', class_='job-salary-amount') else 'N/A'
-                location = job_soup.find('span', class_='job-summary-location').get_text(strip=True) if job_soup.find('span', class_='job-summary-location') else 'N/A'
-                description_tag = job_soup.find('div', class_='job-summary-box_field_6')
-                description = description_tag.get_text(strip=True) if description_tag else 'N/A'
+        lat, lng = geocode_location(location) if location else (None, None)
+        new_job = Job(
+            title=title,
+            location=location,
+            salary='',
+            description=description,
+            poster_id=current_user.id,
+            latitude=lat,
+            longitude=lng
+        )
+        db.session.add(new_job)
+        db.session.commit()
+        jobs_added += 1
 
-                # Save to database directly
-                lat, lng = geocode_location(location)
-                new_job = Job(
-                    title=job_title,
-                    location=location,
-                    salary=pay,
-                    description=description,
-                    poster_id=current_user.id,
-                    latitude=lat,
-                    longitude=lng
-                )
-                db.session.add(new_job)
-                db.session.commit()
-                jobs_added += 1
-
-                driver.close()
-                driver.switch_to.window(driver.window_handles[0])
-
-            try:
-                next_button = driver.find_element(By.XPATH, '//a[@rel="next"]')
-                driver.execute_script("arguments[0].click();", next_button)
-                time.sleep(3)
-            except (NoSuchElementException, ElementClickInterceptedException):
-                flash("No more pages or unable to click next button.", "info")
-                break
-
-    except TimeoutException:
-        flash("Timed out waiting for page to load.", "danger")
-    finally:
-        driver.quit()
-
-    flash(f"{jobs_added} job postings successfully added!", "success")
+    flash(f"{jobs_added} DocCafe job postings added!", "success")
     return redirect(url_for('doctor_jobs'))
-
 
 @app.route('/post_job', methods=['GET', 'POST'])
 @login_required
@@ -4550,6 +4542,7 @@ with app.app_context():
 # Run the app
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
