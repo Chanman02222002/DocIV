@@ -344,7 +344,9 @@ class DoctorForm(FlaskForm):
         'EMR Systems',
         choices=[(system, system) for system in emr_choices],
         validators=[Optional()],
-        validate_choice=False
+        validate_choice=False,
+        option_widget=CheckboxInput(),
+        widget=ListWidget(prefix_label=False)
     )
     language_choices = [
         "English", "Mandarin Chinese", "Hindi", "Spanish", "French", "Arabic", "Bengali", "Russian",
@@ -355,7 +357,9 @@ class DoctorForm(FlaskForm):
         'Languages',
         choices=[(lang, lang) for lang in language_choices],
         validators=[Optional()],
-        validate_choice=False
+        validate_choice=False,
+        option_widget=CheckboxInput(),
+        widget=ListWidget(prefix_label=False)
     )
 
     states_licensed = SelectMultipleField(
@@ -1016,8 +1020,24 @@ app.jinja_loader = DictLoader({
             <div class="mb-3">{{ form.certification_specialty_area.label }} {{ form.certification_specialty_area(class="form-control") }}</div>
             <div class="mb-3">{{ form.clinically_active.label }} {{ form.clinically_active(class="form-select", id="clinically_active") }}</div>
             <div class="mb-3" id="last_active_field" style="display:none;">{{ form.last_clinically_active.label }} {{ form.last_clinically_active(class="form-control") }}</div>
-            <div class="mb-3">{{ form.emr.label }} {{ form.emr(class="form-select", multiple=True) }}</div>
-            <div class="mb-3">{{ form.languages.label }} {{ form.languages(class="form-select", multiple=True) }}</div>
+            <div class="row mb-3">
+                <div class="col-md-6 mb-3 mb-md-0">
+                    <label class="form-label"><strong>{{ form.emr.label }}</strong></label>
+                    <div class="d-flex flex-wrap border rounded p-2" style="max-height:300px; overflow-y:auto;">
+                        {% for emr_option in form.emr %}
+                        <div class="form-check me-3" style="width:200px;">{{ emr_option(class="form-check-input") }} {{ emr_option.label(class="form-check-label") }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label"><strong>{{ form.languages.label }}</strong></label>
+                    <div class="d-flex flex-wrap border rounded p-2" style="max-height:300px; overflow-y:auto;">
+                        {% for language in form.languages %}
+                        <div class="form-check me-3" style="width:180px;">{{ language(class="form-check-input") }} {{ language.label(class="form-check-label") }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
 
             <div class="row mb-3">
                 <div class="col-md-6">
@@ -2134,8 +2154,24 @@ app.jinja_loader = DictLoader({
             <div class="mb-3">{{ form.certification_specialty_area.label }} {{ form.certification_specialty_area(class="form-control") }}</div>
             <div class="mb-3">{{ form.clinically_active.label }} {{ form.clinically_active(class="form-select", id="clinically_active") }}</div>
             <div class="mb-3" id="last_active_field" style="display:none;">{{ form.last_clinically_active.label }} {{ form.last_clinically_active(class="form-control") }}</div>
-            <div class="mb-3">{{ form.emr.label }} {{ form.emr(class="form-select", multiple=True) }}</div>
-            <div class="mb-3">{{ form.languages.label }} {{ form.languages(class="form-select", multiple=True) }}</div>
+            <div class="row mb-3">
+                <div class="col-md-6 mb-3 mb-md-0">
+                    <label class="form-label"><strong>{{ form.emr.label }}</strong></label>
+                    <div class="d-flex flex-wrap border rounded p-2" style="max-height:300px; overflow-y:auto;">
+                        {% for emr_option in form.emr %}
+                        <div class="form-check me-3" style="width:200px;">{{ emr_option(class="form-check-input") }} {{ emr_option.label(class="form-check-label") }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label"><strong>{{ form.languages.label }}</strong></label>
+                    <div class="d-flex flex-wrap border rounded p-2" style="max-height:300px; overflow-y:auto;">
+                        {% for language in form.languages %}
+                        <div class="form-check me-3" style="width:180px;">{{ language(class="form-check-input") }} {{ language.label(class="form-check-label") }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
 
             <div class="row mb-3">
                 <div class="col-md-6">
@@ -2615,8 +2651,7 @@ app.jinja_loader = DictLoader({
             <div class="mb-3" id="last_active_field" style="display:none;">
                 {{ form.last_clinically_active.label }} {{ form.last_clinically_active(class="form-control") }}
             </div>
-            <div class=\"mb-3\">{{ form.emr.label }} {{ form.emr(class=\"form-select\", multiple=True) }}</div>
-            <div class=\"mb-3\">{{ form.languages.label }} {{ form.languages(class=\"form-select\", multiple=True) }}</div>
+            <div class=\"row mb-3\">\n                <div class=\"col-md-6 mb-3 mb-md-0\">\n                    <label class=\"form-label\"><strong>{{ form.emr.label }}</strong></label>\n                    <div class=\"d-flex flex-wrap border rounded p-2\" style=\"max-height:300px; overflow-y:auto;\">\n                        {% for emr_option in form.emr %}\n                        <div class=\"form-check me-3\" style=\"width:200px;\">{{ emr_option(class=\"form-check-input\") }} {{ emr_option.label(class=\"form-check-label\") }}</div>\n                        {% endfor %}\n                    </div>\n                </div>\n                <div class=\"col-md-6\">\n                    <label class=\"form-label\"><strong>{{ form.languages.label }}</strong></label>\n                    <div class=\"d-flex flex-wrap border rounded p-2\" style=\"max-height:300px; overflow-y:auto;\">\n                        {% for language in form.languages %}\n                        <div class=\"form-check me-3\" style=\"width:180px;\">{{ language(class=\"form-check-input\") }} {{ language.label(class=\"form-check-label\") }}</div>\n                        {% endfor %}\n                    </div>\n                </div>\n            </div>
 
            <div class="row mb-3">
                 <div class="col-md-6">
@@ -4469,6 +4504,7 @@ with app.app_context():
 # Run the app
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
