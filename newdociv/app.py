@@ -238,7 +238,7 @@ class MalpracticeCaseForm(FlaskForm):
 
 # Forms
 class DoctorForm(FlaskForm):
-    position = SelectField('Position', choices=[('MD','MD'),('DO','DO'),('NP','NP'),('PA','PA')], validators=[DataRequired()])
+    position = SelectField('Healthcare Provider Type', choices=[('MD','MD'),('DO','DO'),('NP','NP'),('PA','PA')], validators=[DataRequired()])
     specialty = StringField('Specialty', validators=[DataRequired()])
     subspecialty = StringField('Subspecialty', validators=[Optional()])
     first_name = StringField('First Name', validators=[DataRequired()])
@@ -250,7 +250,7 @@ class DoctorForm(FlaskForm):
 
     # MD/DO fields
     medical_school = StringField('Medical School', validators=[Optional()])
-    med_grad_month_year = StringField('Medical Graduation (Month/Year)', validators=[Optional()])
+    med_grad_month_year = StringField('Medical School Graduation (Month/Year)', validators=[Optional()])
     residency = StringField('Residency', validators=[Optional()])
     residency_grad_month_year = StringField('Residency Graduation (Month/Year)', validators=[Optional()])
 
@@ -332,7 +332,7 @@ class DoctorForm(FlaskForm):
         widget=ListWidget(prefix_label=False)
     )
 
-    salary_expectations = FloatField('Salary Expectations', validators=[Optional()])
+    salary_expectations = FloatField('Salary Expectation (Total Compensation)', validators=[Optional()])
     profile_picture = FileField('Profile Picture', validators=[
         FileAllowed(['jpg', 'png', 'jpeg'], 'Images only!')
     ])
@@ -1141,7 +1141,7 @@ app.jinja_loader = DictLoader({
         <h2>Doctor Profile: {{ doctor.first_name }} {{ doctor.last_name }}</h2>
         <div class="card shadow p-4 mb-4">
             <h5 class="card-title text-primary">Basic Information</h5>
-            <p><strong>Position:</strong> {{ doctor.position }}</p>
+            <p><strong>Healthcare Provider Type:</strong> {{ doctor.position }}</p>
             <p><strong>Specialty:</strong> {{ doctor.specialty }}</p>
             <p><strong>Subspecialty:</strong> {{ doctor.subspecialty }}</p>
             <p><strong>Email:</strong> {{ doctor.email }}</p>
@@ -1154,7 +1154,7 @@ app.jinja_loader = DictLoader({
         <div class="card shadow p-4 mb-4">
             <h5 class="card-title text-primary">MD/DO Education</h5>
             <p><strong>Medical School:</strong> {{ doctor.medical_school }}</p>
-            <p><strong>Graduation:</strong> {{ doctor.med_grad_month_year }}</p>
+            <p><strong>Medical School Graduation:</strong> {{ doctor.med_grad_month_year }}</p>
             <p><strong>Residency:</strong> {{ doctor.residency }}</p>
             <p><strong>Residency Graduation:</strong> {{ doctor.residency_grad_month_year }}</p>
             <p><strong>Fellowships:</strong> {{ doctor.fellowship }}</p>
@@ -1183,7 +1183,7 @@ app.jinja_loader = DictLoader({
             <p><strong>Languages:</strong> {{ doctor.languages }}</p>
             <p><strong>States Licensed:</strong> {{ doctor.states_licensed }}</p>
             <p><strong>States Willing to Work:</strong> {{ doctor.states_willing_to_work }}</p>
-            <p><strong>Salary Expectations:</strong> ${{ doctor.salary_expectations }}</p>
+            <p><strong>Salary Expectation (Total Compensation):</strong> ${{ doctor.salary_expectations }}</p>
         </div>
 
         <div class="card shadow p-4 mb-4">
@@ -2327,7 +2327,7 @@ app.jinja_loader = DictLoader({
                 <th>Specialty</th>
                 <th>States Licensed</th>
                 <th>States Willing to Work</th>
-                <th>Salary Expectations</th>
+                <th>Salary Expectation (Total Compensation)</th>
                 <th>Edit</th>
             </tr>
             {% for doctor in doctors %}
@@ -4043,7 +4043,7 @@ def download_job_applicants(job_id):
         row = {
             "First Name": doc.first_name,
             "Last Name": doc.last_name,
-            "Position": doc.position,
+            "Healthcare Provider Type": doc.position,
             "Specialty": doc.specialty,
             "Subspecialty": doc.subspecialty,
             "Email": doc.email,
@@ -4051,7 +4051,7 @@ def download_job_applicants(job_id):
             "Alt Phone": doc.alt_phone,
             "City of Residence": doc.city_of_residence,
             "Medical School": doc.medical_school,
-            "Med Grad Month/Year": doc.med_grad_month_year,
+            "Medical School Graduation (Month/Year)": doc.med_grad_month_year,
             "Residency": doc.residency,
             "Residency Grad Month/Year": doc.residency_grad_month_year,
             "Fellowship(s)": doc.fellowship,
@@ -4072,7 +4072,7 @@ def download_job_applicants(job_id):
             "Languages": doc.languages,
             "States Licensed": doc.states_licensed,
             "States Willing to Work": doc.states_willing_to_work,
-            "Salary Expectations": doc.salary_expectations,
+            "Salary Expectation (Total Compensation)": doc.salary_expectations,
             "Joined": doc.joined.strftime('%Y-%m-%d') if doc.joined else "",
             # You can add more fields here if needed!
         }
@@ -4412,6 +4412,7 @@ with app.app_context():
 # Run the app
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
