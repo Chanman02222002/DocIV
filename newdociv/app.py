@@ -1209,7 +1209,7 @@ app.jinja_loader = DictLoader({
 
         <div class="card shadow p-4 mb-4">
             <h5 class="card-title text-primary">Licensing & Work Preferences</h5>
-            <p><strong>Certification:</strong> {{ doctor.certification }}</p>␊
+            <p><strong>Certification:</strong> {{ doctor.certification }}</p>
             <p><strong>EMR:</strong> {{ doctor.emr.replace(',', ', ') if doctor.emr else '' }}</p>
             <p><strong>Languages:</strong> {{ doctor.languages }}</p>
             <p><strong>States Licensed:</strong> {{ doctor.states_licensed }}</p>
@@ -4450,6 +4450,7 @@ with app.app_context():
 # Run the app
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
