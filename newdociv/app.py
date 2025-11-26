@@ -2898,7 +2898,7 @@ def add_doctor():
             email=form.email.data,
             phone=form.phone.data,
             alt_phone=form.alt_phone.data,
-            address=form.address.data,␊
+            address=form.address.data,
             city_of_residence=format_city_state(form.city.data, form.state.data),
             medical_school=form.medical_school.data,
             med_grad_month_year=form.med_grad_month_year.data,
@@ -3833,7 +3833,7 @@ def doctor_edit_profile():
                 doctor.email = form.email.data
                 doctor.phone = form.phone.data
                 doctor.alt_phone = form.alt_phone.data
-                doctor.address = form.address.data␊
+                doctor.address = form.address.data
                 doctor.city_of_residence = format_city_state(form.city.data, form.state.data)
                 doctor.medical_school = form.medical_school.data
                 doctor.med_grad_month_year = form.med_grad_month_year.data
@@ -3893,7 +3893,7 @@ def doctor_edit_profile():
         form.email.data = doctor.email
         form.phone.data = doctor.phone
         form.alt_phone.data = doctor.alt_phone
-        form.address.data = doctor.address␊
+        form.address.data = doctor.address
         form.city.data, form.state.data = split_city_state(doctor.city_of_residence)
         form.medical_school.data = doctor.medical_school
         form.med_grad_month_year.data = doctor.med_grad_month_year
@@ -4251,7 +4251,7 @@ def edit_doctor(doctor_id):
             doctor.email = form.email.data
             doctor.phone = form.phone.data
             doctor.alt_phone = form.alt_phone.data
-            doctor.address = form.address.data␊
+            doctor.address = form.address.data
             doctor.city_of_residence = format_city_state(form.city.data, form.state.data)
             doctor.medical_school = form.medical_school.data
             doctor.med_grad_month_year = form.med_grad_month_year.data
@@ -4318,7 +4318,7 @@ def edit_doctor(doctor_id):
         form.email.data = doctor.email
         form.phone.data = doctor.phone
         form.alt_phone.data = doctor.alt_phone
-        form.address.data = doctor.address␊
+        form.address.data = doctor.address
         form.city.data, form.state.data = split_city_state(doctor.city_of_residence)
         form.medical_school.data = doctor.medical_school
         form.med_grad_month_year.data = doctor.med_grad_month_year
@@ -4550,6 +4550,7 @@ with app.app_context():
 # Run the app
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
