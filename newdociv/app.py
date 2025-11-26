@@ -9,7 +9,7 @@ from jinja2 import DictLoader
 from wtforms.widgets import ListWidget, CheckboxInput
 from flask import send_from_directory
 from wtforms import SelectField
-from wtforms import StringField, SubmitField, SelectMultipleField, FloatField, SelectField, BooleanField, FieldList, FormField
+from wtforms import StringField, SubmitField, SelectMultipleField, FloatField, SelectField, BooleanField, FieldList, FormField, HiddenField
 from wtforms.validators import DataRequired, Email, Optional
 import json
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -124,6 +124,26 @@ def geocode_location(location_str):
     if loc:
         return loc.latitude, loc.longitude
     return None, None
+
+
+def format_city_state(city, state):
+    parts = []
+    if city:
+        parts.append(city.strip())
+    if state:
+        parts.append(state.strip())
+    return ", ".join(parts)
+
+
+def split_city_state(value):
+    city, state = "", ""
+    if value:
+        parts = [p.strip() for p in value.split(',')]
+        if parts:
+            city = parts[0]
+        if len(parts) > 1:
+            state = parts[1]
+    return city, state
 
 
 @login_manager.user_loader
@@ -265,8 +285,10 @@ class DoctorForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired(), Email()])
     phone = StringField('Phone Number', validators=[Optional()])
     alt_phone = StringField('Alternative Phone Number', validators=[Optional()])
-    address = StringField('Address (City, State)', validators=[Optional()])
-    city_of_residence = StringField('City of Residence', validators=[Optional()])
+    address = StringField('Address Line 1', validators=[Optional()])
+    city = StringField('City', validators=[Optional()])
+    state = SelectField('State', choices=[('', 'Select State')] + [(abbr, abbr) for abbr in states], validators=[Optional()])
+    city_of_residence = HiddenField()
     # MD/DO fields
     medical_school = StringField('Medical School', validators=[Optional()])
     med_grad_month_year = StringField('Medical School Graduation (Month/Year)', validators=[Optional()])
@@ -960,8 +982,20 @@ app.jinja_loader = DictLoader({
             <div class="mb-3">{{ form.email.label }} {{ form.email(class="form-control") }}</div>
             <div class="mb-3">{{ form.phone.label }} {{ form.phone(class="form-control") }}</div>
             <div class="mb-3">{{ form.alt_phone.label }} {{ form.alt_phone(class="form-control") }}</div>
-            <div class="mb-3">{{ form.address.label }} {{ form.address(class="form-control") }}</div>
-            <div class="mb-3">{{ form.city_of_residence.label }} {{ form.city_of_residence(class="form-control") }}</div>
+            <div class="mb-3">
+                <label class="form-label fw-semibold">{{ form.address.label.text }}</label>
+                {{ form.address(class="form-control", placeholder="Street address (Line 1)") }}
+            </div>
+            <div class="row mb-3 g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">{{ form.city.label.text }}</label>
+                    {{ form.city(class="form-control", placeholder="City") }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">{{ form.state.label.text }}</label>
+                    {{ form.state(class="form-select") }}
+                </div>
+            </div>
 
             <div class="position-section md-do-fields">
                 <h4>MD/DO Information</h4>
@@ -2096,8 +2130,20 @@ app.jinja_loader = DictLoader({
             <div class="mb-3">{{ form.email.label }} {{ form.email(class="form-control") }}</div>
             <div class="mb-3">{{ form.phone.label }} {{ form.phone(class="form-control") }}</div>
             <div class="mb-3">{{ form.alt_phone.label }} {{ form.alt_phone(class="form-control") }}</div>
-            <div class="mb-3">{{ form.address.label }} {{ form.address(class="form-control") }}</div>
-            <div class="mb-3">{{ form.city_of_residence.label }} {{ form.city_of_residence(class="form-control") }}</div>
+            <div class="mb-3">
+                <label class="form-label fw-semibold">{{ form.address.label.text }}</label>
+                {{ form.address(class="form-control", placeholder="Street address (Line 1)") }}
+            </div>
+            <div class="row mb-3 g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">{{ form.city.label.text }}</label>
+                    {{ form.city(class="form-control", placeholder="City") }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">{{ form.state.label.text }}</label>
+                    {{ form.state(class="form-select") }}
+                </div>
+            </div>
 
             <div class="position-section md-do-fields">
                 <h4>MD/DO Information</h4>
@@ -2587,8 +2633,8 @@ app.jinja_loader = DictLoader({
             <div class=\"mb-3\">{{ form.email.label }} {{ form.email(class=\"form-control\") }}</div>
             <div class=\"mb-3\">{{ form.phone.label }} {{ form.phone(class=\"form-control\") }}</div>
             <div class=\"mb-3\">{{ form.alt_phone.label }} {{ form.alt_phone(class=\"form-control\") }}</div>
-            <div class=\"mb-3\">{{ form.address.label }} {{ form.address(class=\"form-control\") }}</div>
-            <div class=\"mb-3\">{{ form.city_of_residence.label }} {{ form.city_of_residence(class=\"form-control\") }}</div>
+            <div class=\"mb-3\">\n                <label class=\"form-label fw-semibold\">{{ form.address.label.text }}</label>\n                {{ form.address(class=\"form-control\", placeholder=\"Street address (Line 1)\") }}\n            </div>
+            <div class=\"row mb-3 g-3\">\n                <div class=\"col-md-6\">\n                    <label class=\"form-label fw-semibold\">{{ form.city.label.text }}</label>\n                    {{ form.city(class=\"form-control\", placeholder=\"City\") }}\n                </div>\n                <div class=\"col-md-6\">\n                    <label class=\"form-label fw-semibold\">{{ form.state.label.text }}</label>\n                    {{ form.state(class=\"form-select\") }}\n                </div>\n            </div>
 
             <h4>MD/DO Information</h4>
             <div class=\"mb-3\">{{ form.medical_school.label }} {{ form.medical_school(class=\"form-control\") }}</div>
@@ -2852,8 +2898,8 @@ def add_doctor():
             email=form.email.data,
             phone=form.phone.data,
             alt_phone=form.alt_phone.data,
-            address=form.address.data,
-            city_of_residence=form.city_of_residence.data,
+            address=form.address.data,␊
+            city_of_residence=format_city_state(form.city.data, form.state.data),
             medical_school=form.medical_school.data,
             med_grad_month_year=form.med_grad_month_year.data,
             residency=form.residency.data,
@@ -3787,8 +3833,8 @@ def doctor_edit_profile():
                 doctor.email = form.email.data
                 doctor.phone = form.phone.data
                 doctor.alt_phone = form.alt_phone.data
-                doctor.address = form.address.data
-                doctor.city_of_residence = form.city_of_residence.data
+                doctor.address = form.address.data␊
+                doctor.city_of_residence = format_city_state(form.city.data, form.state.data)
                 doctor.medical_school = form.medical_school.data
                 doctor.med_grad_month_year = form.med_grad_month_year.data
                 doctor.residency = form.residency.data
@@ -3847,8 +3893,8 @@ def doctor_edit_profile():
         form.email.data = doctor.email
         form.phone.data = doctor.phone
         form.alt_phone.data = doctor.alt_phone
-        form.address.data = doctor.address
-        form.city_of_residence.data = doctor.city_of_residence
+        form.address.data = doctor.address␊
+        form.city.data, form.state.data = split_city_state(doctor.city_of_residence)
         form.medical_school.data = doctor.medical_school
         form.med_grad_month_year.data = doctor.med_grad_month_year
         form.residency.data = doctor.residency
@@ -4205,8 +4251,8 @@ def edit_doctor(doctor_id):
             doctor.email = form.email.data
             doctor.phone = form.phone.data
             doctor.alt_phone = form.alt_phone.data
-            doctor.address = form.address.data
-            doctor.city_of_residence = form.city_of_residence.data
+            doctor.address = form.address.data␊
+            doctor.city_of_residence = format_city_state(form.city.data, form.state.data)
             doctor.medical_school = form.medical_school.data
             doctor.med_grad_month_year = form.med_grad_month_year.data
             doctor.residency = form.residency.data
@@ -4272,8 +4318,8 @@ def edit_doctor(doctor_id):
         form.email.data = doctor.email
         form.phone.data = doctor.phone
         form.alt_phone.data = doctor.alt_phone
-        form.address.data = doctor.address
-        form.city_of_residence.data = doctor.city_of_residence
+        form.address.data = doctor.address␊
+        form.city.data, form.state.data = split_city_state(doctor.city_of_residence)
         form.medical_school.data = doctor.medical_school
         form.med_grad_month_year.data = doctor.med_grad_month_year
         form.residency.data = doctor.residency
@@ -4504,6 +4550,7 @@ with app.app_context():
 # Run the app
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
