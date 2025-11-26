@@ -162,6 +162,7 @@ class Doctor(db.Model):
     email = db.Column(db.String(100), unique=True)
     phone = db.Column(db.String(20))
     alt_phone = db.Column(db.String(20))
+    address = db.Column(db.String(255))
     city_of_residence = db.Column(db.String(100))
     medical_school = db.Column(db.String(100))
     med_grad_month_year = db.Column(db.String(20))
@@ -239,15 +240,33 @@ class MalpracticeCaseForm(FlaskForm):
 # Forms
 class DoctorForm(FlaskForm):
     position = SelectField('Healthcare Provider Type', choices=[('MD','MD'),('DO','DO'),('NP','NP'),('PA','PA')], validators=[DataRequired()])
-    specialty = StringField('Specialty', validators=[DataRequired()])
+    specialty_choices = [
+        "Internal Medicine", "Family Medicine", "Pediatrics", "Emergency Medicine", "General Surgery",
+        "Psychiatry", "Obstetrics and Gynecology", "Anesthesiology", "Diagnostic Radiology", "Pathology",
+        "Orthopedic Surgery", "Cardiology", "Gastroenterology", "Dermatology", "Neurology", "Urology",
+        "Otolaryngology (ENT)", "Ophthalmology", "Hematology/Oncology", "Physical Medicine and Rehabilitation (PM&R)",
+        "Endocrinology", "Rheumatology", "Nephrology", "Pulmonology", "Infectious Disease", "Geriatrics",
+        "Allergy and Immunology", "Plastic Surgery", "Cardiothoracic Surgery", "Vascular Surgery", "Neurosurgery",
+        "Colorectal Surgery", "Bariatric Surgery", "Trauma Surgery", "Interventional Radiology",
+        "Interventional Cardiology", "Pain Medicine", "Critical Care Medicine", "Sports Medicine", "Hospital Medicine",
+        "Palliative Care", "Sleep Medicine", "Medical Genetics", "Occupational Medicine", "Preventive Medicine",
+        "Nuclear Medicine", "Radiation Oncology", "Reproductive Endocrinology and Infertility (REI)",
+        "Maternal-Fetal Medicine", "Adolescent Medicine", "Other"
+    ]
+    specialty = SelectField(
+        'Specialty',
+        choices=[(spec, spec) for spec in specialty_choices],
+        validators=[DataRequired()],
+        validate_choice=False
+    )
     subspecialty = StringField('Subspecialty', validators=[Optional()])
     first_name = StringField('First Name', validators=[DataRequired()])
     last_name = StringField('Last Name', validators=[DataRequired()])
     email = StringField('Email', validators=[DataRequired(), Email()])
     phone = StringField('Phone Number', validators=[Optional()])
     alt_phone = StringField('Alternative Phone Number', validators=[Optional()])
+    address = StringField('Address (City, State)', validators=[Optional()])
     city_of_residence = StringField('City of Residence', validators=[Optional()])
-
     # MD/DO fields
     medical_school = StringField('Medical School', validators=[Optional()])
     med_grad_month_year = StringField('Medical School Graduation (Month/Year)', validators=[Optional()])
@@ -316,7 +335,17 @@ class DoctorForm(FlaskForm):
     last_clinically_active = StringField('Last Clinically Active (Month/Year)', validators=[Optional()])
 
 
-    emr = StringField('EMR', validators=[Optional()])
+    emr_choices = [
+        "Epic", "Cerner", "Allscripts", "Meditech", "NextGen", "athenahealth", "eClinicalWorks", "Practice Fusion",
+        "GE Centricity", "Greenway Health", "McKesson", "Kareo", "Amazing Charts", "DrChrono", "AdvancedMD",
+        "eMDs", "Aprima", "ChartLogic", "Other"
+    ]
+    emr = SelectMultipleField(
+        'EMR Systems',
+        choices=[(system, system) for system in emr_choices],
+        validators=[Optional()],
+        validate_choice=False
+    )
     languages = StringField('Languages', validators=[Optional()])
 
     states_licensed = SelectMultipleField(
@@ -910,13 +939,14 @@ app.jinja_loader = DictLoader({
 
 
             <div class="mb-3">{{ form.position.label }} {{ form.position(class="form-select") }}</div>
-            <div class="mb-3">{{ form.specialty.label }} {{ form.specialty(class="form-control") }}</div>
+            <div class="mb-3">{{ form.specialty.label }} {{ form.specialty(class="form-select") }}</div>
             <div class="mb-3">{{ form.subspecialty.label }} {{ form.subspecialty(class="form-control") }}</div>
             <div class="mb-3">{{ form.first_name.label }} {{ form.first_name(class="form-control") }}</div>
             <div class="mb-3">{{ form.last_name.label }} {{ form.last_name(class="form-control") }}</div>
             <div class="mb-3">{{ form.email.label }} {{ form.email(class="form-control") }}</div>
             <div class="mb-3">{{ form.phone.label }} {{ form.phone(class="form-control") }}</div>
             <div class="mb-3">{{ form.alt_phone.label }} {{ form.alt_phone(class="form-control") }}</div>
+            <div class="mb-3">{{ form.address.label }} {{ form.address(class="form-control") }}</div>
             <div class="mb-3">{{ form.city_of_residence.label }} {{ form.city_of_residence(class="form-control") }}</div>
 
             <div class="position-section md-do-fields">
@@ -975,7 +1005,7 @@ app.jinja_loader = DictLoader({
             <div class="mb-3">{{ form.certification_specialty_area.label }} {{ form.certification_specialty_area(class="form-control") }}</div>
             <div class="mb-3">{{ form.clinically_active.label }} {{ form.clinically_active(class="form-select", id="clinically_active") }}</div>
             <div class="mb-3" id="last_active_field" style="display:none;">{{ form.last_clinically_active.label }} {{ form.last_clinically_active(class="form-control") }}</div>
-            <div class="mb-3">{{ form.emr.label }} {{ form.emr(class="form-control") }}</div>
+            <div class="mb-3">{{ form.emr.label }} {{ form.emr(class="form-select", multiple=True) }}</div>
             <div class="mb-3">{{ form.languages.label }} {{ form.languages(class="form-control") }}</div>
 
             <div class="row mb-3">
@@ -1147,6 +1177,7 @@ app.jinja_loader = DictLoader({
             <p><strong>Email:</strong> {{ doctor.email }}</p>
             <p><strong>Phone:</strong> {{ doctor.phone }}</p>
             <p><strong>Alternative Phone:</strong> {{ doctor.alt_phone }}</p>
+            <p><strong>Address:</strong> {{ doctor.address }}</p>
             <p><strong>City of Residence:</strong> {{ doctor.city_of_residence }}</p>
         </div>
 
@@ -1178,8 +1209,8 @@ app.jinja_loader = DictLoader({
 
         <div class="card shadow p-4 mb-4">
             <h5 class="card-title text-primary">Licensing & Work Preferences</h5>
-            <p><strong>Certification:</strong> {{ doctor.certification }}</p>
-            <p><strong>EMR:</strong> {{ doctor.emr }}</p>
+            <p><strong>Certification:</strong> {{ doctor.certification }}</p>␊
+            <p><strong>EMR:</strong> {{ doctor.emr.replace(',', ', ') if doctor.emr else '' }}</p>
             <p><strong>Languages:</strong> {{ doctor.languages }}</p>
             <p><strong>States Licensed:</strong> {{ doctor.states_licensed }}</p>
             <p><strong>States Willing to Work:</strong> {{ doctor.states_willing_to_work }}</p>
@@ -2027,13 +2058,14 @@ app.jinja_loader = DictLoader({
 
 
             <div class="mb-3">{{ form.position.label }} {{ form.position(class="form-select") }}</div>
-            <div class="mb-3">{{ form.specialty.label }} {{ form.specialty(class="form-control") }}</div>
+            <div class="mb-3">{{ form.specialty.label }} {{ form.specialty(class="form-select") }}</div>
             <div class="mb-3">{{ form.subspecialty.label }} {{ form.subspecialty(class="form-control") }}</div>
             <div class="mb-3">{{ form.first_name.label }} {{ form.first_name(class="form-control") }}</div>
             <div class="mb-3">{{ form.last_name.label }} {{ form.last_name(class="form-control") }}</div>
             <div class="mb-3">{{ form.email.label }} {{ form.email(class="form-control") }}</div>
             <div class="mb-3">{{ form.phone.label }} {{ form.phone(class="form-control") }}</div>
             <div class="mb-3">{{ form.alt_phone.label }} {{ form.alt_phone(class="form-control") }}</div>
+            <div class="mb-3">{{ form.address.label }} {{ form.address(class="form-control") }}</div>
             <div class="mb-3">{{ form.city_of_residence.label }} {{ form.city_of_residence(class="form-control") }}</div>
 
             <div class="position-section md-do-fields">
@@ -2090,7 +2122,7 @@ app.jinja_loader = DictLoader({
             <div class="mb-3">{{ form.certification_specialty_area.label }} {{ form.certification_specialty_area(class="form-control") }}</div>
             <div class="mb-3">{{ form.clinically_active.label }} {{ form.clinically_active(class="form-select", id="clinically_active") }}</div>
             <div class="mb-3" id="last_active_field" style="display:none;">{{ form.last_clinically_active.label }} {{ form.last_clinically_active(class="form-control") }}</div>
-            <div class="mb-3">{{ form.emr.label }} {{ form.emr(class="form-control") }}</div>
+            <div class="mb-3">{{ form.emr.label }} {{ form.emr(class="form-select", multiple=True) }}</div>
             <div class="mb-3">{{ form.languages.label }} {{ form.languages(class="form-control") }}</div>
 
             <div class="row mb-3">
@@ -2500,13 +2532,14 @@ app.jinja_loader = DictLoader({
             {{ form.hidden_tag() }}
 
             <div class=\"mb-3\">{{ form.position.label }} {{ form.position(class=\"form-select\") }}</div>
-            <div class=\"mb-3\">{{ form.specialty.label }} {{ form.specialty(class=\"form-control\") }}</div>
+            <div class=\"mb-3\">{{ form.specialty.label }} {{ form.specialty(class=\"form-select\") }}</div>
             <div class=\"mb-3\">{{ form.subspecialty.label }} {{ form.subspecialty(class=\"form-control\") }}</div>
             <div class=\"mb-3\">{{ form.first_name.label }} {{ form.first_name(class=\"form-control\") }}</div>
             <div class=\"mb-3\">{{ form.last_name.label }} {{ form.last_name(class=\"form-control\") }}</div>
             <div class=\"mb-3\">{{ form.email.label }} {{ form.email(class=\"form-control\") }}</div>
             <div class=\"mb-3\">{{ form.phone.label }} {{ form.phone(class=\"form-control\") }}</div>
             <div class=\"mb-3\">{{ form.alt_phone.label }} {{ form.alt_phone(class=\"form-control\") }}</div>
+            <div class=\"mb-3\">{{ form.address.label }} {{ form.address(class=\"form-control\") }}</div>
             <div class=\"mb-3\">{{ form.city_of_residence.label }} {{ form.city_of_residence(class=\"form-control\") }}</div>
 
             <h4>MD/DO Information</h4>
@@ -2568,7 +2601,7 @@ app.jinja_loader = DictLoader({
             <div class="mb-3" id="last_active_field" style="display:none;">
                 {{ form.last_clinically_active.label }} {{ form.last_clinically_active(class="form-control") }}
             </div>
-            <div class=\"mb-3\">{{ form.emr.label }} {{ form.emr(class=\"form-control\") }}</div>
+            <div class=\"mb-3\">{{ form.emr.label }} {{ form.emr(class=\"form-select\", multiple=True) }}</div>
             <div class=\"mb-3\">{{ form.languages.label }} {{ form.languages(class=\"form-control\") }}</div>
 
            <div class="row mb-3">
@@ -2770,6 +2803,7 @@ def add_doctor():
             email=form.email.data,
             phone=form.phone.data,
             alt_phone=form.alt_phone.data,
+            address=form.address.data,
             city_of_residence=form.city_of_residence.data,
             medical_school=form.medical_school.data,
             med_grad_month_year=form.med_grad_month_year.data,
@@ -2796,7 +2830,7 @@ def add_doctor():
             certification_specialty_area=form.certification_specialty_area.data,
             clinically_active=form.clinically_active.data,
             last_clinically_active=form.last_clinically_active.data if form.clinically_active.data == 'No' else None,
-            emr=form.emr.data,
+            emr=",".join(form.emr.data),
             languages=form.languages.data,
             states_licensed=",".join(form.states_licensed.data),
             states_willing_to_work=",".join(form.states_willing_to_work.data),
@@ -3703,6 +3737,7 @@ def doctor_edit_profile():
                 doctor.email = form.email.data
                 doctor.phone = form.phone.data
                 doctor.alt_phone = form.alt_phone.data
+                doctor.address = form.address.data
                 doctor.city_of_residence = form.city_of_residence.data
                 doctor.medical_school = form.medical_school.data
                 doctor.med_grad_month_year = form.med_grad_month_year.data
@@ -3738,7 +3773,7 @@ def doctor_edit_profile():
                 doctor.last_clinically_active = (
                     form.last_clinically_active.data if form.clinically_active.data == 'No' else None
                 )
-                doctor.emr = form.emr.data
+                doctor.emr = ",".join(form.emr.data)
                 doctor.languages = form.languages.data
                 doctor.states_licensed = ",".join(form.states_licensed.data)
                 doctor.states_willing_to_work = ",".join(form.states_willing_to_work.data)
@@ -3761,6 +3796,7 @@ def doctor_edit_profile():
         form.email.data = doctor.email
         form.phone.data = doctor.phone
         form.alt_phone.data = doctor.alt_phone
+        form.address.data = doctor.address
         form.city_of_residence.data = doctor.city_of_residence
         form.medical_school.data = doctor.medical_school
         form.med_grad_month_year.data = doctor.med_grad_month_year
@@ -3802,7 +3838,7 @@ def doctor_edit_profile():
         form.certification_specialty_area.data = doctor.certification_specialty_area
         form.clinically_active.data = doctor.clinically_active
         form.last_clinically_active.data = doctor.last_clinically_active
-        form.emr.data = doctor.emr
+        form.emr.data = doctor.emr.split(',') if doctor.emr else []
         form.languages.data = doctor.languages
         form.states_licensed.data = doctor.states_licensed.split(',') if doctor.states_licensed else []
         form.states_willing_to_work.data = doctor.states_willing_to_work.split(',') if doctor.states_willing_to_work else []
@@ -4117,6 +4153,7 @@ def edit_doctor(doctor_id):
             doctor.email = form.email.data
             doctor.phone = form.phone.data
             doctor.alt_phone = form.alt_phone.data
+            doctor.address = form.address.data
             doctor.city_of_residence = form.city_of_residence.data
             doctor.medical_school = form.medical_school.data
             doctor.med_grad_month_year = form.med_grad_month_year.data
@@ -4158,7 +4195,7 @@ def edit_doctor(doctor_id):
                 doctor.last_clinically_active = form.last_clinically_active.data
             else:
                 doctor.last_clinically_active = None
-            doctor.emr = form.emr.data
+            doctor.emr = ",".join(form.emr.data)
             doctor.languages = form.languages.data
             doctor.states_licensed = ",".join(form.states_licensed.data or [])
             doctor.states_willing_to_work = ",".join(form.states_willing_to_work.data or [])
@@ -4182,6 +4219,7 @@ def edit_doctor(doctor_id):
         form.email.data = doctor.email
         form.phone.data = doctor.phone
         form.alt_phone.data = doctor.alt_phone
+        form.address.data = doctor.address
         form.city_of_residence.data = doctor.city_of_residence
         form.medical_school.data = doctor.medical_school
         form.med_grad_month_year.data = doctor.med_grad_month_year
@@ -4232,7 +4270,7 @@ def edit_doctor(doctor_id):
         form.certification_specialty_area.data = doctor.certification_specialty_area
         form.clinically_active.data = doctor.clinically_active
         form.last_clinically_active.data = doctor.last_clinically_active
-        form.emr.data = doctor.emr
+        form.emr.data = doctor.emr.split(',') if doctor.emr else []
         form.languages.data = doctor.languages
         form.states_licensed.data = doctor.states_licensed.split(',') if doctor.states_licensed else []
         form.states_willing_to_work.data = doctor.states_willing_to_work.split(',') if doctor.states_willing_to_work else []
@@ -4412,6 +4450,7 @@ with app.app_context():
 # Run the app
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
