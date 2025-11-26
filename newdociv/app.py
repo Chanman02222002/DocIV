@@ -233,10 +233,10 @@ class MalpracticeCaseForm(FlaskForm):
         validators=[Optional()]
     )
     payout_amount = FloatField('Payout Amount', validators=[Optional()])
+    case_explanation = TextAreaField('Case Explanation', validators=[Optional()])
 
     class Meta:
         csrf = False
-
 # Forms
 class DoctorForm(FlaskForm):
     position = SelectField('Healthcare Provider Type', choices=[('MD','MD'),('DO','DO'),('NP','NP'),('PA','PA')], validators=[DataRequired()])
@@ -346,7 +346,17 @@ class DoctorForm(FlaskForm):
         validators=[Optional()],
         validate_choice=False
     )
-    languages = StringField('Languages', validators=[Optional()])
+    language_choices = [
+        "English", "Mandarin Chinese", "Hindi", "Spanish", "French", "Arabic", "Bengali", "Russian",
+        "Portuguese", "Urdu", "Indonesian", "German", "Japanese", "Swahili", "Marathi", "Telugu",
+        "Turkish", "Tamil", "Western Punjabi", "Korean"
+    ]
+    languages = SelectMultipleField(
+        'Languages',
+        choices=[(lang, lang) for lang in language_choices],
+        validators=[Optional()],
+        validate_choice=False
+    )
 
     states_licensed = SelectMultipleField(
         'States Licensed',
@@ -997,6 +1007,7 @@ app.jinja_loader = DictLoader({
                     <div class="mb-2">{{ case.incident_year.label }} {{ case.incident_year(class="form-control") }}</div>
                     <div class="mb-2">{{ case.outcome.label }} {{ case.outcome(class="form-select") }}</div>
                     <div class="mb-2">{{ case.payout_amount.label }} {{ case.payout_amount(class="form-control") }}</div>
+                    <div class="mb-2">{{ case.case_explanation.label }} {{ case.case_explanation(class="form-control", rows=3) }}</div>
                 </div>
                 {% endfor %}
             </div>
@@ -1006,7 +1017,7 @@ app.jinja_loader = DictLoader({
             <div class="mb-3">{{ form.clinically_active.label }} {{ form.clinically_active(class="form-select", id="clinically_active") }}</div>
             <div class="mb-3" id="last_active_field" style="display:none;">{{ form.last_clinically_active.label }} {{ form.last_clinically_active(class="form-control") }}</div>
             <div class="mb-3">{{ form.emr.label }} {{ form.emr(class="form-select", multiple=True) }}</div>
-            <div class="mb-3">{{ form.languages.label }} {{ form.languages(class="form-control") }}</div>
+            <div class="mb-3">{{ form.languages.label }} {{ form.languages(class="form-select", multiple=True) }}</div>
 
             <div class="row mb-3">
                 <div class="col-md-6">
@@ -2114,6 +2125,7 @@ app.jinja_loader = DictLoader({
                     <div class="mb-2">{{ case.incident_year.label }} {{ case.incident_year(class="form-control") }}</div>
                     <div class="mb-2">{{ case.outcome.label }} {{ case.outcome(class="form-select") }}</div>
                     <div class="mb-2">{{ case.payout_amount.label }} {{ case.payout_amount(class="form-control") }}</div>
+                    <div class="mb-2">{{ case.case_explanation.label }} {{ case.case_explanation(class="form-control", rows=3) }}</div>
                 </div>
                 {% endfor %}
             </div>
@@ -2123,7 +2135,7 @@ app.jinja_loader = DictLoader({
             <div class="mb-3">{{ form.clinically_active.label }} {{ form.clinically_active(class="form-select", id="clinically_active") }}</div>
             <div class="mb-3" id="last_active_field" style="display:none;">{{ form.last_clinically_active.label }} {{ form.last_clinically_active(class="form-control") }}</div>
             <div class="mb-3">{{ form.emr.label }} {{ form.emr(class="form-select", multiple=True) }}</div>
-            <div class="mb-3">{{ form.languages.label }} {{ form.languages(class="form-control") }}</div>
+            <div class="mb-3">{{ form.languages.label }} {{ form.languages(class="form-select", multiple=True) }}</div>
 
             <div class="row mb-3">
                 <div class="col-md-6">
@@ -2588,9 +2600,11 @@ app.jinja_loader = DictLoader({
                     <div class=\"mb-2\">{{ case.incident_year.label }} {{ case.incident_year(class=\"form-control\") }}</div>
                     <div class=\"mb-2\">{{ case.outcome.label }} {{ case.outcome(class=\"form-select\") }}</div>
                     <div class=\"mb-2\">{{ case.payout_amount.label }} {{ case.payout_amount(class=\"form-control\") }}</div>
+                    <div class=\"mb-2\">{{ case.case_explanation.label }} {{ case.case_explanation(class=\"form-control\", rows=3) }}</div>
                 </div>
                 {% endfor %}
             </div>
+
 
             <div class=\"mb-3\">{{ form.certification.label }} {{ form.certification(class=\"form-select\") }}</div>
             <div class="mb-3">{{ form.certification_specialty_area.label }} {{ form.certification_specialty_area(class="form-control") }}</div>
@@ -2602,7 +2616,7 @@ app.jinja_loader = DictLoader({
                 {{ form.last_clinically_active.label }} {{ form.last_clinically_active(class="form-control") }}
             </div>
             <div class=\"mb-3\">{{ form.emr.label }} {{ form.emr(class=\"form-select\", multiple=True) }}</div>
-            <div class=\"mb-3\">{{ form.languages.label }} {{ form.languages(class=\"form-control\") }}</div>
+            <div class=\"mb-3\">{{ form.languages.label }} {{ form.languages(class=\"form-select\", multiple=True) }}</div>
 
            <div class="row mb-3">
                 <div class="col-md-6">
@@ -2823,7 +2837,8 @@ def add_doctor():
                 {
                     'incident_year': case.form.incident_year.data,
                     'outcome': case.form.outcome.data,
-                    'payout_amount': case.form.payout_amount.data or 0
+                    'payout_amount': case.form.payout_amount.data or 0,
+                    'case_explanation': case.form.case_explanation.data or ''
                 } for case in form.malpractice_cases.entries[:int(form.num_malpractice_cases.data)]
             ]),
             certification=form.certification.data,
@@ -2831,7 +2846,7 @@ def add_doctor():
             clinically_active=form.clinically_active.data,
             last_clinically_active=form.last_clinically_active.data if form.clinically_active.data == 'No' else None,
             emr=",".join(form.emr.data),
-            languages=form.languages.data,
+            languages=",".join(form.languages.data),
             states_licensed=",".join(form.states_licensed.data),
             states_willing_to_work=",".join(form.states_willing_to_work.data),
             salary_expectations=form.salary_expectations.data or 0.0,
@@ -3763,7 +3778,8 @@ def doctor_edit_profile():
                     malpractice_data.append({
                         'incident_year': case_form.form.incident_year.data,
                         'outcome': case_form.form.outcome.data,
-                        'payout_amount': case_form.form.payout_amount.data or 0
+                        'payout_amount': case_form.form.payout_amount.data or 0,
+                        'case_explanation': case_form.form.case_explanation.data or ''
                     })
                 doctor.malpractice_cases = json.dumps(malpractice_data)
 
@@ -3774,7 +3790,7 @@ def doctor_edit_profile():
                     form.last_clinically_active.data if form.clinically_active.data == 'No' else None
                 )
                 doctor.emr = ",".join(form.emr.data)
-                doctor.languages = form.languages.data
+                doctor.languages = ",".join(form.languages.data)
                 doctor.states_licensed = ",".join(form.states_licensed.data)
                 doctor.states_willing_to_work = ",".join(form.states_willing_to_work.data)
                 doctor.salary_expectations = form.salary_expectations.data or 0.0
@@ -3823,9 +3839,10 @@ def doctor_edit_profile():
             entry.incident_year.data = case.get('incident_year', '')
             entry.outcome.data = case.get('outcome', '')
             entry.payout_amount.data = case.get('payout_amount', 0.0)
+            entry.case_explanation.data = case.get('case_explanation', '')
         while len(form.malpractice_cases.entries) < int(form.malpractice_cases.max_entries):
             form.malpractice_cases.append_entry()
-
+            
         form.bachelors.data = doctor.bachelors
         form.bachelors_grad_month_year.data = doctor.bachelors_grad_month_year
         form.msn.data = doctor.msn
@@ -3839,7 +3856,7 @@ def doctor_edit_profile():
         form.clinically_active.data = doctor.clinically_active
         form.last_clinically_active.data = doctor.last_clinically_active
         form.emr.data = doctor.emr.split(',') if doctor.emr else []
-        form.languages.data = doctor.languages
+        form.languages.data = doctor.languages.split(',') if doctor.languages else []
         form.states_licensed.data = doctor.states_licensed.split(',') if doctor.states_licensed else []
         form.states_willing_to_work.data = doctor.states_willing_to_work.split(',') if doctor.states_willing_to_work else []
         form.salary_expectations.data = doctor.salary_expectations
@@ -4183,7 +4200,8 @@ def edit_doctor(doctor_id):
                 malpractice_data.append({
                     'incident_year': case_form.form.incident_year.data,
                     'outcome': case_form.form.outcome.data,
-                    'payout_amount': case_form.form.payout_amount.data or 0
+                    'payout_amount': case_form.form.payout_amount.data or 0,
+                    'case_explanation': case_form.form.case_explanation.data or ''
                 })
             doctor.malpractice_cases = json.dumps(malpractice_data)
 
@@ -4196,7 +4214,7 @@ def edit_doctor(doctor_id):
             else:
                 doctor.last_clinically_active = None
             doctor.emr = ",".join(form.emr.data)
-            doctor.languages = form.languages.data
+            doctor.languages = ",".join(form.languages.data)
             doctor.states_licensed = ",".join(form.states_licensed.data or [])
             doctor.states_willing_to_work = ",".join(form.states_willing_to_work.data or [])
             doctor.salary_expectations = form.salary_expectations.data or 0.0
@@ -4252,9 +4270,10 @@ def edit_doctor(doctor_id):
             entry.incident_year.data = case.get('incident_year', '')
             entry.outcome.data = case.get('outcome', '')
             entry.payout_amount.data = case.get('payout_amount', 0.0)
+            entry.case_explanation.data = case.get('case_explanation', '')
         while len(form.malpractice_cases.entries) < int(form.malpractice_cases.max_entries):
             form.malpractice_cases.append_entry()
-
+        
         # NP/PA fields
         form.bachelors.data = doctor.bachelors
         form.bachelors_grad_month_year.data = doctor.bachelors_grad_month_year
@@ -4271,7 +4290,7 @@ def edit_doctor(doctor_id):
         form.clinically_active.data = doctor.clinically_active
         form.last_clinically_active.data = doctor.last_clinically_active
         form.emr.data = doctor.emr.split(',') if doctor.emr else []
-        form.languages.data = doctor.languages
+        form.languages.data = doctor.languages.split(',') if doctor.languages else []
         form.states_licensed.data = doctor.states_licensed.split(',') if doctor.states_licensed else []
         form.states_willing_to_work.data = doctor.states_willing_to_work.split(',') if doctor.states_willing_to_work else []
         form.salary_expectations.data = doctor.salary_expectations
@@ -4450,6 +4469,7 @@ with app.app_context():
 # Run the app
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
