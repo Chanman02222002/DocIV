@@ -25,7 +25,7 @@ from flask_login import current_user
 from werkzeug.utils import secure_filename
 from flask_wtf.file import FileField, FileAllowed
 import openai
-import re 
+import re
 from flask import jsonify, request
 from flask_login import login_required, current_user
 from geopy.geocoders import Nominatim
@@ -33,6 +33,7 @@ from collections import defaultdict
 from flask import send_file
 import pandas as pd
 from io import BytesIO
+from sqlalchemy import inspect, text
 
 
 
@@ -70,6 +71,8 @@ class Job(db.Model):
     location = db.Column(db.String(100))
     salary = db.Column(db.String(50))
     description = db.Column(db.Text)
+    job_url = db.Column(db.Text, nullable=True)
+    date_posted = db.Column(db.String(50), nullable=True)
     poster_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     latitude = db.Column(db.Float, nullable=True)
     longitude = db.Column(db.Float, nullable=True)
@@ -93,6 +96,29 @@ class Message(db.Model):
     recipient = db.relationship('User', foreign_keys=[recipient_id], backref='received_messages')
     job = db.relationship('Job', backref='messages')
     doctor = db.relationship('Doctor', backref='messages')
+
+
+def ensure_job_columns():
+    """Add new job columns to existing databases without migrations."""
+    with app.app_context():
+        inspector = inspect(db.engine)
+        if not inspector.has_table('job'):
+            return
+
+        existing = {col['name'] for col in inspector.get_columns('job')}
+        statements = []
+        if 'job_url' not in existing:
+            statements.append("ALTER TABLE job ADD COLUMN job_url TEXT")
+        if 'date_posted' not in existing:
+            statements.append("ALTER TABLE job ADD COLUMN date_posted VARCHAR(50)")
+
+        if statements:
+            with db.engine.begin() as conn:
+                for stmt in statements:
+                    conn.execute(text(stmt))
+
+
+ensure_job_columns()
 
 
 # Doctor Registration Form (For Admin)
@@ -931,7 +957,6 @@ app.jinja_loader = DictLoader({
             {{ form.salary.label }} {{ form.salary(class="form-control") }}
             {{ form.description.label }} {{ form.description(class="form-control") }}
             {{ form.submit(class="btn btn-success mt-3") }}
-            <a href="{{ url_for('scrape_jobs') }}" class="btn btn-warning mt-3">Scrape Jobs from DocCafe</a>
         </form>
         {% endblock %}''',
 
@@ -1515,15 +1540,25 @@ app.jinja_loader = DictLoader({
 
         {% if jobs %}
             {% for job in jobs %}
-            <div class="card mb-4 shadow-sm">
+            <div class="card mb-4 shadow-sm" id="job-{{ job.id }}">
                 <div class="card-body">
                     <h4 class="card-title">{{ job.title }}</h4>
                     <h6 class="card-subtitle text-muted mb-2">{{ job.location }}</h6>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <small class="text-muted">Posted: {{ job.date_posted if job.date_posted else 'N/A' }}</small>
+                        {% if job.salary %}
+                            <span class="badge text-bg-light border">{{ job.salary }}</span>
+                        {% endif %}
+                    </div>
                     <p class="card-text text-truncate" style="max-height: 5.5em; overflow: hidden;">
                         {{ job.description }}
                     </p>
                     <div class="d-flex justify-content-between align-items-center">
-                        <small class="text-muted">{{ job.salary }}</small>
+                        <div class="d-flex gap-2 align-items-center">
+                            {% if job.job_url %}
+                                <a href="{{ job.job_url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">Open Listing</a>
+                            {% endif %}
+                        </div>
                         <a href="{{ url_for('view_job', job_id=job.id) }}" class="btn btn-sm btn-outline-primary">View Job</a>
                     </div>
                 </div>
@@ -3395,12 +3430,96 @@ Do not output any <img> tags or links to images. Only output the requested job s
 
     return jsonify({'html': gpt_html})
 
+
+def get_or_create_system_user():
+    """Ensure there's a system user to own automatically imported jobs."""
+    system_user = User.query.filter_by(username="system_jobs").first()
+    if system_user:
+        return system_user
+
+    system_user = User(
+        username="system_jobs",
+        email="system_jobs@example.com",
+        role="admin",
+    )
+    system_user.set_password(os.getenv("SYSTEM_JOBS_PASSWORD", "system-jobs-placeholder"))
+    db.session.add(system_user)
+    db.session.commit()
+    return system_user
+
+
+def sync_direct_jobs_from_excel():
+    """Populate or refresh jobs from JOBSDIRECTJOBS.xlsx."""
+    excel_path = Path(__file__).resolve().parent / "JOBSDIRECTJOBS.xlsx"
+    if not excel_path.exists():
+        return
+
+    required_columns = {"Job URL", "Job Title", "Location", "Date Posted", "Description"}
+    try:
+        df = pd.read_excel(excel_path)
+    except Exception as exc:
+        print(f"Unable to read direct jobs Excel: {exc}")
+        return
+
+    missing = required_columns - set(df.columns)
+    if missing:
+        print(f"Direct jobs Excel missing columns: {', '.join(sorted(missing))}")
+        return
+
+    poster = get_or_create_system_user()
+    for _, row in df.iterrows():
+        job_url = str(row.get("Job URL", "") or "").strip()
+        title = str(row.get("Job Title", "") or "").strip() or "Untitled Job"
+        location = str(row.get("Location", "") or "").strip()
+
+        date_value = row.get("Date Posted")
+        if pd.isna(date_value):
+            date_posted = ""
+        elif isinstance(date_value, (datetime, pd.Timestamp)):
+            date_posted = date_value.strftime("%m/%d/%Y")
+        else:
+            date_posted = str(date_value).strip()
+
+        description = str(row.get("Description", "") or "").strip()
+
+        job = None
+        if job_url:
+            job = Job.query.filter_by(job_url=job_url).first()
+        if not job and location:
+            job = Job.query.filter_by(title=title, location=location).first()
+
+        if not job:
+            lat, lng = geocode_location(location) if location else (None, None)
+            job = Job(
+                title=title,
+                location=location,
+                salary="",
+                description=description,
+                poster_id=poster.id if poster else None,
+                latitude=lat,
+                longitude=lng,
+                job_url=job_url or None,
+                date_posted=date_posted or None,
+            )
+            db.session.add(job)
+        else:
+            job.title = title
+            job.location = location
+            job.description = description
+            job.job_url = job_url or job.job_url
+            job.date_posted = date_posted or job.date_posted
+            if (job.latitude is None or job.longitude is None) and location:
+                job.latitude, job.longitude = geocode_location(location)
+
+    db.session.commit()
 @app.route('/doctor/jobs')
 @login_required
 def doctor_jobs():
     if current_user.role != 'doctor':
         flash('Unauthorized access.', 'danger')
         return redirect(url_for('home'))
+
+    sync_direct_jobs_from_excel()
 
     keyword = request.args.get('keyword', '').lower()
     location = request.args.get('location', '').lower()
@@ -3460,20 +3579,22 @@ def view_job(job_id):
         if already_interested:
             flash('You have already expressed interest in this job.', 'info')
         else:
-            recipient_user = job.poster
-            message = Message(
-                sender_id=current_user.id,
-                recipient_id=recipient_user.id,
-                job_id=job.id,
-                doctor_id=current_user.doctor.id,
-                content=f"Dr. {current_user.doctor.first_name} {current_user.doctor.last_name} expressed interest in your job '{job.title}'.",
-                message_type='interest'
-            )
-            db.session.add(message)
-            db.session.commit()
-            flash('Your interest has been sent to the client.', 'success')
+            recipient_user = job.poster or get_or_create_system_user()
+            if not recipient_user:
+                flash('No recipient is available for this job.', 'warning')
+            else:
+                message = Message(
+                    sender_id=current_user.id,
+                    recipient_id=recipient_user.id,
+                    job_id=job.id,
+                    doctor_id=current_user.doctor.id,
+                    content=f"Dr. {current_user.doctor.first_name} {current_user.doctor.last_name} expressed interest in your job '{job.title}'.",
+                    message_type='interest'
+                )
+                db.session.add(message)
+                db.session.commit()
+                flash('Your interest has been sent to the client.', 'success')
         return redirect(url_for('doctor_jobs'))
-
     return render_template('view_job.html', job=job, already_interested=already_interested)
 
 
@@ -4546,6 +4667,7 @@ with app.app_context():
 # Run the app
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
