@@ -152,16 +152,23 @@ class ClientRegistrationForm(FlaskForm):
 
 geolocator = Nominatim(user_agent="dociv_geocoder")
 
+# Limit how many direct-job rows we geocode per sync to keep doctor_jobs responsive.
+DIRECT_JOBS_GEOCODE_LIMIT = 3
+
+
 
 def safe_geocode(location_str):
     """Return a geopy location object or None if lookup fails."""
     try:
-        return geolocator.geocode(location_str, timeout=5)
+        return geolocator.geocode(location_str, timeout=3)
     except (GeocoderTimedOut, GeocoderUnavailable, Exception):
         return None
 
 
 def geocode_location(location_str):
+    if not location_str:
+        return None, None
+
     loc = safe_geocode(location_str)
     if loc:
         return loc.latitude, loc.longitude
@@ -3512,6 +3519,7 @@ def sync_direct_jobs_from_excel():
         return
 
     poster = get_or_create_system_user()
+    jobs_to_geocode = []
     for _, row in df.iterrows():
         job_url = str(row.get("Job URL", "") or "").strip()
         title = str(row.get("Job Title", "") or "").strip() or "Untitled Job"
@@ -3560,11 +3568,23 @@ def sync_direct_jobs_from_excel():
 
         # Geocode if coordinates are missing and we have a location
         if location and (job.latitude is None or job.longitude is None):
-            lat, lng = geocode_location(location)
-            job.latitude = lat
-            job.longitude = lng
+            jobs_to_geocode.append(job)
 
     db.session.commit()
+
+    # Avoid long request times by limiting how many geocoding calls run per page load.
+    geocoded = 0
+    for job in jobs_to_geocode:
+        if geocoded >= DIRECT_JOBS_GEOCODE_LIMIT:
+            break
+
+        lat, lng = geocode_location(job.location)
+        job.latitude = lat
+        job.longitude = lng
+        geocoded += 1
+
+    if geocoded:
+        db.session.commit()
 @app.route('/doctor/jobs')
 @login_required
 def doctor_jobs():
@@ -4730,6 +4750,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
