@@ -1535,203 +1535,225 @@ app.jinja_loader = DictLoader({
     {% endblock %}''',
 
     'doctor_jobs.html': '''{% extends "base.html" %}
-        {% block content %}
+{% block content %}
 
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 class="mb-0">Find Jobs</h2>
-            <button class="btn btn-lg btn-info" id="aiSearchBtn" type="button">
-                <i class="bi bi-stars"></i> AI Search
-            </button>
-        </div>
-
-        <!-- Interactive Map -->
-        <div id="job-map" style="width:100%;height:420px;border-radius:12px;margin-bottom:36px;"></div>
-
-        <!-- AI Search Modal -->
-        <div class="modal fade" id="aiSearchModal" tabindex="-1" aria-labelledby="aiSearchModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content" style="border-radius:20px;">
-            <div class="modal-header">
-                <h5 class="modal-title" id="aiSearchModalLabel">Find Your Best Job Match (AI Powered)</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="aiSearchForm">
-                <div class="modal-body">
-                <div class="mb-3">
-                    <label><b>Lifestyle Description</b></label>
-                    <textarea class="form-control" name="lifestyle" rows="2" placeholder="e.g. Quiet suburb, outdoor activities, work/life balance..."></textarea>
-                </div>
-                <div class="mb-3">
-                    <label><b>Job-specific Wants</b></label>
-                    <textarea class="form-control" name="wants" rows="2" placeholder="e.g. Research, teaching, high salary, certain procedures..."></textarea>
-                </div>
-                <div class="mb-3">
-                    <label><b>Location Preferences</b></label>
-                    <input class="form-control" name="location" placeholder="e.g. Miami, Florida, Northeast, rural, etc.">
-                </div>
-                </div>
-                <div class="modal-footer">
-                <button type="submit" class="btn btn-success">Search with AI</button>
-                </div>
-            </form>
-            <div id="aiResultsContainer" class="p-4" style="display:none;"></div>
-            </div>
-        </div>
-        </div>
-
-        <form method="get" class="row g-3 mb-4">
-            <div class="col-md-4">
-                <input type="text" name="keyword" value="{{ keyword }}" class="form-control" placeholder="Enter Job Title / Keyword(s)">
-            </div>
-            <div class="col-md-4">
-                <input type="text" name="location" value="{{ location }}" class="form-control" placeholder="Enter Location">
-            </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-primary w-100">Search</button>
-            </div>
-            <div class="col-md-2">
-                <a href="{{ url_for('doctor_jobs') }}" class="btn btn-secondary w-100">Clear</a>
-            </div>
-        </form>
-
-        {% if jobs %}
-            {% for job in jobs %}
-            <div class="card mb-4 shadow-sm" id="job-{{ job.id }}">
-                <div class="card-body">
-                    <h4 class="card-title">{{ job.title }}</h4>
-                    <h6 class="card-subtitle text-muted mb-2">{{ job.location }}</h6>
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <small class="text-muted">Posted: {{ job.date_posted if job.date_posted else 'N/A' }}</small>
-                        {% if job.salary %}
-                            <span class="badge text-bg-light border">{{ job.salary }}</span>
-                        {% endif %}
-                    </div>
-                    <p class="card-text text-truncate" style="max-height: 5.5em; overflow: hidden;">
-                        {{ job.description }}
-                    </p>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div class="d-flex gap-2 align-items-center">
-                            {% if job.job_url %}
-                                <a href="{{ job.job_url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">Open Listing</a>
-                            {% endif %}
-                        </div>
-                        <a href="{{ url_for('view_job', job_id=job.id) }}" class="btn btn-sm btn-outline-primary">View Job</a>
-                    </div>
-                </div>
-            </div>
-            {% endfor %}
-        {% else %}
-            <p>No jobs match your criteria.</p>
-        {% endif %}
-
-        <div class="d-flex gap-2 mt-4">
-            <a href="{{ url_for('doctor_jobs') }}" class="btn btn-outline-primary">← Back to Full Job Board</a>
-            <a href="{{ url_for('doctor_dashboard') }}" class="btn btn-outline-secondary">Back to Dashboard</a>
-        </div>
-
-        <!-- Leaflet CSS/JS -->
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-        <script>
-        const jobMarkers = {{ job_markers|tojson|safe }};
-
-        // Initialize map
-        const map = L.map('job-map').setView([37.5, -96], 4);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: 'Map &copy; OpenStreetMap contributors'
-        }).addTo(map);
-
-        let markerGroup = L.featureGroup();
-        jobMarkers.forEach(markerData => {
-            if(markerData.lat && markerData.lng) {
-                let count = markerData.jobs.length;
-                const locationLabel = (markerData.jobs[0].location && markerData.jobs[0].location.trim())
-                    ? markerData.jobs[0].location
-                    : 'Location not specified';
-
-                // This uses the default Leaflet blue marker pin SVG (public domain)
-                let iconHtml = `
-                    <div class="leaflet-marker-icon-numbered">
-                        <img class="pin-img" src="https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png">
-                        ${count > 1 ? `<div class="marker-badge">${count}</div>` : ""}
-                    </div>
-                `;
-
-                let icon = L.divIcon({
-                    html: iconHtml,
-                    className: '', // No extra class, all styles inside
-                    iconSize: [38, 50],
-                    iconAnchor: [19, 50] // tip of pin is anchor
-                });
-
-                let popupHTML = `
-                    <div class="custom-popup">
-                        <div class="custom-popup-header">
-                            ${markerData.jobs.length === 1
-                                ? locationLabel
-                                : `${markerData.jobs.length} jobs at ${locationLabel}`}
-                        </div>
-                        <div class="custom-job-list">
-                `;
-                
-                markerData.jobs.forEach(job => {
-                    popupHTML += `
-                        <div class="custom-job">
-                            <div class="custom-job-title">${job.title}</div>
-                            ${job.salary ? `<div class="custom-job-salary">${job.salary}</div>` : ""}
-                            <a href="/doctor/job/${job.id}" target="_blank" class="custom-view-job">View Job</a>
-                        </div>
-                    `;
-                });
-
-                popupHTML += `</div></div>`;
-
-                const marker = L.marker([markerData.lat, markerData.lng], {icon: icon}).addTo(markerGroup);
-                marker.bindPopup(popupHTML);
-            }
-        });
-
-        markerGroup.addTo(map);
-
-        // Fit map to bounds if jobs exist
-        if (jobMarkers.length > 0) {
-            try {
-                map.fitBounds(markerGroup.getBounds().pad(0.2));
-            } catch (e) {
-                // If all jobs have the same lat/lng, fitBounds can fail; ignore
-            }
+    <style>
+        .job-card-title {
+            font-weight: 700;
+            color: #0b3b65;
         }
 
-        // AI Modal Script
-        document.getElementById('aiSearchBtn').addEventListener('click', function() {
-            new bootstrap.Modal(document.getElementById('aiSearchModal')).show();
-            document.getElementById('aiResultsContainer').style.display = 'none';
-            document.getElementById('aiResultsContainer').innerHTML = '';
-        });
-        document.getElementById('aiSearchForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const btn = this.querySelector('button[type=submit]');
-            btn.disabled = true; btn.innerText = "Searching...";
-            const formData = new FormData(this);
-            fetch('{{ url_for("doctor_ai_search_jobs") }}', {
-                method: 'POST',
-                body: formData
-            }).then(res => res.json()).then(data => {
-                btn.disabled = false; btn.innerText = "Search with AI";
-                document.getElementById('aiResultsContainer').style.display = '';
-                document.getElementById('aiResultsContainer').innerHTML = data['html'];
-            }).catch(() => {
-                btn.disabled = false; btn.innerText = "Search with AI";
-                document.getElementById('aiResultsContainer').style.display = '';
-                document.getElementById('aiResultsContainer').innerHTML = '<div class="alert alert-danger">AI search failed. Try again in a few seconds.</div>';
-            });
-        });
-        </script>
-        {% endblock %}''',
+        .job-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            font-size: 0.95rem;
+            color: #6c757d;
+        }
 
+        .job-meta .badge {
+            background: #eef5ff;
+            border: 1px solid #d6e6ff;
+        }
+
+        .job-description {
+            color: #4b5563;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+    </style>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">Find Jobs</h2>
+        <button class="btn btn-lg btn-info" id="aiSearchBtn" type="button">
+            <i class="bi bi-stars"></i> AI Search
+        </button>
+    </div>
+
+    <div id="job-map" style="width:100%;height:420px;border-radius:12px;margin-bottom:36px;"></div>
+
+    <!-- AI Search Modal -->
+    <div class="modal fade" id="aiSearchModal" tabindex="-1" aria-labelledby="aiSearchModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" style="border-radius:20px;">
+          <div class="modal-header">
+            <h5 class="modal-title" id="aiSearchModalLabel">Find Your Best Job Match (AI Powered)</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <form id="aiSearchForm">
+            <div class="modal-body">
+              <div class="mb-3">
+                <label><b>Lifestyle Description</b></label>
+                <textarea class="form-control" name="lifestyle" rows="2"
+                          placeholder="e.g. Quiet suburb, outdoor activities, work/life balance..."></textarea>
+              </div>
+              <div class="mb-3">
+                <label><b>Job-specific Wants</b></label>
+                <textarea class="form-control" name="wants" rows="2"
+                          placeholder="e.g. Research, teaching, high salary, certain procedures..."></textarea>
+              </div>
+              <div class="mb-3">
+                <label><b>Location Preferences</b></label>
+                <input class="form-control" name="location"
+                       placeholder="e.g. Miami, Florida, Northeast, rural, etc.">
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="submit" class="btn btn-success">Search with AI</button>
+            </div>
+          </form>
+          <div id="aiResultsContainer" class="p-4" style="display:none;"></div>
+        </div>
+      </div>
+    </div>
+
+    <form method="get" class="row g-3 mb-4">
+        <div class="col-md-4">
+            <input type="text" name="keyword" value="{{ keyword }}" class="form-control"
+                   placeholder="Enter Job Title / Keyword(s)">
+        </div>
+        <div class="col-md-4">
+            <input type="text" name="location" value="{{ location }}" class="form-control"
+                   placeholder="Enter Location">
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100">Search</button>
+        </div>
+        <div class="col-md-2">
+            <a href="{{ url_for('doctor_jobs') }}" class="btn btn-secondary w-100">Clear</a>
+        </div>
+    </form>
+
+    {% if jobs %}
+        {% for job in jobs %}
+        <div class="card mb-4 shadow-sm" id="job-{{ job.id }}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                    <h4 class="card-title job-card-title mb-1">{{ job.title }}</h4>
+                    <a href="{{ url_for('view_job', job_id=job.id) }}"
+                       class="btn btn-sm btn-outline-primary">View Job</a>
+                </div>
+                <div class="job-meta mb-2">
+                    <span class="d-flex align-items-center">
+                        <i class="bi bi-geo-alt me-1"></i>
+                        {{ job.location or 'Location not provided' }}
+                    </span>
+                    {% if job.salary %}
+                        <span class="badge rounded-pill text-primary">{{ job.salary }}</span>
+                    {% endif %}
+                </div>
+                <p class="job-description">{{ job.description }}</p>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p>No jobs match your criteria.</p>
+    {% endif %}
+
+    <div class="d-flex gap-2 mt-4">
+        <a href="{{ url_for('doctor_jobs') }}" class="btn btn-outline-primary">← Back to Full Job Board</a>
+        <a href="{{ url_for('doctor_dashboard') }}" class="btn btn-outline-secondary">Back to Dashboard</a>
+    </div>
+
+    <!-- Leaflet + Bootstrap Icons + JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+    const jobMarkers = {{ job_markers|tojson|safe }};
+
+    const map = L.map('job-map').setView([37.5, -96], 4);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: 'Map &copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    let markerGroup = L.featureGroup();
+    jobMarkers.forEach(markerData => {
+        if (markerData.lat && markerData.lng) {
+            let count = markerData.jobs.length;
+
+            let iconHtml = `
+                <div class="leaflet-marker-icon-numbered">
+                    <img class="pin-img"
+                         src="https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png">
+                    ${count > 1 ? `<div class="marker-badge">${count}</div>` : ""}
+                </div>
+            `;
+
+            let icon = L.divIcon({
+                html: iconHtml,
+                className: '',
+                iconSize: [38, 50],
+                iconAnchor: [19, 50]
+            });
+
+            let popupHTML = `
+                <div class="custom-popup">
+                    <div class="custom-popup-header">
+                        ${markerData.jobs.length === 1
+                          ? markerData.jobs[0].title
+                          : `${markerData.jobs.length} jobs at this location`}
+                    </div>
+                    <div class="custom-job-list">
+            `;
+
+            markerData.jobs.forEach(job => {
+                popupHTML += `
+                    <div class="custom-job">
+                        <div class="custom-job-title">${job.title}</div>
+                        <a href="/doctor/job/${job.id}" target="_blank"
+                           class="custom-view-job">View Job</a>
+                    </div>
+                `;
+            });
+
+            popupHTML += `</div></div>`;
+
+            const marker = L.marker([markerData.lat, markerData.lng], {icon: icon}).addTo(markerGroup);
+            marker.bindPopup(popupHTML);
+        }
+    });
+
+    markerGroup.addTo(map);
+
+    if (jobMarkers.length > 0) {
+        try {
+            map.fitBounds(markerGroup.getBounds().pad(0.2));
+        } catch (e) {}
+    }
+
+    document.getElementById('aiSearchBtn').addEventListener('click', function() {
+        new bootstrap.Modal(document.getElementById('aiSearchModal')).show();
+        document.getElementById('aiResultsContainer').style.display = 'none';
+        document.getElementById('aiResultsContainer').innerHTML = '';
+    });
+
+    document.getElementById('aiSearchForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const btn = this.querySelector('button[type=submit]');
+        btn.disabled = true; btn.innerText = "Searching...";
+        const formData = new FormData(this);
+        fetch('{{ url_for("doctor_ai_search_jobs") }}', {
+            method: 'POST',
+            body: formData
+        }).then(res => res.json()).then(data => {
+            btn.disabled = false; btn.innerText = "Search with AI";
+            document.getElementById('aiResultsContainer').style.display = '';
+            document.getElementById('aiResultsContainer').innerHTML = data['html'];
+        }).catch(() => {
+            btn.disabled = false; btn.innerText = "Search with AI";
+            document.getElementById('aiResultsContainer').style.display = '';
+            document.getElementById('aiResultsContainer').innerHTML = '<div class="alert alert-danger">AI search failed. Try again in a few seconds.</div>';
+        });
+    });
+    </script>
+    {% endblock %}''',
+    
     'landing_page.html': '''
         {% extends "base.html" %}
         {% block content %}
@@ -3760,7 +3782,6 @@ def doctor_jobs():
                 "id": job.id,
                 "title": job.title,
                 "location": job.location,
-                "salary": job.salary,
             })
         job_markers.append({
             "lat": lat,
@@ -4903,6 +4924,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
