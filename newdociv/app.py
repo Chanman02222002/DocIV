@@ -435,7 +435,7 @@ class DoctorForm(FlaskForm):
     last_clinically_active = StringField('Last Clinically Active (Month/Year)', validators=[Optional()])
 
 
-emr_choices = [
+    emr_choices = [
         "Epic", "Cerner", "Allscripts", "Meditech", "NextGen", "athenahealth", "eClinicalWorks", "Practice Fusion",
         "GE Centricity", "Greenway Health", "McKesson", "Kareo", "Amazing Charts", "DrChrono", "AdvancedMD",
         "eMDs", "Aprima", "ChartLogic", "Other"
@@ -4903,6 +4903,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
