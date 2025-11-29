@@ -1644,6 +1644,9 @@ app.jinja_loader = DictLoader({
         jobMarkers.forEach(markerData => {
             if(markerData.lat && markerData.lng) {
                 let count = markerData.jobs.length;
+                const locationLabel = (markerData.jobs[0].location && markerData.jobs[0].location.trim())
+                    ? markerData.jobs[0].location
+                    : 'Location not specified';
 
                 // This uses the default Leaflet blue marker pin SVG (public domain)
                 let iconHtml = `
@@ -1664,12 +1667,12 @@ app.jinja_loader = DictLoader({
                     <div class="custom-popup">
                         <div class="custom-popup-header">
                             ${markerData.jobs.length === 1
-                                ? markerData.jobs[0].title
-                                : `${markerData.jobs.length} jobs at this location`}
+                                ? locationLabel
+                                : `${markerData.jobs.length} jobs at ${locationLabel}`}
                         </div>
                         <div class="custom-job-list">
                 `;
-
+                
                 markerData.jobs.forEach(job => {
                     popupHTML += `
                         <div class="custom-job">
@@ -4752,6 +4755,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
