@@ -105,9 +105,10 @@ def ensure_job_columns():
     with app.app_context():
         inspector = inspect(db.engine)
         if not inspector.has_table('job'):
-
+            return
         existing = {col['name'] for col in inspector.get_columns('job')}
         statements = []
+
         if 'job_url' not in existing:
             statements.append("ALTER TABLE job ADD COLUMN job_url TEXT")
         if 'date_posted' not in existing:
@@ -193,6 +194,7 @@ def geocode_missing_jobs():
             print(f"Committed geocodes for {updated} job(s)")
         else:
             print("No jobs required geocoding")
+
 
 
 def format_city_state(city, state):
@@ -3550,7 +3552,7 @@ def sync_direct_jobs_from_excel():
             job.description = description
             job.job_url = job_url or job.job_url
             job.date_posted = date_posted or job.date_posted
-
+            
     db.session.commit()
 @app.route('/doctor/jobs')
 @login_required
@@ -4717,6 +4719,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
