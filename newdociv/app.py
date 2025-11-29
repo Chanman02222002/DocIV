@@ -3523,7 +3523,9 @@ def sync_direct_jobs_from_excel():
     for _, row in df.iterrows():
         job_url = str(row.get("Job URL", "") or "").strip()
         title = str(row.get("Job Title", "") or "").strip() or "Untitled Job"
-        location = str(row.get("Location", "") or "").strip()
+
+        location_value = row.get("Location", "")
+        location = "" if pd.isna(location_value) else str(location_value or "").strip()
         date_value = row.get("Date Posted")
         if pd.isna(date_value):
             date_posted = ""
@@ -4750,6 +4752,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
