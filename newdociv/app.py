@@ -2120,40 +2120,277 @@ app.jinja_loader = DictLoader({
 
     'doctor_edit_profile.html': '''{% extends "base.html" %}
         {% block content %}
-        <h2>Edit Doctor: {{ doctor.first_name }} {{ doctor.last_name }}</h2>
+        <style>
+            .wizard-shell {
+                background: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.12), transparent 35%),
+                            radial-gradient(circle at 90% 0%, rgba(16, 185, 129, 0.12), transparent 25%);
+                border-radius: 20px;
+                padding: 1rem 1.5rem 2rem;
+                box-shadow: 0 30px 80px rgba(0,0,0,0.08);
+            }
+            .glass-card {
+                background: rgba(255,255,255,0.82);
+                border: 1px solid rgba(255,255,255,0.5);
+                border-radius: 18px;
+                box-shadow: 0 20px 60px rgba(31,41,55,0.1);
+                backdrop-filter: blur(8px);
+            }
+            .step-chip {
+                padding: 0.45rem 0.9rem;
+                border-radius: 999px;
+                background: #f4f4f5;
+                color: #6b7280;
+                font-weight: 600;
+                border: 1px solid transparent;
+                transition: all 0.2s ease;
+            }
+            .step-chip.active {
+                background: linear-gradient(120deg, #6366f1, #22c55e);
+                color: #fff;
+                box-shadow: 0 10px 30px rgba(99,102,241,0.25);
+            }
+            .wizard-step { display: none; }
+            .wizard-step.active { display: block; }
+            .section-title {
+                font-size: 1.05rem;
+                font-weight: 700;
+                color: #0f172a;
+            }
+        </style>
 
-        <form method="post" enctype="multipart/form-data">
-            {{ form.hidden_tag() }}
-
-            {% if doctor.profile_picture %}
-            <div class="mb-3">
-                <label><strong>Current Profile Picture:</strong></label><br>
-                <img src="{{ url_for('static', filename=doctor.profile_picture) }}" class="img-thumbnail" style="max-width: 150px;">
-            </div>
-            {% endif %}
-
-            <div class="mb-3">
-                {{ form.profile_picture.label }}
-                {{ form.profile_picture(class="form-control", id="profileInput") }}
-            </div>
-
-            <!-- Image Preview for Cropping -->
-            <div class="text-center mt-3" id="crop-container" style="display:none;">
-                <div style="display:inline-block; width:300px; height:300px; border-radius:50%; overflow:hidden; background:#f0f0f0; position:relative;">
-                    <img id="preview" style="position:absolute; top:0; left:0; min-width:100%; min-height:100%;">
+        <div class="wizard-shell">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+                <div>
+                    <p class="text-uppercase text-muted small mb-1">Profile Experience</p>
+                    <h2 class="fw-bold mb-0">Edit Doctor: {{ doctor.first_name }} {{ doctor.last_name }}</h2>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <span class="step-chip active" data-step="0">Profile</span>
+                    <span class="step-chip" data-step="1">Education</span>
+                    <span class="step-chip" data-step="2">Practice</span>
+                    <span class="step-chip" data-step="3">Preferences</span>
                 </div>
             </div>
 
-            <!-- Hidden input to hold cropped base64 image -->
-            <input type="hidden" name="cropped_image_data" id="croppedImageData">
+            <div class="progress mb-4" style="height: 10px;">
+                <div class="progress-bar bg-success" id="progressBar" style="width: 25%;"></div>
+            </div>
 
-            <!-- Button to trigger cropping -->
-            <button type="button" class="btn btn-info mt-2" id="cropBtn" style="display:none;">Crop and Save</button>
+            <form method="post" enctype="multipart/form-data" id="profileWizard" class="glass-card p-4">
+                {{ form.hidden_tag() }}
 
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
-            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css"/>
+                <div class="wizard-step active" data-step="0">
+                    <div class="row g-4 align-items-start">
+                        <div class="col-md-4">
+                            {% if doctor.profile_picture %}
+                            <div class="mb-3 text-center">
+                                <p class="fw-semibold mb-2">Current Photo</p>
+                                <img src="{{ url_for('static', filename=doctor.profile_picture) }}" class="img-thumbnail shadow-sm rounded-circle" style="max-width: 180px;">
+                            </div>
+                            {% endif %}
 
-            <script>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">{{ form.profile_picture.label.text }}</label>
+                                {{ form.profile_picture(class="form-control", id="profileInput") }}
+                                <small class="text-muted">Upload a clear headshot to refresh your profile.</small>
+                            </div>
+
+                            <div class="text-center mt-3" id="crop-container" style="display:none;">
+                                <div style="display:inline-block; width:260px; height:260px; border-radius:50%; overflow:hidden; background:#f0f0f0; position:relative;">
+                                    <img id="preview" style="position:absolute; top:0; left:0; min-width:100%; min-height:100%;">
+                                </div>
+                            </div>
+
+                            <input type="hidden" name="cropped_image_data" id="croppedImageData">
+                            <button type="button" class="btn btn-outline-primary w-100 mt-2" id="cropBtn" style="display:none;">Crop and Save</button>
+                        </div>
+
+                        <div class="col-md-8">
+                            <div class="row g-3">
+                                <div class="col-md-6">{{ form.position.label(class="form-label fw-semibold") }} {{ form.position(class="form-select") }}</div>
+                                <div class="col-md-6">{{ form.specialty.label(class="form-label fw-semibold") }} {{ form.specialty(class="form-select") }}</div>
+                                <div class="col-12">{{ form.subspecialty.label(class="form-label fw-semibold") }} {{ form.subspecialty(class="form-control") }}</div>
+                                <div class="col-md-6">{{ form.first_name.label(class="form-label fw-semibold") }} {{ form.first_name(class="form-control") }}</div>
+                                <div class="col-md-6">{{ form.last_name.label(class="form-label fw-semibold") }} {{ form.last_name(class="form-control") }}</div>
+                                <div class="col-md-6">{{ form.email.label(class="form-label fw-semibold") }} {{ form.email(class="form-control") }}</div>
+                                <div class="col-md-6">{{ form.phone.label(class="form-label fw-semibold") }} {{ form.phone(class="form-control") }}</div>
+                                <div class="col-md-6">{{ form.alt_phone.label(class="form-label fw-semibold") }} {{ form.alt_phone(class="form-control") }}</div>
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold">{{ form.address.label.text }}</label>
+                                    {{ form.address(class="form-control", placeholder="Street address (Line 1)") }}
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">{{ form.city.label.text }}</label>
+                                    {{ form.city(class="form-control", placeholder="City") }}
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">{{ form.state.label.text }}</label>
+                                    {{ form.state(class="form-select") }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wizard-step" data-step="1">
+                    <div class="row g-4">
+                        <div class="col-lg-6 position-section md-do-fields">
+                            <p class="section-title">MD/DO Education</p>
+                            <div class="mb-3">{{ form.medical_school.label }} {{ form.medical_school(class="form-control") }}</div>
+                            <div class="mb-3">{{ form.med_grad_month_year.label }} {{ form.med_grad_month_year(class="form-control") }}</div>
+                            <div class="mb-3">{{ form.residency.label }} {{ form.residency(class="form-control") }}</div>
+                            <div class="mb-3">{{ form.residency_grad_month_year.label }} {{ form.residency_grad_month_year(class="form-control") }}</div>
+
+                            <p class="section-title">Fellowships</p>
+                            <div class="mb-3">
+                                {{ form.num_fellowships.label }} {{ form.num_fellowships(class="form-select", id="num_fellowships") }}
+                            </div>
+                            <div id="fellowship_fields">
+                                {% for fellowship_field, date_field in zip(form.fellowship, form.fellowship_grad_month_year) %}
+                                <div class="border p-3 mb-3 rounded fellowship-case">
+                                    <div class="mb-2">{{ fellowship_field.label }} {{ fellowship_field(class="form-control") }}</div>
+                                    <div class="mb-2">{{ date_field.label }} {{ date_field(class="form-control") }}</div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="col-lg-6 position-section np-pa-fields">
+                            <p class="section-title">NP/PA Education</p>
+                            <div class="mb-3">{{ form.bachelors.label }} {{ form.bachelors(class="form-control") }}</div>
+                            <div class="mb-3">{{ form.bachelors_grad_month_year.label }} {{ form.bachelors_grad_month_year(class="form-control") }}</div>
+                            <div class="mb-3">{{ form.msn.label }} {{ form.msn(class="form-control") }}</div>
+                            <div class="mb-3">{{ form.msn_grad_month_year.label }} {{ form.msn_grad_month_year(class="form-control") }}</div>
+                            <div class="mb-3">{{ form.dnp.label }} {{ form.dnp(class="form-control") }}</div>
+                            <div class="mb-3">{{ form.dnp_grad_month_year.label }} {{ form.dnp_grad_month_year(class="form-control") }}</div>
+
+                            <p class="section-title">Additional Training & Sponsorship</p>
+                            <div class="mb-3">{{ form.additional_training.label }} {{ form.additional_training(class="form-control") }}</div>
+                            <div class="form-check mb-3">{{ form.sponsorship_needed(class="form-check-input") }} {{ form.sponsorship_needed.label(class="form-check-label") }}</div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <p class="section-title">Malpractice Cases</p>
+                        <div class="mb-3">
+                            {{ form.num_malpractice_cases.label }} {{ form.num_malpractice_cases(class="form-select", id="num_malpractice_cases") }}
+                        </div>
+                        <div id="malpractice_fields" class="row g-3">
+                            {% for case in form.malpractice_cases %}
+                            <div class="col-md-6">
+                                <div class="border p-3 rounded malpractice-case h-100">
+                                    <div class="mb-2">{{ case.incident_year.label }} {{ case.incident_year(class="form-control") }}</div>
+                                    <div class="mb-2">{{ case.outcome.label }} {{ case.outcome(class="form-select") }}</div>
+                                    <div class="mb-2">{{ case.payout_amount.label }} {{ case.payout_amount(class="form-control") }}</div>
+                                    <div class="mb-2">{{ case.case_explanation.label }} {{ case.case_explanation(class="form-control", rows=3) }}</div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wizard-step" data-step="2">
+                    <div class="row g-4">
+                        <div class="col-lg-6">
+                            <p class="section-title">Board & Clinical Status</p>
+                            <div class="mb-3">{{ form.certification.label }} {{ form.certification(class="form-select") }}</div>
+                            <div class="mb-3">{{ form.certification_specialty_area.label }} {{ form.certification_specialty_area(class="form-control") }}</div>
+                            <div class="mb-3">{{ form.clinically_active.label }} {{ form.clinically_active(class="form-select", id="clinically_active") }}</div>
+                            <div class="mb-3" id="last_active_field" style="display:none;">{{ form.last_clinically_active.label }} {{ form.last_clinically_active(class="form-control") }}</div>
+
+                            <p class="section-title">Digital & Facility Experience</p>
+                            <div class="mb-3">
+                                <label class="form-label"><strong>{{ form.emr.label }}</strong></label>
+                                <div class="d-flex flex-wrap border rounded p-2" style="max-height:300px; overflow-y:auto;">
+                                    {% for emr_option in form.emr %}
+                                    <div class="form-check me-3" style="width:200px;">{{ emr_option(class="form-check-input") }} {{ emr_option.label(class="form-check-label") }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label"><strong>{{ form.admission_privilege.label }}</strong></label>
+                                <div class="d-flex flex-wrap border rounded p-2" style="max-height:300px; overflow-y:auto;">
+                                    {% for privilege in form.admission_privilege %}
+                                    <div class="form-check me-3" style="width:200px;">{{ privilege(class="form-check-input") }} {{ privilege.label(class="form-check-label") }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-6">
+                            <p class="section-title">Workload & Employment</p>
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-4">{{ form.patient_load.label }} {{ form.patient_load(class="form-select") }}</div>
+                                <div class="col-md-4">{{ form.telemedicine_experience.label }} {{ form.telemedicine_experience(class="form-select") }}</div>
+                                <div class="col-md-4">{{ form.telemedicine_willing.label }} {{ form.telemedicine_willing(class="form-select") }}</div>
+                            </div>
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">{{ form.preferred_employment.label }} {{ form.preferred_employment(class="form-select") }}</div>
+                                <div class="col-md-6">{{ form.employment_type.label }} {{ form.employment_type(class="form-select") }}</div>
+                            </div>
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">{{ form.shift_preference.label }} {{ form.shift_preference(class="form-select") }}</div>
+                                <div class="col-md-6">{{ form.call_preference.label }} {{ form.call_preference(class="form-select") }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wizard-step" data-step="3">
+                    <div class="row g-4">
+                        <div class="col-lg-6">
+                            <p class="section-title">Communication</p>
+                            <div class="mb-3">
+                                <label class="form-label"><strong>{{ form.languages.label }}</strong></label>
+                                <div class="d-flex flex-wrap border rounded p-2" style="max-height:320px; overflow-y:auto;">
+                                    {% for language in form.languages %}
+                                    <div class="form-check me-3" style="width:180px;">{{ language(class="form-check-input") }} {{ language.label(class="form-check-label") }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <p class="section-title">Licensure</p>
+                            <div class="mb-3">
+                                <label class="form-label"><strong>{{ form.states_licensed.label }}</strong></label>
+                                <div class="d-flex flex-wrap border rounded p-2" style="max-height:320px; overflow-y:auto;">
+                                    {% for state in form.states_licensed %}
+                                    <div class="form-check me-3" style="width:100px;">{{ state(class="form-check-input") }} {{ state.label(class="form-check-label") }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label"><strong>{{ form.states_willing_to_work.label }}</strong></label>
+                                <div class="d-flex flex-wrap border rounded p-2" style="max-height:320px; overflow-y:auto;">
+                                    {% for state in form.states_willing_to_work %}
+                                    <div class="form-check me-3" style="width:100px;">{{ state(class="form-check-input") }} {{ state.label(class="form-check-label") }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mt-2">
+                        <div class="col-md-6">{{ form.preferred_locations.label }} {{ form.preferred_locations(class="form-control") }}</div>
+                        <div class="col-md-6">{{ form.salary_expectations.label }} {{ form.salary_expectations(class="form-control") }}</div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-4">
+                    <button type="button" class="btn btn-outline-secondary" id="prevStep" disabled>Back</button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-primary" id="nextStep">Next</button>
+                        {{ form.submit(class="btn btn-success d-none", id="submitWizard") }}
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css"/>
+
+        <script>
             const input = document.getElementById('profileInput');
             const preview = document.getElementById('preview');
             const cropBtn = document.getElementById('cropBtn');
@@ -2186,8 +2423,8 @@ app.jinja_loader = DictLoader({
                                 cropper.setCropBoxData({
                                     left: (containerData.width - cropBoxData.width) / 2,
                                     top: (containerData.height - cropBoxData.height) / 2,
-                                    width: 300,
-                                    height: 300
+                                    width: 260,
+                                    height: 260
                                 });
                             }
                         });
@@ -2209,179 +2446,85 @@ app.jinja_loader = DictLoader({
                     cropBtn.innerText = "Image Cropped";
                 }
             });
-            </script>
 
-
-            <div class="mb-3">{{ form.position.label }} {{ form.position(class="form-select") }}</div>
-            <div class="mb-3">{{ form.specialty.label }} {{ form.specialty(class="form-select") }}</div>
-            <div class="mb-3">{{ form.subspecialty.label }} {{ form.subspecialty(class="form-control") }}</div>
-            <div class="mb-3">{{ form.first_name.label }} {{ form.first_name(class="form-control") }}</div>
-            <div class="mb-3">{{ form.last_name.label }} {{ form.last_name(class="form-control") }}</div>
-            <div class="mb-3">{{ form.email.label }} {{ form.email(class="form-control") }}</div>
-            <div class="mb-3">{{ form.phone.label }} {{ form.phone(class="form-control") }}</div>
-            <div class="mb-3">{{ form.alt_phone.label }} {{ form.alt_phone(class="form-control") }}</div>
-            <div class="mb-3">
-                <label class="form-label fw-semibold">{{ form.address.label.text }}</label>
-                {{ form.address(class="form-control", placeholder="Street address (Line 1)") }}
-            </div>
-            <div class="row mb-3 g-3">
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold">{{ form.city.label.text }}</label>
-                    {{ form.city(class="form-control", placeholder="City") }}
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold">{{ form.state.label.text }}</label>
-                    {{ form.state(class="form-select") }}
-                </div>
-            </div>
-
-            <div class="position-section md-do-fields">
-                <h4>MD/DO Information</h4>
-                <div class="mb-3">{{ form.medical_school.label }} {{ form.medical_school(class="form-control") }}</div>
-                <div class="mb-3">{{ form.med_grad_month_year.label }} {{ form.med_grad_month_year(class="form-control") }}</div>
-                <div class="mb-3">{{ form.residency.label }} {{ form.residency(class="form-control") }}</div>
-                <div class="mb-3">{{ form.residency_grad_month_year.label }} {{ form.residency_grad_month_year(class="form-control") }}</div>
-
-                <h4>Fellowships</h4>
-                <div class="mb-3">
-                    {{ form.num_fellowships.label }} {{ form.num_fellowships(class="form-select", id="num_fellowships") }}
-                </div>
-                <div id="fellowship_fields">
-                    {% for fellowship_field, date_field in zip(form.fellowship, form.fellowship_grad_month_year) %}
-                    <div class="border p-3 mb-3 rounded fellowship-case">
-                        <div class="mb-2">{{ fellowship_field.label }} {{ fellowship_field(class="form-control") }}</div>
-                        <div class="mb-2">{{ date_field.label }} {{ date_field(class="form-control") }}</div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-
-            <div class="position-section np-pa-fields">
-                <h4>NP/PA Information</h4>
-                <div class="mb-3">{{ form.bachelors.label }} {{ form.bachelors(class="form-control") }}</div>
-                <div class="mb-3">{{ form.bachelors_grad_month_year.label }} {{ form.bachelors_grad_month_year(class="form-control") }}</div>
-                <div class="mb-3">{{ form.msn.label }} {{ form.msn(class="form-control") }}</div>
-                <div class="mb-3">{{ form.msn_grad_month_year.label }} {{ form.msn_grad_month_year(class="form-control") }}</div>
-                <div class="mb-3">{{ form.dnp.label }} {{ form.dnp(class="form-control") }}</div>
-                <div class="mb-3">{{ form.dnp_grad_month_year.label }} {{ form.dnp_grad_month_year(class="form-control") }}</div>
-            </div>
-
-            <div class="position-section position-shared">
-                <h5>Additional Training & Sponsorship</h5>
-                <div class="mb-3">{{ form.additional_training.label }} {{ form.additional_training(class="form-control") }}</div>
-                <div class="form-check mb-3">{{ form.sponsorship_needed(class="form-check-input") }} {{ form.sponsorship_needed.label(class="form-check-label") }}</div>
-            </div>
-            <h4>Malpractice Cases</h4>
-            <div class="mb-3">
-                {{ form.num_malpractice_cases.label }} {{ form.num_malpractice_cases(class="form-select", id="num_malpractice_cases") }}
-            </div>
-            <div id="malpractice_fields">
-                {% for case in form.malpractice_cases %}
-                <div class="border p-3 mb-3 rounded malpractice-case">
-                    <div class="mb-2">{{ case.incident_year.label }} {{ case.incident_year(class="form-control") }}</div>
-                    <div class="mb-2">{{ case.outcome.label }} {{ case.outcome(class="form-select") }}</div>
-                    <div class="mb-2">{{ case.payout_amount.label }} {{ case.payout_amount(class="form-control") }}</div>
-                    <div class="mb-2">{{ case.case_explanation.label }} {{ case.case_explanation(class="form-control", rows=3) }}</div>
-                </div>
-                {% endfor %}
-            </div>
-
-            <div class="mb-3">{{ form.certification.label }} {{ form.certification(class="form-select") }}</div>
-            <div class="mb-3">{{ form.certification_specialty_area.label }} {{ form.certification_specialty_area(class="form-control") }}</div>
-            <div class="mb-3">{{ form.clinically_active.label }} {{ form.clinically_active(class="form-select", id="clinically_active") }}</div>
-            <div class="mb-3" id="last_active_field" style="display:none;">{{ form.last_clinically_active.label }} {{ form.last_clinically_active(class="form-control") }}</div>
-            <div class="row mb-3">
-                <div class="col-md-6 mb-3 mb-md-0">
-                    <label class="form-label"><strong>{{ form.emr.label }}</strong></label>
-                    <div class="d-flex flex-wrap border rounded p-2" style="max-height:300px; overflow-y:auto;">
-                        {% for emr_option in form.emr %}
-                        <div class="form-check me-3" style="width:200px;">{{ emr_option(class="form-check-input") }} {{ emr_option.label(class="form-check-label") }}</div>
-                        {% endfor %}
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label"><strong>{{ form.languages.label }}</strong></label>
-                    <div class="d-flex flex-wrap border rounded p-2" style="max-height:300px; overflow-y:auto;">
-                        {% for language in form.languages %}
-                        <div class="form-check me-3" style="width:180px;">{{ language(class="form-check-input") }} {{ language.label(class="form-check-label") }}</div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <label class="form-label"><strong>{{ form.states_licensed.label }}</strong></label>
-                    <div class="d-flex flex-wrap border rounded p-2" style="max-height:300px; overflow-y:auto;">
-                        {% for state in form.states_licensed %}
-                        <div class="form-check me-3" style="width:100px;">{{ state(class="form-check-input") }} {{ state.label(class="form-check-label") }}</div>
-                        {% endfor %}
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label"><strong>{{ form.states_willing_to_work.label }}</strong></label>
-                    <div class="d-flex flex-wrap border rounded p-2" style="max-height:300px; overflow-y:auto;">
-                        {% for state in form.states_willing_to_work %}
-                        <div class="form-check me-3" style="width:100px;">{{ state(class="form-check-input") }} {{ state.label(class="form-check-label") }}</div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-
-            <div class="mb-3">{{ form.salary_expectations.label }} {{ form.salary_expectations(class="form-control") }}</div>
-
-            {{ form.submit(class="btn btn-success") }}
-        </form>
-
-        <script>
-       function toggleFields(selectorId, classSelector) {
-            const sel = document.getElementById(selectorId),
-                fields = document.querySelectorAll(classSelector);
-            sel.addEventListener('change', () => {
-                const n = parseInt(sel.value, 10);
-                fields.forEach((el, i) => el.style.display = i < n ? 'block' : 'none');
-            });
-            sel.dispatchEvent(new Event('change'));
-        }
-
-        // Initialize dynamic field toggles
-
-        toggleFields('num_malpractice_cases', '.malpractice-case');
-        toggleFields('num_fellowships', '.fellowship-case');
-
-        // Position-based field visibility
-        const positionSelect = document.getElementById('position');
-        const mdDoSections = document.querySelectorAll('.md-do-fields');
-        const npPaSections = document.querySelectorAll('.np-pa-fields');
-
-        function syncPositionSections() {
-            const pos = positionSelect.value;
-            const showMdDo = pos === 'MD' || pos === 'DO';
-            const showNpPa = pos === 'NP' || pos === 'PA';
-
-            mdDoSections.forEach(el => el.style.display = showMdDo ? '' : 'none');
-            npPaSections.forEach(el => el.style.display = showNpPa ? '' : 'none');
-        }
-
-        positionSelect.addEventListener('change', syncPositionSections);
-        syncPositionSections();
-
-        // Clinically active logic
-
-        document.getElementById('clinically_active').addEventListener('change', function () {
-            const selectedOption = this.value;
-            const lastActiveDiv = document.getElementById('last_active_field');
-            if (selectedOption === 'No') {
-                lastActiveDiv.style.display = 'block';
-            } else {
-                lastActiveDiv.style.display = 'none';
-                document.getElementById("last_clinically_active").value = '';
+            function toggleFields(selectorId, classSelector) {
+                const sel = document.getElementById(selectorId),
+                    fields = document.querySelectorAll(classSelector);
+                sel.addEventListener('change', () => {
+                    const n = parseInt(sel.value, 10);
+                    fields.forEach((el, i) => el.style.display = i < n ? 'block' : 'none');
+                });
+                sel.dispatchEvent(new Event('change'));
             }
-        });
-        document.getElementById('clinically_active').dispatchEvent(new Event('change'));
+
+            toggleFields('num_malpractice_cases', '.malpractice-case');
+            toggleFields('num_fellowships', '.fellowship-case');
+
+            const positionSelect = document.getElementById('position');
+            const mdDoSections = document.querySelectorAll('.md-do-fields');
+            const npPaSections = document.querySelectorAll('.np-pa-fields');
+
+            function syncPositionSections() {
+                const pos = positionSelect.value;
+                const showMdDo = pos === 'MD' || pos === 'DO';
+                const showNpPa = pos === 'NP' || pos === 'PA';
+
+                mdDoSections.forEach(el => el.style.display = showMdDo ? '' : 'none');
+                npPaSections.forEach(el => el.style.display = showNpPa ? '' : 'none');
+            }
+
+            positionSelect.addEventListener('change', syncPositionSections);
+            syncPositionSections();
+
+            document.getElementById('clinically_active').addEventListener('change', function () {
+                const selectedOption = this.value;
+                const lastActiveDiv = document.getElementById('last_active_field');
+                if (selectedOption === 'No') {
+                    lastActiveDiv.style.display = 'block';
+                } else {
+                    lastActiveDiv.style.display = 'none';
+                    document.getElementById("last_clinically_active").value = '';
+                }
+            });
+            document.getElementById('clinically_active').dispatchEvent(new Event('change'));
+
+            const steps = Array.from(document.querySelectorAll('.wizard-step'));
+            const chips = Array.from(document.querySelectorAll('.step-chip'));
+            const progressBar = document.getElementById('progressBar');
+            const nextBtn = document.getElementById('nextStep');
+            const prevBtn = document.getElementById('prevStep');
+            const submitBtn = document.getElementById('submitWizard');
+            let currentStep = 0;
+
+            function updateStepDisplay() {
+                steps.forEach((step, idx) => step.classList.toggle('active', idx === currentStep));
+                chips.forEach((chip, idx) => chip.classList.toggle('active', idx === currentStep));
+                const progress = ((currentStep + 1) / steps.length) * 100;
+                progressBar.style.width = `${progress}%`;
+                prevBtn.disabled = currentStep === 0;
+                nextBtn.classList.toggle('d-none', currentStep === steps.length - 1);
+                submitBtn.classList.toggle('d-none', currentStep !== steps.length - 1);
+            }
+
+            nextBtn.addEventListener('click', () => {
+                if (currentStep < steps.length - 1) {
+                    currentStep += 1;
+                    updateStepDisplay();
+                }
+            });
+
+            prevBtn.addEventListener('click', () => {
+                if (currentStep > 0) {
+                    currentStep -= 1;
+                    updateStepDisplay();
+                }
+            });
+
+            updateStepDisplay();
         </script>
         {% endblock %}
         ''',
+
 
     'view_job.html': '''
     {% extends "base.html" %}
@@ -4755,6 +4898,30 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
