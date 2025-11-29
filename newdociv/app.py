@@ -2308,30 +2308,12 @@ app.jinja_loader = DictLoader({
                                     {% endfor %}
                                 </div>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label"><strong>{{ form.admission_privilege.label }}</strong></label>
-                                <div class="d-flex flex-wrap border rounded p-2" style="max-height:300px; overflow-y:auto;">
-                                    {% for privilege in form.admission_privilege %}
-                                    <div class="form-check me-3" style="width:200px;">{{ privilege(class="form-check-input") }} {{ privilege.label(class="form-check-label") }}</div>
-                                    {% endfor %}
-                                </div>
-                            </div>
                         </div>
 
                         <div class="col-lg-6">
-                            <p class="section-title">Workload & Employment</p>
+                            <p class="section-title">Compensation</p>
                             <div class="row g-3 mb-3">
-                                <div class="col-md-4">{{ form.patient_load.label }} {{ form.patient_load(class="form-select") }}</div>
-                                <div class="col-md-4">{{ form.telemedicine_experience.label }} {{ form.telemedicine_experience(class="form-select") }}</div>
-                                <div class="col-md-4">{{ form.telemedicine_willing.label }} {{ form.telemedicine_willing(class="form-select") }}</div>
-                            </div>
-                            <div class="row g-3 mb-3">
-                                <div class="col-md-6">{{ form.preferred_employment.label }} {{ form.preferred_employment(class="form-select") }}</div>
-                                <div class="col-md-6">{{ form.employment_type.label }} {{ form.employment_type(class="form-select") }}</div>
-                            </div>
-                            <div class="row g-3 mb-3">
-                                <div class="col-md-6">{{ form.shift_preference.label }} {{ form.shift_preference(class="form-select") }}</div>
-                                <div class="col-md-6">{{ form.call_preference.label }} {{ form.call_preference(class="form-select") }}</div>
+                                <div class="col-md-8">{{ form.salary_expectations.label(class="form-label fw-semibold") }} {{ form.salary_expectations(class="form-control") }}</div>
                             </div>
                         </div>
                     </div>
@@ -2371,10 +2353,6 @@ app.jinja_loader = DictLoader({
                         </div>
                     </div>
 
-                    <div class="row g-3 mt-2">
-                        <div class="col-md-6">{{ form.preferred_locations.label }} {{ form.preferred_locations(class="form-control") }}</div>
-                        <div class="col-md-6">{{ form.salary_expectations.label }} {{ form.salary_expectations(class="form-control") }}</div>
-                    </div>
                 </div>
 
                 <div class="d-flex justify-content-between align-items-center mt-4">
@@ -4898,6 +4876,16 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
+
+
+
+
+
+
+
+
+
 
 
 
