@@ -28,6 +28,7 @@ from flask_wtf.file import FileField, FileAllowed
 import openai
 import re
 from flask import jsonify, request
+import html
 from flask_login import login_required, current_user
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
@@ -1471,311 +1472,316 @@ app.jinja_loader = DictLoader({
             </script>
         {% endblock %}''',
 
-    'doctor_dashboard.html':'''{% extends "base.html" %}
-        {% block content %}
-        <style>
-            .doctor-dashboard .glass-card {
-                background: linear-gradient(145deg, #0f1f40, #162d59);
-                color: #e8edfa;
-                border: 1px solid rgba(255,255,255,0.08);
-                box-shadow: 0 18px 40px rgba(0,0,0,0.35);
-                border-radius: 18px;
-                overflow: hidden;
-            }
-            .doctor-dashboard .hero-card {
-                background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.08), transparent 35%),
-                            radial-gradient(circle at 80% 0%, rgba(0,146,255,0.15), transparent 40%),
-                            linear-gradient(120deg, #111c33, #0f2c4f);
-                border: 1px solid rgba(255,255,255,0.05);
-            }
-            .doctor-dashboard .badge.bg-primary-soft { background: rgba(0,102,204,0.18); color: #8bc2ff; }
-            .doctor-dashboard .badge.bg-secondary-soft { background: rgba(117,117,242,0.18); color: #d3d7ff; }
-            .doctor-dashboard .badge.bg-dark-soft { background: rgba(255,255,255,0.1); color: #f7f9ff; }
-            .doctor-dashboard .nav-link { color: #b8c5e6; border-radius: 999px; }
-            .doctor-dashboard .nav-link.active, .doctor-dashboard .nav-link:hover { color: #0f172a; background: #9dd5ff; }
-            .inbox-item {
-                padding: 12px 14px;
-                background: rgba(255,255,255,0.04);
-                border-radius: 12px;
-                border: 1px solid rgba(255,255,255,0.04);
-            }
-            .inbox-item + .inbox-item { margin-top: 10px; }
-            .inbox-item small { color: #b8c5e6; }
-            .card-header { border-bottom: 1px solid rgba(255,255,255,0.05); }
-            .suggested-card {
-                background: rgba(255,255,255,0.06);
-                border: 1px solid rgba(255,255,255,0.08);
-                border-radius: 14px;
-                padding: 16px;
-                height: 100%;
-                transition: transform 0.2s ease, box-shadow 0.2s ease;
-            }
-            .suggested-card:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
-            .suggested-card h5 { color: #9dd5ff; }
-            .suggested-pill { background: rgba(157,213,255,0.15); color: #dff0ff; }
-            .calendar-card { min-height: 360px; }
-            #mini-calendar a { color: #0f1f40; }
-        </style>
 
-        <div class="doctor-dashboard">
-            <div class="glass-card hero-card d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center mb-4 p-4">
-                <div>
-                    <div class="text-uppercase small text-info mb-2">Doctor dashboard</div>
-                    <h2 class="fw-bold mb-2">Welcome, Dr. {{ doctor.first_name }} {{ doctor.last_name }}</h2>
-                    <div class="d-flex flex-wrap gap-2">
-                        <span class="badge rounded-pill bg-primary-soft fw-semibold">{{ doctor.specialty or 'Specialty not set' }}</span>
-                        {% if doctor.subspecialty %}
-                        <span class="badge rounded-pill bg-secondary-soft fw-semibold">{{ doctor.subspecialty }}</span>
-                        {% endif %}
-                        {% if doctor.city_of_residence %}
-                        <span class="badge rounded-pill bg-dark-soft fw-semibold"><i class="bi bi-geo-alt me-1"></i>{{ doctor.city_of_residence }}</span>
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="d-flex flex-wrap gap-2 mt-3 mt-lg-0">
-                    <a class="btn btn-outline-light" href="{{ url_for('doctor_edit_profile') }}">Edit Profile</a>
-                    <a class="btn btn-outline-light" href="{{ url_for('doctor_inbox') }}">Open Inbox</a>
-                    <a class="btn btn-light text-primary" href="{{ url_for('doctor_jobs') }}">Browse Jobs</a>
+'doctor_dashboard.html':'''{% extends "base.html" %}
+    {% block content %}
+    <style>
+        .doctor-dashboard {
+            color: #1f2937;
+        }
+        .doctor-dashboard .glass-card {
+            background: linear-gradient(145deg, #f9fbff, #eef4ff);
+            border: 1px solid #dbe7ff;
+            box-shadow: 0 12px 28px rgba(17, 24, 39, 0.08);
+            border-radius: 18px;
+            overflow: hidden;
+        }
+        .doctor-dashboard .hero-card {
+            background: radial-gradient(circle at 20% 20%, rgba(79, 70, 229, 0.08), transparent 35%),
+                        radial-gradient(circle at 80% 0%, rgba(59, 130, 246, 0.16), transparent 40%),
+                        linear-gradient(120deg, #f2f6ff, #e7f0ff);
+            border: 1px solid #d7e7ff;
+        }
+        .doctor-dashboard .badge.bg-primary-soft { background: #e0edff; color: #1d4ed8; }
+        .doctor-dashboard .badge.bg-secondary-soft { background: #eae9ff; color: #5b21b6; }
+        .doctor-dashboard .badge.bg-dark-soft { background: #eef2ff; color: #111827; }
+        .doctor-dashboard .nav-link { color: #1f2a44; border-radius: 999px; }
+        .doctor-dashboard .nav-link.active, .doctor-dashboard .nav-link:hover { color: #0b3a82; background: #e0edff; }
+        .inbox-item {
+            padding: 12px 14px;
+            background: #ffffff;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+        }
+        .inbox-item + .inbox-item { margin-top: 10px; }
+        .inbox-item small { color: #6b7280; }
+        .card-header { border-bottom: 1px solid #e5e7eb; }
+        .suggested-card {
+            background: #ffffff;
+            border: 1px solid #d7e7ff;
+            border-radius: 14px;
+            padding: 16px;
+            height: 100%;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .suggested-card:hover { transform: translateY(-4px); box-shadow: 0 10px 24px rgba(17, 24, 39, 0.12); }
+        .suggested-card h5 { color: #0b3a82; }
+        .suggested-pill { background: #e0edff; color: #0b3a82; }
+        .calendar-card { min-height: 360px; }
+        #mini-calendar a { color: #0b3a82; }
+    </style>
+
+    <div class="doctor-dashboard">
+        <div class="glass-card hero-card d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center mb-4 p-4">
+            <div>
+                <div class="text-uppercase small text-primary mb-2 fw-semibold">Doctor dashboard</div>
+                <h2 class="fw-bold mb-2">Welcome, Dr. {{ doctor.first_name }} {{ doctor.last_name }}</h2>
+                <div class="d-flex flex-wrap gap-2">
+                    <span class="badge rounded-pill bg-primary-soft fw-semibold">{{ doctor.specialty or 'Specialty not set'}}</span>
+                    {% if doctor.subspecialty %}
+                    <span class="badge rounded-pill bg-secondary-soft fw-semibold">{{ doctor.subspecialty }}</span>
+                    {% endif %}
+                    {% if doctor.city_of_residence %}
+                    <span class="badge rounded-pill bg-dark-soft fw-semibold"><i class="bi bi-geo-alt me-1"></i>{{ doctor.city_of_residence }}</span>
+                    {% endif %}
                 </div>
             </div>
+            <div class="d-flex flex-wrap gap-2 mt-3 mt-lg-0">
+                <a class="btn btn-outline-primary" href="{{ url_for('doctor_edit_profile') }}">Edit Profile</a>
+                <a class="btn btn-outline-secondary" href="{{ url_for('doctor_inbox') }}">Open Inbox</a>
+                <a class="btn btn-primary" href="{{ url_for('doctor_jobs') }}">Browse Jobs</a>
+            </div>
+        </div>
 
-            <ul class="nav nav-pills mb-4 gap-2 dashboard-tabs">
-                <li class="nav-item"><a class="nav-link active" href="#inbox-section">Inbox</a></li>
-                <li class="nav-item"><a class="nav-link" href="#suggested-section">Suggested Jobs</a></li>
-                <li class="nav-item"><a class="nav-link" href="#calendar-card">Calendar</a></li>
-            </ul>
+        <ul class="nav nav-pills mb-4 gap-2 dashboard-tabs">
+            <li class="nav-item"><a class="nav-link active" href="#suggested-section">Suggested Jobs</a></li>
+            <li class="nav-item"><a class="nav-link" href="#calendar-card">Calendar</a></li>
+            <li class="nav-item"><a class="nav-link" href="#inbox-section">Inbox</a></li>
+        </ul>
 
-            <div class="row g-4 align-items-stretch">
-                <div class="col-lg-8">
-                    <div class="card glass-card h-100" id="inbox-section">
-                        <div class="card-header d-flex justify-content-between align-items-center px-4 py-3">
-                            <div>
-                                <div class="text-uppercase small text-info">Inbox</div>
-                                <h5 class="mb-0">Latest conversations</h5>
-                            </div>
-                            <a class="btn btn-sm btn-outline-light" href="{{ url_for('doctor_inbox') }}">View all</a>
+        <div class="row g-4 align-items-stretch">
+            <div class="col-lg-8" id="suggested-section">
+                <div class="card glass-card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center px-4 py-3">
+                        <div>
+                            <div class="text-uppercase small text-primary fw-semibold">Opportunities</div>
+                            <h5 class="mb-0">AI-suggested roles just for you</h5>
                         </div>
-                        <div class="card-body p-4">
-                            {% if inbox_preview %}
-                                {% for message in inbox_preview %}
-                                <div class="inbox-item">
-                                    <div class="d-flex justify-content-between align-items-start gap-3">
-                                        <div>
-                                            <div class="fw-semibold">{{ message.sender.username if message.sender else 'System' }}</div>
-                                            <div class="text-white-50">{{ message.content[:180] }}{% if message.content|length > 180 %}...{% endif %}</div>
-                                        </div>
-                                        <small>{{ message.timestamp.strftime('%b %d, %Y %I:%M %p') }}</small>
-                                    </div>
-                                    {% if message.job %}
-                                    <div class="mt-2 d-flex align-items-center gap-2 text-info">
-                                        <i class="bi bi-briefcase"></i>
-                                        <a class="link-light text-decoration-underline" href="{{ url_for('view_job', job_id=message.job.id) }}">{{ message.job.title }}</a>
-                                    </div>
-                                    {% endif %}
-                                </div>
-                                {% endfor %}
-                            {% else %}
-                                <div class="text-white-50">No messages yet. Keep an eye out for client conversations.</div>
-                            {% endif %}
-                        </div>
+                        <button class="btn btn-outline-primary btn-sm" id="refresh-suggestions">Refresh</button>
                     </div>
-                </div>
-                <div class="col-lg-4 d-flex flex-column gap-4">
-                    <div class="card glass-card calendar-card" id="calendar-card">
-                        <div class="card-header d-flex justify-content-between align-items-center px-4 py-3">
-                            <div>
-                                <div class="text-uppercase small text-info">Calendar</div>
-                                <h6 class="mb-0">Calls & invites</h6>
-                            </div>
-                            <a class="btn btn-sm btn-outline-light" href="{{ url_for('calls') }}">Open</a>
+                    <div class="card-body p-4">
+                        <div id="suggested-loading" class="d-flex align-items-center gap-3 text-muted">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <div>Crafting tailored matches...</div>
                         </div>
-                        <div class="card-body p-3">
-                            <div id="mini-calendar"></div>
-                        </div>
+                        <div class="row row-cols-1 row-cols-md-2 g-3" id="suggested-grid" style="display:none;"></div>
+                        <div id="suggested-empty" class="text-muted" style="display:none;">No matches yet. Update your specialty or refresh to try again.</div>
                     </div>
-
-                    <div class="card glass-card" id="invites-card">
-                        <div class="card-header d-flex justify-content-between align-items-center px-4 py-3">
-                            <div>
-                                <div class="text-uppercase small text-info">Invites</div>
-                                <h6 class="mb-0">Pending actions</h6>
-                            </div>
-                        </div>
-                        <div class="card-body p-4">
-                            {% if pending_invites %}
-                                {% for call in pending_invites %}
-                                <div class="mb-3 p-3 rounded-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.05);">
-                                    <div class="d-flex justify-content-between align-items-start gap-3">
-                                        <div>
-                                            <div class="fw-semibold">{{ call.scheduled_by.username }}</div>
-                                            <div class="text-white-50">{{ call.datetime.strftime('%b %d, %Y %I:%M %p') }}</div>
-                                            <div class="mt-2">{{ call.reason }}</div>
-                                            {% if call.job %}
-                                            <div class="mt-2 text-info"><i class="bi bi-briefcase me-1"></i>{{ call.job.title }}</div>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                    <form class="mt-3 d-flex gap-2" method="post" action="{{ url_for('handle_invite', call_id=call.id) }}">
-                                        <button name="action" value="accept" class="btn btn-success btn-sm">Accept</button>
-                                        <button name="action" value="decline" class="btn btn-outline-light btn-sm">Decline</button>
-                                    </form>
-                                </div>
-                                {% endfor %}
-                            {% else %}
-                                <div class="text-white-50">No pending invites right now.</div>
-                            {% endif %}
-                        </div>
+                    <div class="card-footer d-flex justify-content-between align-items-center px-4 py-3">
+                        <div class="text-muted small">Showing matches for {{ doctor.specialty or 'your specialty' }}. Ranked by specialty, pay, and location fit.</div>
+                        <button class="btn btn-outline-primary btn-sm d-none" id="show-more-btn">Show more</button>
                     </div>
                 </div>
             </div>
 
-            <div class="card glass-card mt-4" id="suggested-section">
-                <div class="card-header d-flex justify-content-between align-items-center px-4 py-3">
-                    <div>
-                        <div class="text-uppercase small text-info">Opportunities</div>
-                        <h5 class="mb-0">AI-suggested roles just for you</h5>
+            <div class="col-lg-4 d-flex flex-column gap-4">
+                <div class="card glass-card calendar-card" id="calendar-card">
+                    <div class="card-header d-flex justify-content-between align-items-center px-4 py-3">
+                        <div>
+                            <div class="text-uppercase small text-primary fw-semibold">Calendar</div>
+                            <h6 class="mb-0">Calls & invites</h6>
+                        </div>
+                        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('calls') }}">Open</a>
                     </div>
-                    <button class="btn btn-outline-light btn-sm" id="refresh-suggestions">Refresh</button>
-                </div>
-                <div class="card-body p-4">
-                    <div id="suggested-loading" class="d-flex align-items-center gap-3 text-white-50">
-                        <div class="spinner-border text-info" role="status"></div>
-                        <div>Crafting tailored matches...</div>
+                    <div class="card-body p-3">
+                        <div id="mini-calendar"></div>
                     </div>
-                    <div class="row row-cols-1 row-cols-md-2 g-3" id="suggested-grid" style="display:none;"></div>
-                    <div id="suggested-empty" class="text-white-50" style="display:none;">No matches yet. Update your specialty or refresh to try again.</div>
                 </div>
-                <div class="card-footer d-flex justify-content-between align-items-center px-4 py-3">
-                    <div class="text-white-50 small">Showing matches for {{ doctor.specialty or 'your specialty' }}. Ranked by specialty, pay, and location fit.</div>
-                    <button class="btn btn-outline-light btn-sm d-none" id="show-more-btn">Show more</button>
+
+                <div class="card glass-card" id="invites-card">
+                    <div class="card-header d-flex justify-content-between align-items-center px-4 py-3">
+                        <div>
+                            <div class="text-uppercase small text-primary fw-semibold">Invites</div>
+                            <h6 class="mb-0">Pending actions</h6>
+                        </div>
+                    </div>
+                    <div class="card-body p-4">
+                        {% if pending_invites %}
+                            {% for call in pending_invites %}
+                            <div class="mb-3 p-3 rounded-3 border" style="background: #ffffff; border-color: #e5e7eb !important;">
+                                <div class="d-flex justify-content-between align-items-start gap-3">
+                                    <div>
+                                        <div class="fw-semibold">{{ call.scheduled_by.username }}</div>
+                                        <div class="text-muted">{{ call.datetime.strftime('%b %d, %Y %I:%M %p') }}</div>
+                                        <div class="mt-2">{{ call.reason }}</div>
+                                        {% if call.job %}
+                                        <div class="mt-2 text-primary"><i class="bi bi-briefcase me-1"></i>{{ call.job.title }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <form class="mt-3 d-flex gap-2" method="post" action="{{ url_for('handle_invite', call_id=call.id) }}">
+                                    <button name="action" value="accept" class="btn btn-success btn-sm">Accept</button>
+                                    <button name="action" value="decline" class="btn btn-outline-secondary btn-sm">Decline</button>
+                                </form>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-muted">No pending invites right now.</div>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </div>
 
-        <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css' rel='stylesheet' />
-        <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+        <div class="card glass-card mt-4" id="inbox-section">
+            <div class="card-header d-flex justify-content-between align-items-center px-4 py-3">
+                <div>
+                    <div class="text-uppercase small text-primary fw-semibold">Inbox</div>
+                    <h5 class="mb-0">Latest conversations</h5>
+                </div>
+                <a class="btn btn-sm btn-outline-primary" href="{{ url_for('doctor_inbox') }}">View all</a>
+            </div>
+            <div class="card-body p-4">
+                {% if inbox_preview %}
+                    {% for message in inbox_preview %}
+                    <div class="inbox-item">
+                        <div class="d-flex justify-content-between align-items-start gap-3">
+                            <div>
+                                <div class="fw-semibold">{{ message.sender.username if message.sender else 'System'}}</div>
+                                <div class="text-muted">{{ message.content[:180] }}{% if message.content|length > 180 %}...{% endif %}</div>
+                            </div>
+                            <small>{{ message.timestamp.strftime('%b %d, %Y %I:%M %p') }}</small>
+                        </div>
+                        {% if message.job %}
+                        <div class="mt-2 d-flex align-items-center gap-2 text-primary">
+                            <i class="bi bi-briefcase"></i>
+                            <a class="link-primary text-decoration-underline" href="{{ url_for('view_job', job_id=message.job.id) }}">{{ message.job.title }}</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-muted">No messages yet. Keep an eye out for client conversations.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 
-        <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const navLinks = document.querySelectorAll('.dashboard-tabs .nav-link');
-            navLinks.forEach(link => {
-                link.addEventListener('click', function(e) {
-                    if (this.getAttribute('href').startsWith('#')) {
-                        e.preventDefault();
-                        document.querySelector(this.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth' });
-                        navLinks.forEach(l => l.classList.remove('active'));
-                        this.classList.add('active');
-                    }
-                });
-            });
+    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css' rel='stylesheet' />
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
 
-            // Calendar
-            const calendarEl = document.getElementById('mini-calendar');
-            const calendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: 'dayGridMonth',
-                height: 320,
-                headerToolbar: {
-                    left: 'title',
-                    center: '',
-                    right: 'prev,next'
-                },
-                events: {{ events | tojson }},
-                eventDisplay: 'block',
-                eventDidMount: function(info) {
-                    if (info.event.extendedProps.status === 'Canceled') {
-                        info.el.style.textDecoration = 'line-through';
-                    }
-                },
-                eventClick: function(info) {
-                    window.location.href = "/doctor/call/" + info.event.id;
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const navLinks = document.querySelectorAll('.dashboard-tabs .nav-link');
+        navLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                if (this.getAttribute('href').startsWith('#')) {
+                    e.preventDefault();
+                    document.querySelector(this.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth' });
+                    navLinks.forEach(l => l.classList.remove('active'));
+                    this.classList.add('active');
                 }
             });
-            calendar.render();
+        });
 
-            // Suggested jobs via AI
-            const grid = document.getElementById('suggested-grid');
-            const loading = document.getElementById('suggested-loading');
-            const emptyState = document.getElementById('suggested-empty');
-            const showMoreBtn = document.getElementById('show-more-btn');
-            const refreshBtn = document.getElementById('refresh-suggestions');
-            let suggestions = [];
-            let visibleCount = 5;
+        // Calendar
+        const calendarEl = document.getElementById('mini-calendar');
+        const calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            height: 320,
+            headerToolbar: {
+                left: 'title',
+                center: '',
+                right: 'prev,next'
+            },
+            events: {{ events | tojson }},
+            eventDisplay: 'block',
+            eventDidMount: function(info) {
+                if (info.event.extendedProps.status === 'Canceled') {
+                    info.el.style.textDecoration = 'line-through';
+                }
+            },
+            eventClick: function(info) {
+                window.location.href = "/doctor/call/" + info.event.id;
+            }
+        });
+        calendar.render();
 
-            const escapeHtml = (str) => {
-                if (!str) return '';
-                return str
-                    .replace(/&/g, '&amp;')
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;')
-                    .replace(/"/g, '&quot;')
-                    .replace(/'/g, '&#39;');
-            };
+        // Suggested jobs via AI
+        const grid = document.getElementById('suggested-grid');
+        const loading = document.getElementById('suggested-loading');
+        const emptyState = document.getElementById('suggested-empty');
+        const showMoreBtn = document.getElementById('show-more-btn');
+        const refreshBtn = document.getElementById('refresh-suggestions');
+        let suggestions = [];
+        let visibleCount = 5;
 
-            const renderSuggestions = () => {
-                grid.innerHTML = '';
-                suggestions.forEach((job, index) => {
-                    const col = document.createElement('div');
-                    col.className = index >= visibleCount ? 'col d-none extra-suggestion' : 'col';
-                    col.innerHTML = `
-                        <div class="suggested-card h-100">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div>
-                                    <h5 class="mb-1">${escapeHtml(job.title)}</h5>
-                                    <div class="text-white-50">${escapeHtml(job.location || 'Location TBD')}</div>
-                                </div>
-                                <span class="badge suggested-pill">Score: ${Math.round(job.score || 0)}</span>
+        const escapeHtml = (str) => {
+            if (!str) return '';
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        };
+
+        const renderSuggestions = () => {
+            grid.innerHTML = '';
+            suggestions.forEach((job, index) => {
+                const col = document.createElement('div');
+                col.className = index >= visibleCount ? 'col d-none extra-suggestion' : 'col';
+                col.innerHTML = `
+                    <div class="suggested-card h-100">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h5 class="mb-1">${escapeHtml(job.title)}</h5>
+                                <div class="text-muted">${escapeHtml(job.location || 'Location TBD')}</div>
                             </div>
-                            ${job.salary ? `<div class="mt-2 text-info fw-semibold">${escapeHtml(job.salary)}</div>` : ''}
-                            <p class="mt-3 mb-3 text-white-75">${escapeHtml(job.rationale)}</p>
-                            <a class="btn btn-outline-light btn-sm" href="/doctor/job/${job.id}">View role</a>
+                            <span class="badge suggested-pill">Score: ${Math.round(job.score || 0)}</span>
                         </div>
-                    `;
-                    grid.appendChild(col);
-                });
-
-                const hasExtras = suggestions.length > visibleCount;
-                showMoreBtn.classList.toggle('d-none', !hasExtras);
-                showMoreBtn.textContent = hasExtras ? 'Show more' : 'Show more';
-            };
-
-            const fetchSuggestions = () => {
-                loading.style.display = '';
-                grid.style.display = 'none';
-                emptyState.style.display = 'none';
-                showMoreBtn.classList.add('d-none');
-                visibleCount = 5;
-                fetch('{{ url_for('doctor_suggested_jobs') }}')
-                    .then(res => res.json())
-                    .then(data => {
-                        suggestions = data.suggestions || [];
-                        if (suggestions.length === 0) {
-                            emptyState.style.display = '';
-                            grid.style.display = 'none';
-                        } else {
-                            grid.style.display = '';
-                            renderSuggestions();
-                        }
-                    })
-                    .catch(() => {
-                        emptyState.style.display = '';
-                        emptyState.textContent = 'Unable to fetch suggestions right now.';
-                    })
-                    .finally(() => {
-                        loading.style.display = 'none';
-                    });
-            };
-
-            showMoreBtn.addEventListener('click', () => {
-                visibleCount = suggestions.length;
-                document.querySelectorAll('.extra-suggestion').forEach(el => el.classList.remove('d-none'));
-                showMoreBtn.classList.add('d-none');
+                        ${job.salary ? `<div class="mt-2 text-primary fw-semibold">${escapeHtml(job.salary)}</div>` : ''}
+                        <p class="mt-3 mb-3 text-secondary">${escapeHtml(job.rationale)}</p>
+                        <a class="btn btn-outline-primary btn-sm" href="/doctor/job/${job.id}">View role</a>
+                    </div>
+                `;
+                grid.appendChild(col);
             });
 
-            refreshBtn.addEventListener('click', fetchSuggestions);
-            fetchSuggestions();
+            const hasExtras = suggestions.length > visibleCount;
+            showMoreBtn.classList.toggle('d-none', !hasExtras);
+            showMoreBtn.textContent = hasExtras ? 'Show more' : 'Show more';
+        };
+
+        const fetchSuggestions = () => {
+            loading.style.display = '';
+            grid.style.display = 'none';
+            emptyState.style.display = 'none';
+            showMoreBtn.classList.add('d-none');
+            visibleCount = 5;
+            fetch('{{ url_for('doctor_suggested_jobs') }}')
+                .then(res => res.json())
+                .then(data => {
+                    suggestions = data.suggestions || [];
+                    if (suggestions.length === 0) {
+                        emptyState.style.display = '';
+                        grid.style.display = 'none';
+                    } else {
+                        grid.style.display = '';
+                        renderSuggestions();
+                    }
+                })
+                .catch(() => {
+                    emptyState.style.display = '';
+                    emptyState.textContent = 'Unable to fetch suggestions right now.';
+                })
+                .finally(() => {
+                    loading.style.display = 'none';
+                });
+        };
+
+        showMoreBtn.addEventListener('click', () => {
+            visibleCount = suggestions.length;
+            document.querySelectorAll('.extra-suggestion').forEach(el => el.classList.remove('d-none'));
+            showMoreBtn.classList.add('d-none');
         });
-        </script>
-        {% endblock %}''',
+
+        refreshBtn.addEventListener('click', fetchSuggestions);
+        fetchSuggestions();
+    });
+    </script>
+    {% endblock %}''',
+
 
 
 
@@ -3841,6 +3847,8 @@ def doctor_ai_search_jobs():
     if current_user.role != 'doctor':
         return jsonify({'error': 'Unauthorized'}), 401
 
+    sync_direct_jobs_from_excel()
+
     lifestyle = request.form.get('lifestyle', '')
     wants = request.form.get('wants', '')
     location = request.form.get('location', '')
@@ -3856,24 +3864,116 @@ def doctor_ai_search_jobs():
         } for job in jobs
     ]
 
+    pref_terms = [t for t in re.split(r"[^a-z0-9]+", (wants + " " + lifestyle).lower()) if t]
+    lifestyle_terms = [t for t in re.split(r"[^a-z0-9]+", lifestyle.lower()) if t]
+    wants_terms = [t for t in re.split(r"[^a-z0-9]+", wants.lower()) if t]
+
+    def term_score(text: str, terms):
+        if not terms:
+            return 0
+        text = text.lower()
+        return sum(1 for term in terms if term and term in text)
+
+    scored_jobs = []
+    for job in jobs:
+        job_text = f"{job.title or ''} {job.description or ''}"
+        location_score = 4 if location and location.lower() in (job.location or '').lower() else 0
+        lifestyle_score = term_score(job_text, lifestyle_terms)
+        wants_score = term_score(job_text, wants_terms)
+        overall_score = term_score(job_text, pref_terms) * 2 + lifestyle_score * 2 + wants_score * 3 + location_score
+        scored_jobs.append({
+            'job': job,
+            'overall': overall_score,
+            'location_score': location_score,
+            'lifestyle_score': lifestyle_score,
+            'wants_score': wants_score,
+        })
+
+    def pick_best(key):
+        return max(scored_jobs, key=key) if scored_jobs else None
+
+    best_overall = pick_best(lambda item: item['overall'])
+    best_location = pick_best(lambda item: (item['location_score'], item['overall']))
+    best_lifestyle = pick_best(lambda item: (item['lifestyle_score'], item['overall']))
+    best_wants = pick_best(lambda item: (item['wants_score'], item['overall']))
+
+    def build_reason(item, focus_label: str):
+        if not item:
+            return "No jobs available to match right now."
+        reasons = []
+        if item['location_score'] and location:
+            reasons.append(f"Matches your location preference for {location}.")
+        if item['wants_score']:
+            reasons.append("Includes the job-specific wants you listed.")
+        if item['lifestyle_score']:
+            reasons.append("Aligns with your lifestyle preferences.")
+        if not reasons:
+            reasons.append(f"Closest {focus_label.lower()} option available from the current postings.")
+        return " ".join(reasons)
+
+    def render_card(title: str, item):
+        if not item:
+            return f"<h2 style='color:#0b3a82;'>{html.escape(title)}</h2><div style='padding:14px;border:1px solid #dbeafe;border-radius:10px;background:#f5f7ff;'>No jobs available.</div>"
+        job = item['job']
+        rationale = build_reason(item, title)
+        return """
+        <h2 style="color:#0b3a82;">{title}</h2>
+        <div style="background:#f5f7ff;border:1px solid #dbeafe;border-radius:12px;padding:16px;">
+            <div style="font-size:1.25em;font-weight:700;color:#0b3a82;">{job_title}</div>
+            <div style="color:#1f2937;">{location}</div>
+            {salary}
+            <p style="margin-top:10px;color:#374151;">{summary}</p>
+            <a href="/doctor/job/{job_id}" style="background:#0b3a82;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;margin-top:8px;">View Job</a>
+        </div>
+        <p style="font-style:italic;color:#4b5563;">Why this job? {reason}</p>
+        """.format(
+            title=html.escape(title),
+            job_title=html.escape(job.title or "Untitled Role"),
+            location=html.escape(job.location or "Location TBD"),
+            salary=f"<div style='color:#0b3a82;font-weight:600;margin-top:6px;'>{html.escape(job.salary or 'Salary TBD')}</div>" if job.salary else "",
+            summary=html.escape((job.description or "")[:320] or "No description provided."),
+            job_id=job.id,
+            reason=html.escape(rationale)
+        )
+
+    def build_fallback_html():
+        if not jobs:
+            return "<div style='padding:18px;text-align:center;'>No job postings are available to search right now.</div>"
+
+        sections = [
+            ("Best Overall Fit", best_overall),
+            ("Best Fit for Location", best_location),
+            ("Best Fit for Lifestyle", best_lifestyle),
+            ("Best Fit for Job-Specific Wants", best_wants),
+        ]
+        parts = [
+            "<div style='font-family:Helvetica,Arial,sans-serif;'>",
+            "<h1 style=\"color:#0b3a82;font-size:2.2em;margin-bottom:0.2em;\">Exciting Job Opportunities Tailored For You!</h1>",
+            "<p style=\"color:#374151;\">We're showing locally ranked matches while AI search is unavailable.</p>",
+        ]
+        for title, item in sections:
+            parts.append(render_card(title, item))
+        parts.append("</div>")
+        return "".join(parts)
+
     prompt = f"""
 You are a professional AI assistant that matches doctors with jobs.
 You must only reference the information provided in the job listings and the doctor's preferences below—do not invent or assume lifestyle, city perks, or job benefits unless explicitly present in the job description.
-Your output must always use consistent, professional HTML, styled in a blue color scheme (#0066cc for headers and buttons), and avoid any images.  
-Show four sections:  
-1. The Best Overall Fit (the single job that best matches ALL criteria together).  
+Your output must always use consistent, professional HTML, styled in a blue color scheme (#0066cc for headers and buttons), and avoid any images.
+Show four sections:
+1. The Best Overall Fit (the single job that best matches ALL criteria together).
 2. The Best Fit for Location (the job most aligned with the doctor's location preference, even if it's also the overall fit).
 3. The Best Fit for Lifestyle (the job most aligned with the lifestyle preference).
 4. The Best Fit for Job-Specific Wants (the job most aligned with the job-specific wants).
 
 For each section:
-- Use a prominent blue header (e.g., `<h2 style="color:#0066cc;">Best Overall Fit</h2>`)
+- Use a prominent blue header (e.g., `<h2 style=\"color:#0066cc;\">Best Overall Fit</h2>`)
 - In a card-style `<div>` (light blue background: #eaf2fb, rounded corners, subtle blue border), show:
     - Job Title (big, bold, blue: #0066cc)
     - Location
     - Salary (if available)
     - Professional, vivid summary explaining why this job fits the criteria, referencing the doctor's preferences.
-    - A large blue "View Job" button: `<a href="/doctor/job/{{job_id}}" style="background:#0066cc;color:white;padding:10px 28px;font-size:1.1em;border-radius:7px;display:inline-block;text-decoration:none;margin-top:10px;">View Job</a>`
+    - A large blue "View Job" button: `<a href=\"/doctor/job/{{job_id}}\" style=\"background:#0066cc;color:white;padding:10px 28px;font-size:1.1em;border-radius:7px;display:inline-block;text-decoration:none;margin-top:10px;\">View Job</a>`
     - Below the card, show a short "Why This Job?" blurb in italic, describing why this was selected for that category.
 - Do not use code blocks.
 - Do not include any images, icons, or emojis.
@@ -3888,22 +3988,33 @@ Doctor's preferences:
 Job list (each includes id, title, location, salary, description):
 {json.dumps(jobs_payload, indent=2)}
 
-Your response must be fully-rendered HTML, ready to be dropped into a modal. 
-The main title should be <h1 style="color:#0066cc;font-size:2.3em;margin-bottom:0.3em;">Exciting Job Opportunities Tailored For You!</h1>
-Do not output any <img> tags or links to images. Only output the requested job sections, each with consistent blue theme. 
+Your response must be fully-rendered HTML, ready to be dropped into a modal.
+The main title should be <h1 style=\"color:#0066cc;font-size:2.3em;margin-bottom:0.3em;\">Exciting Job Opportunities Tailored For You!</h1>
+Do not output any <img> tags or links to images. Only output the requested job sections, each with consistent blue theme.
     """
 
-    client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    response = client.chat.completions.create(
-        model="gpt-4.1-nano",
-        messages=[
-            {"role": "system", "content": "You are a professional and creative medical job match assistant."},
-            {"role": "user", "content": prompt}
-        ],
-        max_tokens=2200,
-        temperature=0.5,  # moderate creativity, more consistent
-    )
-    gpt_html = response.choices[0].message.content
+    gpt_html = None
+    api_key = os.getenv("OPENAI_API_KEY")
+    if api_key:
+        try:
+            client = openai.OpenAI(api_key=api_key)
+            response = client.chat.completions.create(
+                model="gpt-4.1-nano",
+                messages=[
+                    {"role": "system", "content": "You are a professional and creative medical job match assistant."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=2200,
+                temperature=0.5,
+            )
+            gpt_html = response.choices[0].message.content
+        except Exception as exc:
+            print(f"AI search failed, using fallback: {exc}")
+    else:
+        print("AI search skipped: missing OPENAI_API_KEY")
+
+    if not gpt_html:
+        gpt_html = build_fallback_html()
 
     return jsonify({'html': gpt_html})
 
@@ -4106,6 +4217,9 @@ def doctor_dashboard():
         return redirect(url_for('dashboard'))
 
     doctor = current_user.doctor
+
+    # Ensure the latest direct jobs are available for suggestions and AI search.
+    sync_direct_jobs_from_excel()
 
     scheduled_calls = ScheduledCall.query.filter_by(doctor_id=doctor.id).order_by(ScheduledCall.datetime.asc()).all()
     pending_invites = ScheduledCall.query.filter_by(doctor_id=doctor.id, invite_status='Pending').all()
@@ -5313,6 +5427,8 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
+
 
 
 
