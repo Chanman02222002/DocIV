@@ -1,4 +1,5 @@
 from flask import Flask, render_template, redirect, url_for, request, flash
+import argparse
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, SelectMultipleField, FloatField
@@ -29,6 +30,7 @@ import re
 from flask import jsonify, request
 from flask_login import login_required, current_user
 from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
 from collections import defaultdict
 from flask import send_file
 import pandas as pd
@@ -103,7 +105,6 @@ def ensure_job_columns():
     with app.app_context():
         inspector = inspect(db.engine)
         if not inspector.has_table('job'):
-            return
 
         existing = {col['name'] for col in inspector.get_columns('job')}
         statements = []
@@ -111,6 +112,10 @@ def ensure_job_columns():
             statements.append("ALTER TABLE job ADD COLUMN job_url TEXT")
         if 'date_posted' not in existing:
             statements.append("ALTER TABLE job ADD COLUMN date_posted VARCHAR(50)")
+        if 'latitude' not in existing:
+            statements.append("ALTER TABLE job ADD COLUMN latitude FLOAT")
+        if 'longitude' not in existing:
+            statements.append("ALTER TABLE job ADD COLUMN longitude FLOAT")
 
         if statements:
             with db.engine.begin() as conn:
@@ -144,12 +149,50 @@ class ClientRegistrationForm(FlaskForm):
     password = StringField('Password', validators=[DataRequired()])
     submit = SubmitField('Create Client')
 
+geolocator = Nominatim(user_agent="dociv_geocoder")
+
+
+def safe_geocode(location_str):
+    """Return a geopy location object or None if lookup fails."""
+    try:
+        return geolocator.geocode(location_str, timeout=5)
+    except (GeocoderTimedOut, GeocoderUnavailable, Exception):
+        return None
+
+
 def geocode_location(location_str):
-    geolocator = Nominatim(user_agent="job-map-geocoder")
-    loc = geolocator.geocode(location_str)
+    loc = safe_geocode(location_str)
     if loc:
         return loc.latitude, loc.longitude
     return None, None
+
+
+def geocode_missing_jobs():
+    """Backfill latitude/longitude for jobs that are missing coordinates."""
+    with app.app_context():
+        jobs = Job.query.all()
+        updated = 0
+        for job in jobs:
+            if job.latitude is not None and job.longitude is not None:
+                continue
+            if not job.location:
+                print(f"Skipping job {job.id}: no location provided")
+                continue
+
+            loc = safe_geocode(job.location)
+            if loc:
+                job.latitude = loc.latitude
+                job.longitude = loc.longitude
+                updated += 1
+                print(f"Saved geocode for job {job.id}: {loc.latitude}, {loc.longitude}")
+            else:
+                print(f"Could not geocode job {job.id} ({job.location})")
+
+        if updated:
+            db.session.commit()
+            print(f"Committed geocodes for {updated} job(s)")
+        else:
+            print("No jobs required geocoding")
 
 
 def format_city_state(city, state):
@@ -3489,15 +3532,14 @@ def sync_direct_jobs_from_excel():
             job = Job.query.filter_by(title=title, location=location).first()
 
         if not job:
-            lat, lng = geocode_location(location) if location else (None, None)
             job = Job(
                 title=title,
                 location=location,
                 salary="",
                 description=description,
                 poster_id=poster.id if poster else None,
-                latitude=lat,
-                longitude=lng,
+                latitude=None,
+                longitude=None,
                 job_url=job_url or None,
                 date_posted=date_posted or None,
             )
@@ -3508,8 +3550,6 @@ def sync_direct_jobs_from_excel():
             job.description = description
             job.job_url = job_url or job.job_url
             job.date_posted = date_posted or job.date_posted
-            if (job.latitude is None or job.longitude is None) and location:
-                job.latitude, job.longitude = geocode_location(location)
 
     db.session.commit()
 @app.route('/doctor/jobs')
@@ -4664,9 +4704,20 @@ with app.app_context():
 
 
 
-# Run the app
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    parser = argparse.ArgumentParser(description="DocIV application entrypoint")
+    parser.add_argument(
+        "--geocode-missing-jobs",
+        action="store_true",
+        help="Backfill latitude/longitude for jobs missing coordinates and exit.",
+    )
+    args = parser.parse_args()
+
+    if args.geocode_missing_jobs:
+        geocode_missing_jobs()
+    else:
+        app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
