@@ -3516,7 +3516,6 @@ def sync_direct_jobs_from_excel():
         job_url = str(row.get("Job URL", "") or "").strip()
         title = str(row.get("Job Title", "") or "").strip() or "Untitled Job"
         location = str(row.get("Location", "") or "").strip()
-
         date_value = row.get("Date Posted")
         if pd.isna(date_value):
             date_posted = ""
@@ -3547,12 +3546,24 @@ def sync_direct_jobs_from_excel():
             )
             db.session.add(job)
         else:
+            previous_location = job.location
             job.title = title
             job.location = location
             job.description = description
             job.job_url = job_url or job.job_url
             job.date_posted = date_posted or job.date_posted
-            
+
+            # Clear coordinates if the location has changed so we can refresh them
+            if location and previous_location and previous_location != location:
+                job.latitude = None
+                job.longitude = None
+
+        # Geocode if coordinates are missing and we have a location
+        if location and (job.latitude is None or job.longitude is None):
+            lat, lng = geocode_location(location)
+            job.latitude = lat
+            job.longitude = lng
+
     db.session.commit()
 @app.route('/doctor/jobs')
 @login_required
@@ -3578,7 +3589,7 @@ def doctor_jobs():
     jobs = jobs_query.order_by(Job.id.desc()).all()
     marker_groups = defaultdict(list)
     for job in jobs:
-        if job.latitude and job.longitude:
+        if job.latitude is not None and job.longitude is not None:
             key = (round(job.latitude, 5), round(job.longitude, 5))  # rounding avoids float mismatch
             marker_groups[key].append(job)
 
@@ -4719,6 +4730,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
