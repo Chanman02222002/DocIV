@@ -203,6 +203,34 @@ def geocode_missing_jobs():
             print("No jobs required geocoding")
 
 
+def filter_jobs_by_specialty(jobs, specialty, subspecialty=None):
+    """Filter jobs to those that mention the doctor's specialty or subspecialty."""
+    if not specialty and not subspecialty:
+        return jobs
+
+    specialty_terms = [term.lower() for term in [specialty, subspecialty] if term]
+
+    def matches(job):
+        text = f"{job.title or ''} {job.description or ''}".lower()
+        return any(term in text for term in specialty_terms)
+
+    filtered = [job for job in jobs if matches(job)]
+    return filtered or jobs
+
+
+def parse_salary_value(salary_str):
+    """Best-effort numeric extraction for salary sorting."""
+    if not salary_str:
+        return 0
+    numbers = re.findall(r"[\d,]+", salary_str)
+    if not numbers:
+        return 0
+    try:
+        return float(numbers[0].replace(',', ''))
+    except ValueError:
+        return 0
+
+
 
 def format_city_state(city, state):
     parts = []
@@ -684,6 +712,7 @@ app.jinja_loader = DictLoader({
                             <a class="nav-link text-white" href="{{ url_for('doctor_dashboard') }}">Dashboard</a>
                             <a class="nav-link text-white" href="{{ url_for('doctor_edit_profile') }}">Edit Profile</a>
                             <a class="nav-link text-white" href="{{ url_for('doctor_jobs') }}">Jobs</a>
+                            <a class="nav-link text-white" href="{{ url_for('doctor_dashboard') }}#calendar-card">Calendar</a>
                             <a class="nav-link text-white position-relative" href="{{ url_for('doctor_inbox') }}">
                                 Inbox
                                 {% if unread_count > 0 %}
@@ -1444,57 +1473,215 @@ app.jinja_loader = DictLoader({
 
     'doctor_dashboard.html':'''{% extends "base.html" %}
         {% block content %}
-        <h2>Welcome Dr. {{ doctor.first_name }} {{ doctor.last_name }}</h2>
+        <style>
+            .doctor-dashboard .glass-card {
+                background: linear-gradient(145deg, #0f1f40, #162d59);
+                color: #e8edfa;
+                border: 1px solid rgba(255,255,255,0.08);
+                box-shadow: 0 18px 40px rgba(0,0,0,0.35);
+                border-radius: 18px;
+                overflow: hidden;
+            }
+            .doctor-dashboard .hero-card {
+                background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.08), transparent 35%),
+                            radial-gradient(circle at 80% 0%, rgba(0,146,255,0.15), transparent 40%),
+                            linear-gradient(120deg, #111c33, #0f2c4f);
+                border: 1px solid rgba(255,255,255,0.05);
+            }
+            .doctor-dashboard .badge.bg-primary-soft { background: rgba(0,102,204,0.18); color: #8bc2ff; }
+            .doctor-dashboard .badge.bg-secondary-soft { background: rgba(117,117,242,0.18); color: #d3d7ff; }
+            .doctor-dashboard .badge.bg-dark-soft { background: rgba(255,255,255,0.1); color: #f7f9ff; }
+            .doctor-dashboard .nav-link { color: #b8c5e6; border-radius: 999px; }
+            .doctor-dashboard .nav-link.active, .doctor-dashboard .nav-link:hover { color: #0f172a; background: #9dd5ff; }
+            .inbox-item {
+                padding: 12px 14px;
+                background: rgba(255,255,255,0.04);
+                border-radius: 12px;
+                border: 1px solid rgba(255,255,255,0.04);
+            }
+            .inbox-item + .inbox-item { margin-top: 10px; }
+            .inbox-item small { color: #b8c5e6; }
+            .card-header { border-bottom: 1px solid rgba(255,255,255,0.05); }
+            .suggested-card {
+                background: rgba(255,255,255,0.06);
+                border: 1px solid rgba(255,255,255,0.08);
+                border-radius: 14px;
+                padding: 16px;
+                height: 100%;
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+            }
+            .suggested-card:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+            .suggested-card h5 { color: #9dd5ff; }
+            .suggested-pill { background: rgba(157,213,255,0.15); color: #dff0ff; }
+            .calendar-card { min-height: 360px; }
+            #mini-calendar a { color: #0f1f40; }
+        </style>
 
-        <div class="mb-3">
-            <a class="btn btn-info" href="{{ url_for('doctor_edit_profile') }}">Edit Profile</a>
-            <a class="btn btn-secondary" href="{{ url_for('doctor_jobs') }}">Jobs</a>
-            <a class="btn btn-success" href="{{ url_for('doctor_inbox') }}">Inbox</a>
-            <a class="btn btn-danger" href="{{ url_for('logout') }}">Logout</a>
+        <div class="doctor-dashboard">
+            <div class="glass-card hero-card d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center mb-4 p-4">
+                <div>
+                    <div class="text-uppercase small text-info mb-2">Doctor dashboard</div>
+                    <h2 class="fw-bold mb-2">Welcome, Dr. {{ doctor.first_name }} {{ doctor.last_name }}</h2>
+                    <div class="d-flex flex-wrap gap-2">
+                        <span class="badge rounded-pill bg-primary-soft fw-semibold">{{ doctor.specialty or 'Specialty not set' }}</span>
+                        {% if doctor.subspecialty %}
+                        <span class="badge rounded-pill bg-secondary-soft fw-semibold">{{ doctor.subspecialty }}</span>
+                        {% endif %}
+                        {% if doctor.city_of_residence %}
+                        <span class="badge rounded-pill bg-dark-soft fw-semibold"><i class="bi bi-geo-alt me-1"></i>{{ doctor.city_of_residence }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="d-flex flex-wrap gap-2 mt-3 mt-lg-0">
+                    <a class="btn btn-outline-light" href="{{ url_for('doctor_edit_profile') }}">Edit Profile</a>
+                    <a class="btn btn-outline-light" href="{{ url_for('doctor_inbox') }}">Open Inbox</a>
+                    <a class="btn btn-light text-primary" href="{{ url_for('doctor_jobs') }}">Browse Jobs</a>
+                </div>
+            </div>
+
+            <ul class="nav nav-pills mb-4 gap-2 dashboard-tabs">
+                <li class="nav-item"><a class="nav-link active" href="#inbox-section">Inbox</a></li>
+                <li class="nav-item"><a class="nav-link" href="#suggested-section">Suggested Jobs</a></li>
+                <li class="nav-item"><a class="nav-link" href="#calendar-card">Calendar</a></li>
+            </ul>
+
+            <div class="row g-4 align-items-stretch">
+                <div class="col-lg-8">
+                    <div class="card glass-card h-100" id="inbox-section">
+                        <div class="card-header d-flex justify-content-between align-items-center px-4 py-3">
+                            <div>
+                                <div class="text-uppercase small text-info">Inbox</div>
+                                <h5 class="mb-0">Latest conversations</h5>
+                            </div>
+                            <a class="btn btn-sm btn-outline-light" href="{{ url_for('doctor_inbox') }}">View all</a>
+                        </div>
+                        <div class="card-body p-4">
+                            {% if inbox_preview %}
+                                {% for message in inbox_preview %}
+                                <div class="inbox-item">
+                                    <div class="d-flex justify-content-between align-items-start gap-3">
+                                        <div>
+                                            <div class="fw-semibold">{{ message.sender.username if message.sender else 'System' }}</div>
+                                            <div class="text-white-50">{{ message.content[:180] }}{% if message.content|length > 180 %}...{% endif %}</div>
+                                        </div>
+                                        <small>{{ message.timestamp.strftime('%b %d, %Y %I:%M %p') }}</small>
+                                    </div>
+                                    {% if message.job %}
+                                    <div class="mt-2 d-flex align-items-center gap-2 text-info">
+                                        <i class="bi bi-briefcase"></i>
+                                        <a class="link-light text-decoration-underline" href="{{ url_for('view_job', job_id=message.job.id) }}">{{ message.job.title }}</a>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="text-white-50">No messages yet. Keep an eye out for client conversations.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 d-flex flex-column gap-4">
+                    <div class="card glass-card calendar-card" id="calendar-card">
+                        <div class="card-header d-flex justify-content-between align-items-center px-4 py-3">
+                            <div>
+                                <div class="text-uppercase small text-info">Calendar</div>
+                                <h6 class="mb-0">Calls & invites</h6>
+                            </div>
+                            <a class="btn btn-sm btn-outline-light" href="{{ url_for('calls') }}">Open</a>
+                        </div>
+                        <div class="card-body p-3">
+                            <div id="mini-calendar"></div>
+                        </div>
+                    </div>
+
+                    <div class="card glass-card" id="invites-card">
+                        <div class="card-header d-flex justify-content-between align-items-center px-4 py-3">
+                            <div>
+                                <div class="text-uppercase small text-info">Invites</div>
+                                <h6 class="mb-0">Pending actions</h6>
+                            </div>
+                        </div>
+                        <div class="card-body p-4">
+                            {% if pending_invites %}
+                                {% for call in pending_invites %}
+                                <div class="mb-3 p-3 rounded-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.05);">
+                                    <div class="d-flex justify-content-between align-items-start gap-3">
+                                        <div>
+                                            <div class="fw-semibold">{{ call.scheduled_by.username }}</div>
+                                            <div class="text-white-50">{{ call.datetime.strftime('%b %d, %Y %I:%M %p') }}</div>
+                                            <div class="mt-2">{{ call.reason }}</div>
+                                            {% if call.job %}
+                                            <div class="mt-2 text-info"><i class="bi bi-briefcase me-1"></i>{{ call.job.title }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <form class="mt-3 d-flex gap-2" method="post" action="{{ url_for('handle_invite', call_id=call.id) }}">
+                                        <button name="action" value="accept" class="btn btn-success btn-sm">Accept</button>
+                                        <button name="action" value="decline" class="btn btn-outline-light btn-sm">Decline</button>
+                                    </form>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="text-white-50">No pending invites right now.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card glass-card mt-4" id="suggested-section">
+                <div class="card-header d-flex justify-content-between align-items-center px-4 py-3">
+                    <div>
+                        <div class="text-uppercase small text-info">Opportunities</div>
+                        <h5 class="mb-0">AI-suggested roles just for you</h5>
+                    </div>
+                    <button class="btn btn-outline-light btn-sm" id="refresh-suggestions">Refresh</button>
+                </div>
+                <div class="card-body p-4">
+                    <div id="suggested-loading" class="d-flex align-items-center gap-3 text-white-50">
+                        <div class="spinner-border text-info" role="status"></div>
+                        <div>Crafting tailored matches...</div>
+                    </div>
+                    <div class="row row-cols-1 row-cols-md-2 g-3" id="suggested-grid" style="display:none;"></div>
+                    <div id="suggested-empty" class="text-white-50" style="display:none;">No matches yet. Update your specialty or refresh to try again.</div>
+                </div>
+                <div class="card-footer d-flex justify-content-between align-items-center px-4 py-3">
+                    <div class="text-white-50 small">Showing matches for {{ doctor.specialty or 'your specialty' }}. Ranked by specialty, pay, and location fit.</div>
+                    <button class="btn btn-outline-light btn-sm d-none" id="show-more-btn">Show more</button>
+                </div>
+            </div>
         </div>
 
-        <h4>Pending Invites</h4>
-        {% for call in pending_invites %}
-        <div class="alert alert-info">
-            Invite from {{ call.scheduled_by.username }} on {{ call.datetime.strftime('%Y-%m-%d %H:%M') }} for "{{ call.reason }}"
-            <br>
-            <strong>Job:</strong> 
-            <a href="{{ url_for('doctor_jobs') }}#job-{{ call.job.id }}">
-                {{ call.job.title }}
-            </a>
-            <form method="post" action="{{ url_for('handle_invite', call_id=call.id) }}">
-                <button name="action" value="accept" class="btn btn-success btn-sm">Accept</button>
-                <button name="action" value="decline" class="btn btn-danger btn-sm">Decline</button>
-            </form>
-        </div>
-        {% else %}
-        <p>No pending invites.</p>
-        {% endfor %}
-
-        <div id="calendar"></div>
+        <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css' rel='stylesheet' />
+        <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
 
         <script>
         document.addEventListener('DOMContentLoaded', function() {
-            var calendarEl = document.getElementById('calendar');
-            var calendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: 'dayGridMonth',
-                headerToolbar: {
-                    left: 'prev,next today',
-                    center: 'title',
-                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
-                },
-                height: 650,
-                events: {{ events | tojson }},
-                eventDidMount: function(info) {
-                    // Tooltip showing event status clearly
-                    let tooltip = new bootstrap.Tooltip(info.el, {
-                        title: info.event.extendedProps.status,
-                        placement: 'top',
-                        trigger: 'hover',
-                        container: 'body'
-                    });
+            const navLinks = document.querySelectorAll('.dashboard-tabs .nav-link');
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    if (this.getAttribute('href').startsWith('#')) {
+                        e.preventDefault();
+                        document.querySelector(this.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth' });
+                        navLinks.forEach(l => l.classList.remove('active'));
+                        this.classList.add('active');
+                    }
+                });
+            });
 
-                    // Apply strikethrough for canceled meetings
+            // Calendar
+            const calendarEl = document.getElementById('mini-calendar');
+            const calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                height: 320,
+                headerToolbar: {
+                    left: 'title',
+                    center: '',
+                    right: 'prev,next'
+                },
+                events: {{ events | tojson }},
+                eventDisplay: 'block',
+                eventDidMount: function(info) {
                     if (info.event.extendedProps.status === 'Canceled') {
                         info.el.style.textDecoration = 'line-through';
                     }
@@ -1504,13 +1691,92 @@ app.jinja_loader = DictLoader({
                 }
             });
             calendar.render();
+
+            // Suggested jobs via AI
+            const grid = document.getElementById('suggested-grid');
+            const loading = document.getElementById('suggested-loading');
+            const emptyState = document.getElementById('suggested-empty');
+            const showMoreBtn = document.getElementById('show-more-btn');
+            const refreshBtn = document.getElementById('refresh-suggestions');
+            let suggestions = [];
+            let visibleCount = 5;
+
+            const escapeHtml = (str) => {
+                if (!str) return '';
+                return str
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            };
+
+            const renderSuggestions = () => {
+                grid.innerHTML = '';
+                suggestions.forEach((job, index) => {
+                    const col = document.createElement('div');
+                    col.className = index >= visibleCount ? 'col d-none extra-suggestion' : 'col';
+                    col.innerHTML = `
+                        <div class="suggested-card h-100">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h5 class="mb-1">${escapeHtml(job.title)}</h5>
+                                    <div class="text-white-50">${escapeHtml(job.location || 'Location TBD')}</div>
+                                </div>
+                                <span class="badge suggested-pill">Score: ${Math.round(job.score || 0)}</span>
+                            </div>
+                            ${job.salary ? `<div class="mt-2 text-info fw-semibold">${escapeHtml(job.salary)}</div>` : ''}
+                            <p class="mt-3 mb-3 text-white-75">${escapeHtml(job.rationale)}</p>
+                            <a class="btn btn-outline-light btn-sm" href="/doctor/job/${job.id}">View role</a>
+                        </div>
+                    `;
+                    grid.appendChild(col);
+                });
+
+                const hasExtras = suggestions.length > visibleCount;
+                showMoreBtn.classList.toggle('d-none', !hasExtras);
+                showMoreBtn.textContent = hasExtras ? 'Show more' : 'Show more';
+            };
+
+            const fetchSuggestions = () => {
+                loading.style.display = '';
+                grid.style.display = 'none';
+                emptyState.style.display = 'none';
+                showMoreBtn.classList.add('d-none');
+                visibleCount = 5;
+                fetch('{{ url_for('doctor_suggested_jobs') }}')
+                    .then(res => res.json())
+                    .then(data => {
+                        suggestions = data.suggestions || [];
+                        if (suggestions.length === 0) {
+                            emptyState.style.display = '';
+                            grid.style.display = 'none';
+                        } else {
+                            grid.style.display = '';
+                            renderSuggestions();
+                        }
+                    })
+                    .catch(() => {
+                        emptyState.style.display = '';
+                        emptyState.textContent = 'Unable to fetch suggestions right now.';
+                    })
+                    .finally(() => {
+                        loading.style.display = 'none';
+                    });
+            };
+
+            showMoreBtn.addEventListener('click', () => {
+                visibleCount = suggestions.length;
+                document.querySelectorAll('.extra-suggestion').forEach(el => el.classList.remove('d-none'));
+                showMoreBtn.classList.add('d-none');
+            });
+
+            refreshBtn.addEventListener('click', fetchSuggestions);
+            fetchSuggestions();
         });
         </script>
-
-        <!-- Include Bootstrap JS for Tooltips (ensure not duplicated) -->
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
         {% endblock %}''',
+
 
 
     'edit_job.html': '''{% extends "base.html" %}
@@ -3835,10 +4101,21 @@ def view_job(job_id):
 @app.route('/doctor/dashboard')
 @login_required
 def doctor_dashboard():
+    if current_user.role != 'doctor':
+        flash('Unauthorized access.', 'danger')
+        return redirect(url_for('dashboard'))
+
     doctor = current_user.doctor
 
-    scheduled_calls = ScheduledCall.query.filter_by(doctor_id=doctor.id).all()
+    scheduled_calls = ScheduledCall.query.filter_by(doctor_id=doctor.id).order_by(ScheduledCall.datetime.asc()).all()
     pending_invites = ScheduledCall.query.filter_by(doctor_id=doctor.id, invite_status='Pending').all()
+    inbox_preview = (
+        Message.query
+        .filter_by(recipient_id=current_user.id)
+        .order_by(Message.timestamp.desc())
+        .limit(10)
+        .all()
+    )
 
     events = []
     for call in scheduled_calls:
@@ -3862,7 +4139,119 @@ def doctor_dashboard():
             'status': status
         })
 
-    return render_template('doctor_dashboard.html', doctor=doctor, events=events, pending_invites=pending_invites)
+    return render_template(
+        'doctor_dashboard.html',
+        doctor=doctor,
+        events=events,
+        pending_invites=pending_invites,
+        inbox_preview=inbox_preview,
+    )
+
+
+@app.route('/doctor/suggested_jobs')
+@login_required
+def doctor_suggested_jobs():
+    if current_user.role != 'doctor':
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    doctor = current_user.doctor
+    raw_jobs = Job.query.order_by(Job.id.desc()).all()
+    scoped_jobs = filter_jobs_by_specialty(raw_jobs, doctor.specialty, doctor.subspecialty)
+
+    jobs_payload = [
+        {
+            "id": job.id,
+            "title": job.title,
+            "location": job.location,
+            "salary": job.salary,
+            "description": job.description,
+        }
+        for job in scoped_jobs
+    ]
+
+    doctor_profile = {
+        "name": f"Dr. {doctor.first_name or ''} {doctor.last_name or ''}".strip(),
+        "specialty": doctor.specialty or "",
+        "subspecialty": doctor.subspecialty or "",
+        "home_base": doctor.city_of_residence or "",
+        "licensed_states": [s.strip() for s in (doctor.states_licensed or "").split(',') if s.strip()],
+        "preferred_states": [s.strip() for s in (doctor.states_willing_to_work or "").split(',') if s.strip()],
+        "salary_expectation": doctor.salary_expectations or 0,
+    }
+
+    prompt = f"""
+You are matching physician jobs to a doctor. Only consider the provided jobs; never invent new roles.
+Pick up to 10 jobs that explicitly match the doctor's specialty or subspecialty. If a job does not match the specialty terms, do not include it.
+
+Doctor profile:
+- Name: {doctor_profile['name']}
+- Specialty: {doctor_profile['specialty']}
+- Subspecialty: {doctor_profile['subspecialty']}
+- Home base: {doctor_profile['home_base']}
+- Licensed states: {', '.join(doctor_profile['licensed_states']) or 'Not provided'}
+- Preferred work states: {', '.join(doctor_profile['preferred_states']) or 'Not provided'}
+- Target compensation: {doctor_profile['salary_expectation']} (numeric if provided)
+
+Ranking rules (in order):
+1) Exact specialty/subspecialty alignment (required).
+2) Compensation potential (higher salary first when available).
+3) Location fit: matches preferred or licensed states first, then closest to home base city text match.
+4) Mention of credentials or experience that aligns with the profile.
+
+Return ONLY strict JSON (no code fences). The JSON must be an array of objects with these fields:
+[
+  {
+    "id": <job id>,
+    "title": "<job title>",
+    "location": "<city/state or location>",
+    "salary": "<salary string if any>",
+    "rationale": "Two concise sentences on why this is a fit, referencing specialty, pay, and location/credentials.",
+    "score": <0-100 reflecting fit>
+  }
+]
+Sort the array by score descending and cap it at 10 items. If no jobs match the specialty, return an empty JSON array.
+
+Jobs to evaluate (JSON):
+{json.dumps(jobs_payload, indent=2)}
+    """
+
+    suggestions = []
+    if jobs_payload:
+        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        response = client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=[
+                {"role": "system", "content": "You are a precise medical job-matching assistant."},
+                {"role": "user", "content": prompt},
+            ],
+            max_tokens=1200,
+            temperature=0.2,
+        )
+
+        raw_content = response.choices[0].message.content
+        try:
+            parsed = json.loads(raw_content)
+            if isinstance(parsed, list):
+                suggestions = parsed
+        except Exception:
+            fallback_sorted = sorted(
+                jobs_payload,
+                key=lambda j: parse_salary_value(j.get("salary")),
+                reverse=True,
+            )
+            suggestions = [
+                {
+                    "id": job["id"],
+                    "title": job["title"],
+                    "location": job.get("location"),
+                    "salary": job.get("salary"),
+                    "rationale": "High-relevance match based on specialty keywords and compensation details.",
+                    "score": 70,
+                }
+                for job in fallback_sorted[:10]
+            ]
+
+    return jsonify({"suggestions": suggestions})
 
 
 @app.route('/handle_invite/<int:call_id>', methods=['POST'])
@@ -4924,9 +5313,6 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-
-
-
 
 
 
