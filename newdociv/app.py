@@ -235,19 +235,38 @@ def parse_salary_value(salary_str):
 def build_fallback_suggestions(jobs_payload, doctor_profile=None):
     """Return deterministic suggestions when AI is unavailable."""
     doctor_city = doctor_profile.get("home_base") if doctor_profile else ""
+    licensed_states = set((doctor_profile or {}).get("licensed_states") or [])
+    preferred_states = set((doctor_profile or {}).get("preferred_states") or [])
+
+    def state_priority(job):
+        job_state = extract_state_abbr(job.get("location"))
+        if job_state in licensed_states:
+            return 2
+        if job_state in preferred_states:
+            return 1
+        return 0
+
     fallback_sorted = sorted(
         jobs_payload,
-        key=lambda j: parse_salary_value(j.get("salary")),
+        key=lambda j: (
+            state_priority(j),
+            parse_salary_value(j.get("salary")),
+        ),
         reverse=True,
     )
 
     suggestions = []
     for job in fallback_sorted:
         rationale_bits = ["Matches your specialty details"]
-        if job.get("salary"):
-            rationale_bits.append("competitive compensation noted")
+        job_state = extract_state_abbr(job.get("location"))
+        if job_state in licensed_states:
+            rationale_bits.append(f"licensed for {job_state}")
+        elif job_state in preferred_states:
+            rationale_bits.append(f"matches your interest in {job_state}")
         if doctor_city and job.get("location"):
             rationale_bits.append(f"location compared to {doctor_city}")
+        if job.get("salary"):
+            rationale_bits.append("competitive compensation noted")
 
         suggestions.append(
             {
@@ -256,7 +275,7 @@ def build_fallback_suggestions(jobs_payload, doctor_profile=None):
                 "location": job.get("location"),
                 "salary": job.get("salary"),
                 "rationale": ", ".join(rationale_bits) + ".",
-                "score": max(50, 70 - len(suggestions)),
+                "score": max(50, 70 - len(suggestions)) + state_priority(job) * 10,
             }
         )
 
@@ -264,9 +283,28 @@ def build_fallback_suggestions(jobs_payload, doctor_profile=None):
 
 
 def get_doctor_jobs_payload(doctor):
-    """Return a list of job dictionaries scoped to a doctor's specialty."""
+    """Return a list of job dictionaries scoped to a doctor's specialty and state priorities."""
     raw_jobs = Job.query.order_by(Job.id.desc()).all()
     scoped_jobs = filter_jobs_by_specialty(raw_jobs, doctor.specialty, doctor.subspecialty)
+
+    licensed_states = {s.strip().upper() for s in (doctor.states_licensed or "").split(',') if s.strip()}
+    preferred_states = {s.strip().upper() for s in (doctor.states_willing_to_work or "").split(',') if s.strip()}
+
+    if licensed_states or preferred_states:
+        matching_state_jobs = []
+        fallback_jobs = []
+
+        for job in scoped_jobs:
+            job_state = extract_state_abbr(job.location)
+            if job_state in licensed_states or job_state in preferred_states:
+                matching_state_jobs.append(job)
+            else:
+                fallback_jobs.append(job)
+
+        if matching_state_jobs:
+            scoped_jobs = matching_state_jobs
+        else:
+            scoped_jobs = fallback_jobs or scoped_jobs
 
     return [
         {
@@ -306,6 +344,18 @@ states = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID"
 
 
 # Models
+def extract_state_abbr(location):
+    """Best-effort extraction of a state abbreviation from a location string."""
+    if not location:
+        return ""
+
+    parts = re.findall(r"[A-Za-z]{2}", (location or "").upper())
+    for part in reversed(parts):
+        if part in states:
+            return part
+    return ""
+
+
 @app.context_processor
 def inject_user():
     return dict(current_user=current_user)
@@ -4408,11 +4458,21 @@ def doctor_suggested_jobs():
         return jsonify({'error': 'Unauthorized'}), 403
 
     doctor = current_user.doctor
+    doctor_profile = {
+        "name": f"Dr. {doctor.first_name or ''} {doctor.last_name or ''}".strip(),
+        "specialty": doctor.specialty or "",
+        "subspecialty": doctor.subspecialty or "",
+        "home_base": doctor.city_of_residence or "",
+        "licensed_states": [s.strip() for s in (doctor.states_licensed or "").split(',') if s.strip()],
+        "preferred_states": [s.strip() for s in (doctor.states_willing_to_work or "").split(',') if s.strip()],
+        "salary_expectation": doctor.salary_expectations or 0,
+    }
     jobs_payload = get_doctor_jobs_payload(doctor)
-    
+
     prompt = f"""
 You are matching physician jobs to a doctor. Only consider the provided jobs; never invent new roles.
 Pick up to 10 jobs that explicitly match the doctor's specialty or subspecialty. If a job does not match the specialty terms, do not include it.
+
 
 
 Doctor profile:
@@ -4425,10 +4485,11 @@ Doctor profile:
 - Target compensation: {doctor_profile['salary_expectation']} (numeric if provided)
 
 Ranking rules (in order):
-1) Exact specialty/subspecialty alignment (required).
-2) Compensation potential (higher salary first when available).
-3) Location fit: matches preferred or licensed states first, then closest to home base city text match.
+1) Exact specialty/subspecialty alignment (required before anything else).
+2) Location fit by licensed states (highest priority) and then preferred states.
+3) Compensation potential (higher salary next when available).
 4) Mention of credentials or experience that aligns with the profile.
+
 
 Return ONLY strict JSON (no code fences). The JSON must be an array of objects with these fields:
 [
@@ -5619,6 +5680,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
