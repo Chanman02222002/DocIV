@@ -4295,7 +4295,7 @@ def doctor_suggested_jobs():
 
     prompt = f"""
 You are matching physician jobs to a doctor. Only consider the provided jobs; never invent new roles.
-Pick up to 10 jobs that explicitly match the doctor's specialty or subspecialty. If a job does not match the specialty terms, do not include it.
+Pick up to 10 jobs that explicitly match the doctor's specialty or subspecialty. If a job does not match the specialty terms, do not include it.␊
 
 Doctor profile:
 - Name: {doctor_profile['name']}
@@ -4314,20 +4314,21 @@ Ranking rules (in order):
 
 Return ONLY strict JSON (no code fences). The JSON must be an array of objects with these fields:
 [
-  {
+  {{
     "id": <job id>,
     "title": "<job title>",
     "location": "<city/state or location>",
     "salary": "<salary string if any>",
     "rationale": "Two concise sentences on why this is a fit, referencing specialty, pay, and location/credentials.",
     "score": <0-100 reflecting fit>
-  }
+  }}
 ]
 Sort the array by score descending and cap it at 10 items. If no jobs match the specialty, return an empty JSON array.
 
 Jobs to evaluate (JSON):
 {json.dumps(jobs_payload, indent=2)}
     """
+
 
     suggestions = []
     if jobs_payload:
@@ -5427,6 +5428,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
