@@ -232,6 +232,37 @@ def parse_salary_value(salary_str):
         return 0
 
 
+def build_fallback_suggestions(jobs_payload, doctor_profile=None):
+    """Return deterministic suggestions when AI is unavailable."""
+    doctor_city = doctor_profile.get("home_base") if doctor_profile else ""
+    fallback_sorted = sorted(
+        jobs_payload,
+        key=lambda j: parse_salary_value(j.get("salary")),
+        reverse=True,
+    )
+
+    suggestions = []
+    for job in fallback_sorted:
+        rationale_bits = ["Matches your specialty details"]
+        if job.get("salary"):
+            rationale_bits.append("competitive compensation noted")
+        if doctor_city and job.get("location"):
+            rationale_bits.append(f"location compared to {doctor_city}")
+
+        suggestions.append(
+            {
+                "id": job["id"],
+                "title": job["title"],
+                "location": job.get("location"),
+                "salary": job.get("salary"),
+                "rationale": ", ".join(rationale_bits) + ".",
+                "score": max(50, 70 - len(suggestions)),
+            }
+        )
+
+    return suggestions[:10]
+
+
 
 def format_city_state(city, state):
     parts = []
@@ -1710,6 +1741,8 @@ app.jinja_loader = DictLoader({
         const modal = new bootstrap.Modal(refineModalEl);
         const cacheKey = `doctorSuggestedTop3_{{ doctor.id }}`;
         const baseKey = `doctorSuggestedBase_{{ doctor.id }}`;
+        const metaKey = `doctorSuggestedMeta_{{ doctor.id }}`;
+        const profileSignature = `{{ doctor.specialty or '' }}|{{ doctor.subspecialty or '' }}|{{ doctor.city_of_residence or '' }}|{{ doctor.states_licensed or '' }}|{{ doctor.states_willing_to_work or '' }}|{{ doctor.salary_expectations or '' }}`;
 
         let suggestions = [];
         let baseSuggestions = [];
@@ -5580,6 +5613,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
