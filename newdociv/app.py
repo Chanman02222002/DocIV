@@ -284,6 +284,22 @@ def build_fallback_suggestions(jobs_payload, doctor_profile=None):
 
 def get_doctor_jobs_payload(doctor):
     """Return a list of job dictionaries scoped to a doctor's specialty and state priorities."""
+    scoped_jobs = get_doctor_jobs(doctor)
+
+    return [
+        {
+            "id": job.id,
+            "title": job.title,
+            "location": job.location,
+            "salary": job.salary,
+            "description": job.description,
+        }
+        for job in scoped_jobs
+    ]
+
+
+def get_doctor_jobs(doctor):
+    """Return scoped Job objects filtered by specialty and state preferences."""
     raw_jobs = Job.query.order_by(Job.id.desc()).all()
     scoped_jobs = filter_jobs_by_specialty(raw_jobs, doctor.specialty, doctor.subspecialty)
 
@@ -306,17 +322,7 @@ def get_doctor_jobs_payload(doctor):
         else:
             scoped_jobs = fallback_jobs or scoped_jobs
 
-    return [
-        {
-            "id": job.id,
-            "title": job.title,
-            "location": job.location,
-            "salary": job.salary,
-            "description": job.description,
-        }
-        for job in scoped_jobs
-    ]
-
+    return scoped_jobs
 def format_city_state(city, state):
     parts = []
     if city:
@@ -4038,10 +4044,30 @@ def doctor_ai_search_jobs():
 
     sync_direct_jobs_from_excel()
 
+    doctor = current_user.doctor
     lifestyle = request.form.get('lifestyle', '')
     wants = request.form.get('wants', '')
-    location = request.form.get('location', '')
-    jobs = Job.query.order_by(Job.id.desc()).all()
+    location = (request.form.get('location', '') or '').strip()
+
+    doctor_profile = {
+        "name": f"Dr. {doctor.first_name or ''} {doctor.last_name or ''}".strip(),
+        "specialty": doctor.specialty or "",
+        "subspecialty": doctor.subspecialty or "",
+        "home_base": doctor.city_of_residence or "",
+        "licensed_states": [s.strip().upper() for s in (doctor.states_licensed or "").split(',') if s.strip()],
+        "preferred_states": [s.strip().upper() for s in (doctor.states_willing_to_work or "").split(',') if s.strip()],
+    }
+
+    # Use stored preferences when the form is blank so the AI has the right context.
+    if not location:
+        if doctor_profile["preferred_states"]:
+            location = ", ".join(doctor_profile["preferred_states"])
+        elif doctor_profile["licensed_states"]:
+            location = ", ".join(doctor_profile["licensed_states"])
+        else:
+            location = doctor_profile["home_base"]
+
+    jobs = get_doctor_jobs(doctor)
 
     jobs_payload = [
         {
@@ -4063,19 +4089,31 @@ def doctor_ai_search_jobs():
         text = text.lower()
         return sum(1 for term in terms if term and term in text)
 
+    licensed_states = set(doctor_profile["licensed_states"])
+    preferred_states = set(doctor_profile["preferred_states"])
+
     scored_jobs = []
     for job in jobs:
         job_text = f"{job.title or ''} {job.description or ''}"
+        job_state = extract_state_abbr(job.location)
+        state_score = 4 if job_state in licensed_states else 2 if job_state in preferred_states else 0
         location_score = 4 if location and location.lower() in (job.location or '').lower() else 0
         lifestyle_score = term_score(job_text, lifestyle_terms)
         wants_score = term_score(job_text, wants_terms)
-        overall_score = term_score(job_text, pref_terms) * 2 + lifestyle_score * 2 + wants_score * 3 + location_score
+        overall_score = (
+            term_score(job_text, pref_terms) * 2
+            + lifestyle_score * 2
+            + wants_score * 3
+            + location_score
+            + state_score
+        )
         scored_jobs.append({
             'job': job,
             'overall': overall_score,
             'location_score': location_score,
             'lifestyle_score': lifestyle_score,
             'wants_score': wants_score,
+            'state_score': state_score,
         })
 
     def pick_best(key):
@@ -4092,6 +4130,8 @@ def doctor_ai_search_jobs():
         reasons = []
         if item['location_score'] and location:
             reasons.append(f"Matches your location preference for {location}.")
+        if item['state_score']:
+            reasons.append("Aligns with your licensed or preferred states.")
         if item['wants_score']:
             reasons.append("Includes the job-specific wants you listed.")
         if item['lifestyle_score']:
@@ -4173,6 +4213,8 @@ Doctor's preferences:
 - Lifestyle: {lifestyle}
 - Job-specific wants: {wants}
 - Location: {location}
+- Licensed states: {', '.join(doctor_profile['licensed_states']) or 'Not provided'}
+- Preferred states: {', '.join(doctor_profile['preferred_states']) or 'Not provided'}
 
 Job list (each includes id, title, location, salary, description):
 {json.dumps(jobs_payload, indent=2)}
@@ -5680,6 +5722,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
