@@ -1557,19 +1557,20 @@ app.jinja_loader = DictLoader({
                             <div class="text-uppercase small text-primary fw-semibold">Opportunities</div>
                             <h5 class="mb-0">AI-suggested roles just for you</h5>
                         </div>
-                        <button class="btn btn-outline-primary btn-sm" id="refresh-suggestions">Refresh</button>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button class="btn btn-outline-primary btn-sm" id="refine-suggestions">Refine with AI</button>
+                        </div>
                     </div>
                     <div class="card-body p-4">
                         <div id="suggested-loading" class="d-flex align-items-center gap-3 text-muted">
                             <div class="spinner-border text-primary" role="status"></div>
                             <div>Crafting tailored matches...</div>
                         </div>
-                        <div class="row row-cols-1 row-cols-md-2 g-3" id="suggested-grid" style="display:none;"></div>
-                        <div id="suggested-empty" class="text-muted" style="display:none;">No matches yet. Update your specialty or refresh to try again.</div>
+                        <div id="suggested-list" class="d-flex flex-column gap-3" style="display:none;"></div>
+                        <div id="suggested-empty" class="text-muted" style="display:none;">No matches yet. Update your specialty or try refining your criteria.</div>
                     </div>
                     <div class="card-footer d-flex justify-content-between align-items-center px-4 py-3">
                         <div class="text-muted small">Showing matches for {{ doctor.specialty or 'your specialty' }}. Ranked by specialty, pay, and location fit.</div>
-                        <button class="btn btn-outline-primary btn-sm d-none" id="show-more-btn">Show more</button>
                     </div>
                 </div>
             </div>
@@ -1698,13 +1699,20 @@ app.jinja_loader = DictLoader({
         calendar.render();
 
         // Suggested jobs via AI
-        const grid = document.getElementById('suggested-grid');
+        const list = document.getElementById('suggested-list');
         const loading = document.getElementById('suggested-loading');
         const emptyState = document.getElementById('suggested-empty');
-        const showMoreBtn = document.getElementById('show-more-btn');
-        const refreshBtn = document.getElementById('refresh-suggestions');
+        const refineBtn = document.getElementById('refine-suggestions');
+        const refineModalEl = document.getElementById('refineModal');
+        const refineForm = document.getElementById('refineForm');
+        const refineNotes = document.getElementById('refineNotes');
+        const refineStatus = document.getElementById('refineStatus');
+        const modal = new bootstrap.Modal(refineModalEl);
+        const cacheKey = 'doctorSuggestedTop3';
+        const baseKey = 'doctorSuggestedBase';
+
         let suggestions = [];
-        let visibleCount = 5;
+        let baseSuggestions = [];
 
         const escapeHtml = (str) => {
             if (!str) return '';
@@ -1717,49 +1725,56 @@ app.jinja_loader = DictLoader({
         };
 
         const renderSuggestions = () => {
-            grid.innerHTML = '';
-            suggestions.forEach((job, index) => {
-                const col = document.createElement('div');
-                col.className = index >= visibleCount ? 'col d-none extra-suggestion' : 'col';
-                col.innerHTML = `
-                    <div class="suggested-card h-100">
-                        <div class="d-flex justify-content-between align-items-start">
+            list.innerHTML = '';
+            suggestions.slice(0, 3).forEach((job) => {
+                const row = document.createElement('div');
+                row.className = 'suggested-card d-flex flex-column flex-lg-row align-items-start align-items-lg-center gap-3';
+                row.innerHTML = `
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between flex-wrap align-items-start gap-3">
                             <div>
                                 <h5 class="mb-1">${escapeHtml(job.title)}</h5>
                                 <div class="text-muted">${escapeHtml(job.location || 'Location TBD')}</div>
+                                ${job.salary ? `<div class="mt-2 text-primary fw-semibold">${escapeHtml(job.salary)}</div>` : ''}
                             </div>
-                            <span class="badge suggested-pill">Score: ${Math.round(job.score || 0)}</span>
+                            <span class="badge suggested-pill align-self-start">Score: ${Math.round(job.score || 0)}</span>
                         </div>
-                        ${job.salary ? `<div class="mt-2 text-primary fw-semibold">${escapeHtml(job.salary)}</div>` : ''}
-                        <p class="mt-3 mb-3 text-secondary">${escapeHtml(job.rationale)}</p>
-                        <a class="btn btn-outline-primary btn-sm" href="/doctor/job/${job.id}">View role</a>
+                        <p class="mt-3 mb-0 text-secondary">${escapeHtml(job.rationale)}</p>
                     </div>
+                    <a class="btn btn-outline-primary btn-sm align-self-stretch" href="/doctor/job/${job.id}">View role</a>
                 `;
-                grid.appendChild(col);
+                list.appendChild(row);
             });
+        };
 
-            const hasExtras = suggestions.length > visibleCount;
-            showMoreBtn.classList.toggle('d-none', !hasExtras);
-            showMoreBtn.textContent = hasExtras ? 'Show more' : 'Show more';
+        const saveCache = (topThree, baseList) => {
+            localStorage.setItem(cacheKey, JSON.stringify(topThree));
+            localStorage.setItem(baseKey, JSON.stringify(baseList));
+        };
+
+        const showSuggestions = () => {
+            loading.style.display = 'none';
+            if (suggestions.length === 0) {
+                emptyState.style.display = '';
+                list.style.display = 'none';
+                return;
+            }
+            emptyState.style.display = 'none';
+            list.style.display = '';
+            renderSuggestions();
         };
 
         const fetchSuggestions = () => {
             loading.style.display = '';
-            grid.style.display = 'none';
+            list.style.display = 'none';
             emptyState.style.display = 'none';
-            showMoreBtn.classList.add('d-none');
-            visibleCount = 5;
             fetch('{{ url_for('doctor_suggested_jobs') }}')
                 .then(res => res.json())
                 .then(data => {
-                    suggestions = data.suggestions || [];
-                    if (suggestions.length === 0) {
-                        emptyState.style.display = '';
-                        grid.style.display = 'none';
-                    } else {
-                        grid.style.display = '';
-                        renderSuggestions();
-                    }
+                    baseSuggestions = data.suggestions || [];
+                    suggestions = baseSuggestions.slice(0, 3);
+                    saveCache(suggestions, baseSuggestions);
+                    showSuggestions();
                 })
                 .catch(() => {
                     emptyState.style.display = '';
@@ -1770,16 +1785,80 @@ app.jinja_loader = DictLoader({
                 });
         };
 
-        showMoreBtn.addEventListener('click', () => {
-            visibleCount = suggestions.length;
-            document.querySelectorAll('.extra-suggestion').forEach(el => el.classList.remove('d-none'));
-            showMoreBtn.classList.add('d-none');
+        const cachedTop = localStorage.getItem(cacheKey);
+        const cachedBase = localStorage.getItem(baseKey);
+        if (cachedTop && cachedBase) {
+            try {
+                suggestions = JSON.parse(cachedTop) || [];
+                baseSuggestions = JSON.parse(cachedBase) || [];
+                showSuggestions();
+            } catch (e) {
+                fetchSuggestions();
+            }
+        } else {
+            fetchSuggestions();
+        }
+
+        refineBtn.addEventListener('click', () => {
+            refineNotes.value = '';
+            refineStatus.textContent = '';
+            modal.show();
         });
 
-        refreshBtn.addEventListener('click', fetchSuggestions);
-        fetchSuggestions();
+        refineForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const context = refineNotes.value.trim();
+            refineStatus.textContent = 'Re-ranking with your preferences...';
+            fetch('{{ url_for('doctor_refine_suggestions') }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    context,
+                    jobs: baseSuggestions,
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                suggestions = (data.suggestions || []).slice(0, 3);
+                if ((data.base || []).length) {
+                    baseSuggestions = data.base;
+                }
+                saveCache(suggestions, baseSuggestions);
+                showSuggestions();
+                refineStatus.textContent = 'Updated matches saved for this session.';
+            })
+            .catch(() => {
+                refineStatus.textContent = 'Unable to refine right now. Please try again soon.';
+            })
+            .finally(() => {
+                modal.hide();
+            });
+        });
     });
     </script>
+
+    <!-- Refine Suggestions Modal -->
+    <div class="modal fade" id="refineModal" tabindex="-1" aria-labelledby="refineModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" style="border-radius:20px;">
+          <div class="modal-header">
+            <h5 class="modal-title" id="refineModalLabel">Narrow these matches</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <form id="refineForm">
+            <div class="modal-body">
+              <p class="text-muted mb-3">Tell us more (e.g., schedule needs, call expectations, rural/urban preferences). We'll re-rank the current matches without inventing new jobs.</p>
+              <textarea class="form-control" id="refineNotes" rows="3" placeholder="Add extra details to refine your top matches"></textarea>
+              <div class="mt-2 text-muted small">Your top three matches will be saved for this session even after you navigate away.</div>
+            </div>
+            <div class="modal-footer">
+              <span class="me-auto text-success" id="refineStatus"></span>
+              <button type="submit" class="btn btn-primary">Update matches</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
     {% endblock %}''',
 
 
@@ -4369,6 +4448,70 @@ Jobs to evaluate (JSON):
     return jsonify({"suggestions": suggestions})
 
 
+@app.route('/doctor/refine_suggestions', methods=['POST'])
+@login_required
+def doctor_refine_suggestions():
+    if current_user.role != 'doctor':
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    payload = request.get_json(silent=True) or {}
+    context = (payload.get('context') or '').strip()
+    jobs = payload.get('jobs') or []
+
+    if not isinstance(jobs, list) or not jobs:
+        return jsonify({"suggestions": [], "base": []})
+
+    prompt = f"""
+You are refining an existing shortlist of physician job matches. Only consider the provided jobs; never invent or rename roles.
+The doctor shared new preferences: {context or 'No new details provided.'}
+
+Instructions:
+- Re-rank the provided jobs based on the new context while keeping specialty alignment important.
+- Remove a job only if it clearly conflicts with the new information; otherwise keep it in consideration.
+- Return up to 5 jobs ordered best to worst. Do not add new jobs.
+- Keep the original id, title, and salary values. You may update rationale and score.
+
+Return strictly JSON (no prose, no code fences):
+[
+  {{
+    "id": <job id>,
+    "title": "<job title>",
+    "location": "<location>",
+    "salary": "<salary>",
+    "rationale": "Concise explanation using the new context and existing details.",
+    "score": <0-100>
+  }}
+]
+Sort by score descending and cap at 5 results. If nothing fits, return an empty array.
+
+Jobs to refine (JSON):
+{json.dumps(jobs, indent=2)}
+    """
+
+    refined = []
+    try:
+        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        response = client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=[
+                {"role": "system", "content": "You are a precise medical job-matching assistant."},
+                {"role": "user", "content": prompt},
+            ],
+            max_tokens=800,
+            temperature=0.2,
+        )
+
+        raw_content = response.choices[0].message.content
+        parsed = json.loads(raw_content)
+        if isinstance(parsed, list):
+            refined = parsed
+    except Exception:
+        refined = jobs
+
+    top_refined = refined[:3]
+    return jsonify({"suggestions": top_refined, "base": refined})
+
+
 @app.route('/handle_invite/<int:call_id>', methods=['POST'])
 @login_required
 def handle_invite(call_id):
@@ -5428,6 +5571,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
