@@ -279,8 +279,6 @@ def get_doctor_jobs_payload(doctor):
         for job in scoped_jobs
     ]
 
-
-
 def format_city_state(city, state):
     parts = []
     if city:
@@ -4411,21 +4409,11 @@ def doctor_suggested_jobs():
 
     doctor = current_user.doctor
     jobs_payload = get_doctor_jobs_payload(doctor)
-
-
-    doctor_profile = {
-        "name": f"Dr. {doctor.first_name or ''} {doctor.last_name or ''}".strip(),
-        "specialty": doctor.specialty or "",
-        "subspecialty": doctor.subspecialty or "",
-        "home_base": doctor.city_of_residence or "",
-        "licensed_states": [s.strip() for s in (doctor.states_licensed or "").split(',') if s.strip()],
-        "preferred_states": [s.strip() for s in (doctor.states_willing_to_work or "").split(',') if s.strip()],
-        "salary_expectation": doctor.salary_expectations or 0,
-    }
-
+    
     prompt = f"""
-You are matching physician jobs to a doctor. Only consider the provided jobs; never invent new roles.
-Pick up to 10 jobs that explicitly match the doctor's specialty or subspecialty. If a job does not match the specialty terms, do not include it.␊
+You are matching physician jobs to a doctor. Only consider the provided jobs; never invent new roles.␊
+Pick up to 10 jobs that explicitly match the doctor's specialty or subspecialty. If a job does not match the specialty terms, do not include it.
+
 
 Doctor profile:
 - Name: {doctor_profile['name']}
@@ -4502,11 +4490,22 @@ def doctor_refine_suggestions():
     doctor = current_user.doctor
     payload = request.get_json(silent=True) or {}
     context = (payload.get('context') or '').strip()
-    jobs = get_doctor_jobs_payload(doctor)
+
+    doctor_profile = {
+        "name": f"Dr. {doctor.first_name or ''} {doctor.last_name or ''}".strip(),
+        "specialty": doctor.specialty or "",
+        "subspecialty": doctor.subspecialty or "",
+        "home_base": doctor.city_of_residence or "",
+        "licensed_states": [s.strip() for s in (doctor.states_licensed or "").split(',') if s.strip()],
+        "preferred_states": [s.strip() for s in (doctor.states_willing_to_work or "").split(',') if s.strip()],
+        "salary_expectation": doctor.salary_expectations or 0,
+    }
+
+    incoming_jobs = payload.get('jobs') if isinstance(payload.get('jobs'), list) else None
+    jobs = incoming_jobs or get_doctor_jobs_payload(doctor)
 
     if not jobs:
         return jsonify({"suggestions": [], "base": []})
-
     prompt = f"""
 You are refining an existing shortlist of physician job matches. Only consider the provided jobs; never invent or rename roles.
 The doctor shared new preferences: {context or 'No new details provided.'}
@@ -4534,28 +4533,29 @@ Jobs to refine (JSON):
 {json.dumps(jobs, indent=2)}
     """
 
-    refined = []
-    try:
-        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        response = client.chat.completions.create(
-            model="gpt-4.1-mini",
-            messages=[
-                {"role": "system", "content": "You are a precise medical job-matching assistant."},
-                {"role": "user", "content": prompt},
-            ],
-            max_tokens=800,
-            temperature=0.2,
-        )
-
-        raw_content = response.choices[0].message.content
-        parsed = json.loads(raw_content)
-        if isinstance(parsed, list):
-            refined = parsed
+    refined = []␊
+    try:␊
+        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))␊
+        response = client.chat.completions.create(␊
+            model="gpt-4.1-mini",␊
+            messages=[␊
+                {"role": "system", "content": "You are a precise medical job-matching assistant."},␊
+                {"role": "user", "content": prompt},␊
+            ],␊
+            max_tokens=800,␊
+            temperature=0.2,␊
+        )␊
+␊
+        raw_content = response.choices[0].message.content␊
+        parsed = json.loads(raw_content)␊
+        if isinstance(parsed, list):␊
+            refined = parsed␊
     except Exception:␊
-        refined = build_fallback_suggestions(jobs, None)
+        refined = build_fallback_suggestions(jobs, doctor_profile)
 
     top_refined = refined[:3]
     return jsonify({"suggestions": top_refined, "base": jobs})
+
 
 
 
@@ -5618,6 +5618,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
