@@ -4411,7 +4411,7 @@ def doctor_suggested_jobs():
     jobs_payload = get_doctor_jobs_payload(doctor)
     
     prompt = f"""
-You are matching physician jobs to a doctor. Only consider the provided jobs; never invent new roles.␊
+You are matching physician jobs to a doctor. Only consider the provided jobs; never invent new roles.
 Pick up to 10 jobs that explicitly match the doctor's specialty or subspecialty. If a job does not match the specialty terms, do not include it.
 
 
@@ -4533,24 +4533,24 @@ Jobs to refine (JSON):
 {json.dumps(jobs, indent=2)}
     """
 
-    refined = []␊
-    try:␊
-        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))␊
-        response = client.chat.completions.create(␊
-            model="gpt-4.1-mini",␊
-            messages=[␊
-                {"role": "system", "content": "You are a precise medical job-matching assistant."},␊
-                {"role": "user", "content": prompt},␊
-            ],␊
-            max_tokens=800,␊
-            temperature=0.2,␊
-        )␊
-␊
-        raw_content = response.choices[0].message.content␊
-        parsed = json.loads(raw_content)␊
-        if isinstance(parsed, list):␊
-            refined = parsed␊
-    except Exception:␊
+    refined = []
+    try:
+        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        response = client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=[
+                {"role": "system", "content": "You are a precise medical job-matching assistant."},
+                {"role": "user", "content": prompt},
+            ],
+            max_tokens=800,
+            temperature=0.2,
+        )
+
+        raw_content = response.choices[0].message.content
+        parsed = json.loads(raw_content)
+        if isinstance(parsed, list):
+            refined = parsed
+    except Exception:
         refined = build_fallback_suggestions(jobs, doctor_profile)
 
     top_refined = refined[:3]
@@ -5618,6 +5618,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
