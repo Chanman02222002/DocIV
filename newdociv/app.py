@@ -5742,30 +5742,37 @@ def public_register_doctor():
     data = request.form
 
     # Extract fields
-    username = data.get('username')
-    email = data.get('email')
+    username = (data.get('username') or '').strip()
+    email = (data.get('email') or '').strip().lower()
     password = data.get('password')
     confirm_password = data.get('confirm_password')
     first_name = data.get('first_name')
     last_name = data.get('last_name')
     specialty = data.get('specialty')
-
+    
     # Validation
     if password != confirm_password:
         flash('Passwords do not match.', 'danger')
         return redirect(url_for('create_account'))
 
-    if User.query.filter((User.username == username) | (User.email == email)).first():
-        flash('Username or email already exists.', 'danger')
+    if User.query.filter_by(username=username).first():
+        flash('Username already exists.', 'danger')
         return redirect(url_for('create_account'))
 
-    # Create user
+    if User.query.filter_by(email=email).first():
+        flash('This email is already tied to an account.', 'danger')
+        return redirect(url_for('create_account'))
+
+    if Doctor.query.filter_by(email=email).first():
+        flash('A doctor with this email already exists.', 'danger')
+        return redirect(url_for('create_account'))
+
+    # Create user and doctor records
     user = User(username=username, email=email, role='doctor')
     user.set_password(password)
     db.session.add(user)
-    db.session.commit()
+    db.session.flush()
 
-    # Create doctor profile
     doctor = Doctor(
         first_name=first_name,
         last_name=last_name,
@@ -5777,7 +5784,6 @@ def public_register_doctor():
     )
     db.session.add(doctor)
     db.session.commit()
-
     login_user(user)
     flash('Account created and logged in!', 'success')
     return redirect(url_for('doctor_dashboard'))
@@ -5827,6 +5833,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
