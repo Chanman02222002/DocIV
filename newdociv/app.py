@@ -263,6 +263,23 @@ def build_fallback_suggestions(jobs_payload, doctor_profile=None):
     return suggestions[:10]
 
 
+def get_doctor_jobs_payload(doctor):
+    """Return a list of job dictionaries scoped to a doctor's specialty."""
+    raw_jobs = Job.query.order_by(Job.id.desc()).all()
+    scoped_jobs = filter_jobs_by_specialty(raw_jobs, doctor.specialty, doctor.subspecialty)
+
+    return [
+        {
+            "id": job.id,
+            "title": job.title,
+            "location": job.location,
+            "salary": job.salary,
+            "description": job.description,
+        }
+        for job in scoped_jobs
+    ]
+
+
 
 def format_city_state(city, state):
     parts = []
@@ -4393,19 +4410,8 @@ def doctor_suggested_jobs():
         return jsonify({'error': 'Unauthorized'}), 403
 
     doctor = current_user.doctor
-    raw_jobs = Job.query.order_by(Job.id.desc()).all()
-    scoped_jobs = filter_jobs_by_specialty(raw_jobs, doctor.specialty, doctor.subspecialty)
+    jobs_payload = get_doctor_jobs_payload(doctor)
 
-    jobs_payload = [
-        {
-            "id": job.id,
-            "title": job.title,
-            "location": job.location,
-            "salary": job.salary,
-            "description": job.description,
-        }
-        for job in scoped_jobs
-    ]
 
     doctor_profile = {
         "name": f"Dr. {doctor.first_name or ''} {doctor.last_name or ''}".strip(),
@@ -4493,11 +4499,12 @@ def doctor_refine_suggestions():
     if current_user.role != 'doctor':
         return jsonify({'error': 'Unauthorized'}), 403
 
+    doctor = current_user.doctor
     payload = request.get_json(silent=True) or {}
     context = (payload.get('context') or '').strip()
-    jobs = payload.get('jobs') or []
+    jobs = get_doctor_jobs_payload(doctor)
 
-    if not isinstance(jobs, list) or not jobs:
+    if not jobs:
         return jsonify({"suggestions": [], "base": []})
 
     prompt = f"""
@@ -4544,11 +4551,12 @@ Jobs to refine (JSON):
         parsed = json.loads(raw_content)
         if isinstance(parsed, list):
             refined = parsed
-    except Exception:
-        refined = jobs
+    except Exception:␊
+        refined = build_fallback_suggestions(jobs, None)
 
     top_refined = refined[:3]
-    return jsonify({"suggestions": top_refined, "base": refined})
+    return jsonify({"suggestions": top_refined, "base": jobs})
+
 
 
 @app.route('/handle_invite/<int:call_id>', methods=['POST'])
@@ -5610,6 +5618,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
