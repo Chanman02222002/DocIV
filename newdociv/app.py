@@ -1714,6 +1714,15 @@ app.jinja_loader = DictLoader({
         let suggestions = [];
         let baseSuggestions = [];
 
+        const showLoading = () => {
+            loading.classList.remove('d-none');
+            loading.style.display = '';
+        };
+
+        const hideLoading = () => {
+            loading.classList.add('d-none');
+            loading.style.display = 'none';
+        };
         const escapeHtml = (str) => {
             if (!str) return '';
             return str
@@ -1753,7 +1762,7 @@ app.jinja_loader = DictLoader({
         };
 
         const showSuggestions = () => {
-            loading.style.display = 'none';
+            hideLoading();
             if (suggestions.length === 0) {
                 emptyState.style.display = '';
                 list.style.display = 'none';
@@ -1765,7 +1774,7 @@ app.jinja_loader = DictLoader({
         };
 
         const fetchSuggestions = () => {
-            loading.style.display = '';
+            showLoading();
             list.style.display = 'none';
             emptyState.style.display = 'none';
             fetch('{{ url_for('doctor_suggested_jobs') }}')
@@ -1781,7 +1790,7 @@ app.jinja_loader = DictLoader({
                     emptyState.textContent = 'Unable to fetch suggestions right now.';
                 })
                 .finally(() => {
-                    loading.style.display = 'none';
+                    hideLoading();
                 });
         };
 
@@ -5571,6 +5580,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
