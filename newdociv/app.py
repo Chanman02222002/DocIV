@@ -429,14 +429,31 @@ def normalize_state_values(raw_states):
 
 # Models
 def extract_state_abbr(location):
-    """Best-effort extraction of a state abbreviation from a location string."""
+    """More accurate state extraction from job location strings."""
     if not location:
         return ""
 
-    parts = re.findall(r"[A-Za-z]{2}", (location or "").upper())
-    for part in reversed(parts):
-        if part in states:
-            return part
+    loc = location.strip().upper()
+
+    # 1. Try exact ", XX" match
+    match = re.search(r",\s*([A-Z]{2})\b", loc)
+    if match:
+        abbr = match.group(1)
+        if abbr in states:
+            return abbr
+
+    # 2. Try last token as 2-letter state
+    parts = loc.split()
+    if parts:
+        last = parts[-1]
+        if last in states:
+            return last
+
+    # 3. Try full state name → convert to abbreviation
+    for name, abbr in STATE_NAME_TO_ABBR.items():
+        if name in loc:
+            return abbr
+
     return ""
 
 
@@ -5810,6 +5827,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
