@@ -1708,8 +1708,8 @@ app.jinja_loader = DictLoader({
         const refineNotes = document.getElementById('refineNotes');
         const refineStatus = document.getElementById('refineStatus');
         const modal = new bootstrap.Modal(refineModalEl);
-        const cacheKey = 'doctorSuggestedTop3';
-        const baseKey = 'doctorSuggestedBase';
+        const cacheKey = `doctorSuggestedTop3_{{ doctor.id }}`;
+        const baseKey = `doctorSuggestedBase_{{ doctor.id }}`;
 
         let suggestions = [];
         let baseSuggestions = [];
@@ -5580,6 +5580,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
