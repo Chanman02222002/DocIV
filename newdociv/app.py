@@ -4501,8 +4501,9 @@ def doctor_refine_suggestions():
         "salary_expectation": doctor.salary_expectations or 0,
     }
 
-    incoming_jobs = payload.get('jobs') if isinstance(payload.get('jobs'), list) else None
-    jobs = incoming_jobs or get_doctor_jobs_payload(doctor)
+    # Always pull the full specialty-scoped job pool so refinement considers every option,
+    # not just the initial shortlist the UI sent over.
+    jobs = get_doctor_jobs_payload(doctor)
 
     if not jobs:
         return jsonify({"suggestions": [], "base": []})
@@ -5618,6 +5619,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
