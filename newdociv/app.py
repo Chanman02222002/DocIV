@@ -1792,8 +1792,8 @@ app.jinja_loader = DictLoader({
         const saveCache = (topThree, baseList) => {
             localStorage.setItem(cacheKey, JSON.stringify(topThree));
             localStorage.setItem(baseKey, JSON.stringify(baseList));
+            localStorage.setItem(metaKey, profileSignature);
         };
-
         const showSuggestions = () => {
             hideLoading();
             if (suggestions.length === 0) {
@@ -1829,7 +1829,10 @@ app.jinja_loader = DictLoader({
 
         const cachedTop = localStorage.getItem(cacheKey);
         const cachedBase = localStorage.getItem(baseKey);
-        if (cachedTop && cachedBase) {
+        const cachedMeta = localStorage.getItem(metaKey);
+        const profileChanged = cachedMeta !== profileSignature;
+
+        if (cachedTop && cachedBase && !profileChanged) {
             try {
                 suggestions = JSON.parse(cachedTop) || [];
                 baseSuggestions = JSON.parse(cachedBase) || [];
@@ -4453,39 +4456,33 @@ Jobs to evaluate (JSON):
 
     suggestions = []
     if jobs_payload:
-        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        response = client.chat.completions.create(
-            model="gpt-4.1-mini",
-            messages=[
-                {"role": "system", "content": "You are a precise medical job-matching assistant."},
-                {"role": "user", "content": prompt},
-            ],
-            max_tokens=1200,
-            temperature=0.2,
-        )
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            print("AI suggestions skipped: missing OPENAI_API_KEY; using fallback results.")
+            suggestions = build_fallback_suggestions(jobs_payload, doctor_profile)
+        else:
+            try:
+                client = openai.OpenAI(api_key=api_key)
+                response = client.chat.completions.create(
+                    model="gpt-4.1-mini",
+                    messages=[
+                        {"role": "system", "content": "You are a precise medical job-matching assistant."},
+                        {"role": "user", "content": prompt},
+                    ],
+                    max_tokens=1200,
+                    temperature=0.2,
+                )
 
-        raw_content = response.choices[0].message.content
-        try:
-            parsed = json.loads(raw_content)
-            if isinstance(parsed, list):
-                suggestions = parsed
-        except Exception:
-            fallback_sorted = sorted(
-                jobs_payload,
-                key=lambda j: parse_salary_value(j.get("salary")),
-                reverse=True,
-            )
-            suggestions = [
-                {
-                    "id": job["id"],
-                    "title": job["title"],
-                    "location": job.get("location"),
-                    "salary": job.get("salary"),
-                    "rationale": "High-relevance match based on specialty keywords and compensation details.",
-                    "score": 70,
-                }
-                for job in fallback_sorted[:10]
-            ]
+                raw_content = response.choices[0].message.content
+                parsed = json.loads(raw_content)
+                if isinstance(parsed, list):
+                    suggestions = parsed
+            except Exception as exc:
+                print(f"AI suggestions failed: {exc}; using fallback results.")
+                suggestions = build_fallback_suggestions(jobs_payload, doctor_profile)
+
+    if not suggestions and jobs_payload:
+        suggestions = build_fallback_suggestions(jobs_payload, doctor_profile)
 
     return jsonify({"suggestions": suggestions})
 
@@ -5613,6 +5610,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
