@@ -303,8 +303,8 @@ def get_doctor_jobs(doctor):
     raw_jobs = Job.query.order_by(Job.id.desc()).all()
     scoped_jobs = filter_jobs_by_specialty(raw_jobs, doctor.specialty, doctor.subspecialty)
 
-    licensed_states = {s.strip().upper() for s in (doctor.states_licensed or "").split(',') if s.strip()}
-    preferred_states = {s.strip().upper() for s in (doctor.states_willing_to_work or "").split(',') if s.strip()}
+    licensed_states = set(normalize_state_values((doctor.states_licensed or "").split(',')))
+    preferred_states = set(normalize_state_values((doctor.states_willing_to_work or "").split(',')))
 
     if licensed_states or preferred_states:
         matching_state_jobs = []
@@ -347,6 +347,84 @@ def split_city_state(value):
 def load_user(user_id):
     return User.query.get(int(user_id))
 states = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"]
+
+STATE_NAME_TO_ABBR = {
+    "ALABAMA": "AL",
+    "ALASKA": "AK",
+    "ARIZONA": "AZ",
+    "ARKANSAS": "AR",
+    "CALIFORNIA": "CA",
+    "COLORADO": "CO",
+    "CONNECTICUT": "CT",
+    "DELAWARE": "DE",
+    "FLORIDA": "FL",
+    "GEORGIA": "GA",
+    "HAWAII": "HI",
+    "IDAHO": "ID",
+    "ILLINOIS": "IL",
+    "INDIANA": "IN",
+    "IOWA": "IA",
+    "KANSAS": "KS",
+    "KENTUCKY": "KY",
+    "LOUISIANA": "LA",
+    "MAINE": "ME",
+    "MARYLAND": "MD",
+    "MASSACHUSETTS": "MA",
+    "MICHIGAN": "MI",
+    "MINNESOTA": "MN",
+    "MISSISSIPPI": "MS",
+    "MISSOURI": "MO",
+    "MONTANA": "MT",
+    "NEBRASKA": "NE",
+    "NEVADA": "NV",
+    "NEW HAMPSHIRE": "NH",
+    "NEW JERSEY": "NJ",
+    "NEW MEXICO": "NM",
+    "NEW YORK": "NY",
+    "NORTH CAROLINA": "NC",
+    "NORTH DAKOTA": "ND",
+    "OHIO": "OH",
+    "OKLAHOMA": "OK",
+    "OREGON": "OR",
+    "PENNSYLVANIA": "PA",
+    "RHODE ISLAND": "RI",
+    "SOUTH CAROLINA": "SC",
+    "SOUTH DAKOTA": "SD",
+    "TENNESSEE": "TN",
+    "TEXAS": "TX",
+    "UTAH": "UT",
+    "VERMONT": "VT",
+    "VIRGINIA": "VA",
+    "WASHINGTON": "WA",
+    "WEST VIRGINIA": "WV",
+    "WISCONSIN": "WI",
+    "WYOMING": "WY",
+}
+
+
+def normalize_state_values(raw_states):
+    """Return a de-duplicated list of state abbreviations from mixed inputs."""
+    normalized = []
+    for value in raw_states:
+        if not value:
+            continue
+        token = re.sub(r"\s+", " ", str(value)).replace(".", "").strip().upper()
+        if token in states:
+            normalized.append(token)
+        elif token in STATE_NAME_TO_ABBR:
+            normalized.append(STATE_NAME_TO_ABBR[token])
+        elif len(token) == 2 and token.isalpha():
+            normalized.append(token)
+
+    # Preserve order while removing duplicates
+    seen = set()
+    deduped = []
+    for token in normalized:
+        if token not in seen:
+            seen.add(token)
+            deduped.append(token)
+    return deduped
+
 
 
 # Models
@@ -4054,8 +4132,8 @@ def doctor_ai_search_jobs():
         "specialty": doctor.specialty or "",
         "subspecialty": doctor.subspecialty or "",
         "home_base": doctor.city_of_residence or "",
-        "licensed_states": [s.strip().upper() for s in (doctor.states_licensed or "").split(',') if s.strip()],
-        "preferred_states": [s.strip().upper() for s in (doctor.states_willing_to_work or "").split(',') if s.strip()],
+        "licensed_states": normalize_state_values((doctor.states_licensed or "").split(',')),
+        "preferred_states": normalize_state_values((doctor.states_willing_to_work or "").split(',')),
     }
 
     # Use stored preferences when the form is blank so the AI has the right context.
@@ -4079,6 +4157,7 @@ def doctor_ai_search_jobs():
         } for job in jobs
     ]
 
+
     pref_terms = [t for t in re.split(r"[^a-z0-9]+", (wants + " " + lifestyle).lower()) if t]
     lifestyle_terms = [t for t in re.split(r"[^a-z0-9]+", lifestyle.lower()) if t]
     wants_terms = [t for t in re.split(r"[^a-z0-9]+", wants.lower()) if t]
@@ -4089,15 +4168,24 @@ def doctor_ai_search_jobs():
         text = text.lower()
         return sum(1 for term in terms if term and term in text)
 
+
     licensed_states = set(doctor_profile["licensed_states"])
     preferred_states = set(doctor_profile["preferred_states"])
+    preferred_location_state = (
+        extract_state_abbr(location)
+        or STATE_NAME_TO_ABBR.get(re.sub(r"\s+", " ", location).strip().upper(), "")
+    ) if location else ""
 
     scored_jobs = []
     for job in jobs:
         job_text = f"{job.title or ''} {job.description or ''}"
         job_state = extract_state_abbr(job.location)
         state_score = 4 if job_state in licensed_states else 2 if job_state in preferred_states else 0
-        location_score = 4 if location and location.lower() in (job.location or '').lower() else 0
+        location_score = 0
+        if preferred_location_state and job_state == preferred_location_state:
+            location_score = 5
+        elif location and location.lower() in (job.location or '').lower():
+            location_score = 4
         lifestyle_score = term_score(job_text, lifestyle_terms)
         wants_score = term_score(job_text, wants_terms)
         overall_score = (
@@ -4505,8 +4593,8 @@ def doctor_suggested_jobs():
         "specialty": doctor.specialty or "",
         "subspecialty": doctor.subspecialty or "",
         "home_base": doctor.city_of_residence or "",
-        "licensed_states": [s.strip() for s in (doctor.states_licensed or "").split(',') if s.strip()],
-        "preferred_states": [s.strip() for s in (doctor.states_willing_to_work or "").split(',') if s.strip()],
+        "licensed_states": normalize_state_values((doctor.states_licensed or "").split(',')),
+        "preferred_states": normalize_state_values((doctor.states_willing_to_work or "").split(',')),
         "salary_expectation": doctor.salary_expectations or 0,
     }
     jobs_payload = get_doctor_jobs_payload(doctor)
@@ -4599,8 +4687,8 @@ def doctor_refine_suggestions():
         "specialty": doctor.specialty or "",
         "subspecialty": doctor.subspecialty or "",
         "home_base": doctor.city_of_residence or "",
-        "licensed_states": [s.strip() for s in (doctor.states_licensed or "").split(',') if s.strip()],
-        "preferred_states": [s.strip() for s in (doctor.states_willing_to_work or "").split(',') if s.strip()],
+        "licensed_states": normalize_state_values((doctor.states_licensed or "").split(',')),
+        "preferred_states": normalize_state_values((doctor.states_willing_to_work or "").split(',')),
         "salary_expectation": doctor.salary_expectations or 0,
     }
 
@@ -5722,6 +5810,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
