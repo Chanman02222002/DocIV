@@ -2661,8 +2661,18 @@ app.jinja_loader = DictLoader({
             color: #0b3b65;
             border: 1px solid #cbd5e1;
         }
-    </style>
 
+        .map-container {
+            height: 340px;
+            width: 100%;
+            border-radius: 0 0 16px 16px;
+        }
+
+        .map-card {
+            border-radius: 16px;
+            overflow: hidden;
+        }
+    </style>
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <p class="text-muted mb-1">Browse opportunities directly from verified hospitals.</p>
@@ -2803,6 +2813,18 @@ app.jinja_loader = DictLoader({
         </div>
 
         <div class="col-lg-7">
+            <div class="card shadow-sm mb-3 map-card">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <div class="job-list-count mb-0">Job Locations</div>
+                    <span class="text-muted small">Click a marker to preview nearby jobs</span>
+                </div>
+                {% if job_markers %}
+                    <div id="jobMap" class="map-container"></div>
+                {% else %}
+                    <div class="p-4 text-muted">No map data available for the current filters.</div>
+                {% endif %}
+            </div>
+
             <div class="card shadow-sm job-detail" id="jobDetailPanel">
                 {% if jobs %}
                     {% set job = jobs[0] %}
@@ -2839,6 +2861,8 @@ app.jinja_loader = DictLoader({
 
     <link rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
@@ -2873,21 +2897,95 @@ app.jinja_loader = DictLoader({
         `;
     }
 
+    function setActiveSnippet(jobId) {
+        snippets.forEach(s => {
+            s.classList.toggle('active', JSON.parse(s.dataset.job).id === jobId);
+        });
+    }
+
+    function showJobDetails(data) {
+        renderJobDetail(data);
+        setActiveSnippet(data.id);
+        focusMarker(data.id);
+    }
+
     const snippets = Array.from(document.querySelectorAll('.job-snippet'));
     if (snippets.length) {
         const initialData = JSON.parse(snippets[0].dataset.job);
-        renderJobDetail(initialData);
-        snippets[0].classList.add('active');
+        showJobDetails(initialData);
     }
 
     snippets.forEach(snippet => {
         snippet.addEventListener('click', () => {
-            snippets.forEach(s => s.classList.remove('active'));
-            snippet.classList.add('active');
             const data = JSON.parse(snippet.dataset.job);
-            renderJobDetail(data);
+            showJobDetails(data);
         });
     });
+
+    const jobMarkers = {{ job_markers|tojson }};
+    let mapInstance = null;
+    const markerLookup = {};
+
+    function createPopupContent(group) {
+        return `
+            <div class="p-2">
+                <div class="fw-bold mb-2 text-primary">${group.jobs.length} job${group.jobs.length > 1 ? 's' : ''} here</div>
+                ${group.jobs.map(job => `
+                    <div class="mb-2">
+                        <a href="#" class="map-job-link" data-job-id="${job.id}">${escapeHTML(job.title)}</a>
+                        <div class="text-muted small">${escapeHTML(job.location || '')}</div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    function focusMarker(jobId) {
+        if (!mapInstance || !markerLookup[jobId]) return;
+        const marker = markerLookup[jobId];
+        marker.openPopup();
+        mapInstance.flyTo(marker.getLatLng(), Math.max(mapInstance.getZoom(), 6));
+    }
+
+    function initMap() {
+        if (!document.getElementById('jobMap') || !jobMarkers.length) return;
+        mapInstance = L.map('jobMap', { scrollWheelZoom: false }).setView([39.5, -98.35], 4);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(mapInstance);
+
+        const bounds = [];
+        jobMarkers.forEach(group => {
+            const marker = L.marker([group.lat, group.lng]).addTo(mapInstance);
+            marker.bindPopup(createPopupContent(group), { className: 'custom-popup' });
+            bounds.push([group.lat, group.lng]);
+            group.jobs.forEach(job => {
+                markerLookup[job.id] = marker;
+            });
+            marker.on('popupopen', (e) => {
+                const links = e.popup.getElement().querySelectorAll('.map-job-link');
+                links.forEach(link => {
+                    link.addEventListener('click', (evt) => {
+                        evt.preventDefault();
+                        const jobId = parseInt(link.dataset.jobId, 10);
+                        const snippet = snippets.find(s => JSON.parse(s.dataset.job).id === jobId);
+                        if (snippet) {
+                            const data = JSON.parse(snippet.dataset.job);
+                            showJobDetails(data);
+                            snippet.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    });
+                });
+            });
+        });
+
+        if (bounds.length) {
+            mapInstance.fitBounds(bounds, { padding: [20, 20] });
+        }
+    }
+
+    initMap();
 
     document.getElementById('aiSearchBtn').addEventListener('click', function() {
         new bootstrap.Modal(document.getElementById('aiSearchModal')).show();
@@ -6693,6 +6791,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
