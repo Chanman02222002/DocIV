@@ -2578,21 +2578,40 @@ app.jinja_loader = DictLoader({
             color: #0b3b65;
         }
 
-        .job-card {
-            border: 1px solid #e5e7eb;
+        .job-browser {
             border-radius: 16px;
-            transition: box-shadow 0.2s ease, transform 0.2s ease;
+            border: 1px solid #e5e7eb;
         }
 
-        .job-card:hover {
-            box-shadow: 0 15px 40px rgba(0,0,0,0.06);
-            transform: translateY(-2px);
+        .job-list-scroll {
+            max-height: 650px;
+            overflow-y: auto;
+            border-right: 1px solid #e5e7eb;
+        }
+
+        .job-list-item {
+            border: 1px solid transparent;
+            border-radius: 12px;
+            padding: 14px 16px;
+            transition: all 0.2s ease;
+            background: #fff;
+        }
+
+        .job-list-item:hover {
+            border-color: #d6e6ff;
+            background: #f8fbff;
+        }
+
+        .job-list-item.active {
+            border-color: #5aa4b3;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            background: #f1fafb;
         }
 
         .job-meta {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 8px;
             font-size: 0.95rem;
             color: #4b5563;
         }
@@ -2601,11 +2620,6 @@ app.jinja_loader = DictLoader({
             background: #eef5ff;
             border: 1px solid #d6e6ff;
             color: #0b3b65;
-        }
-
-        .job-description {
-            color: #374151;
-            white-space: pre-line;
         }
 
         .filter-card {
@@ -2634,6 +2648,25 @@ app.jinja_loader = DictLoader({
             background: #e0f2fe;
             color: #0b3b65;
             border: 1px solid #cbd5e1;
+        }
+
+        .preview-card {
+            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            padding: 20px;
+            min-height: 360px;
+        }
+
+        .preview-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+        }
+
+        .preview-description {
+            color: #374151;
+            line-height: 1.6;
+            white-space: pre-line;
         }
     </style>
 
@@ -2728,57 +2761,61 @@ app.jinja_loader = DictLoader({
             </div>
         </div>
         <div class="col-lg-8">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <div class="job-list-count">{{ jobs|length }} job{{ jobs|length != 1 and 's' or '' }} found</div>
-                <div class="active-filters d-flex gap-2 flex-wrap">
-                    {% if keyword %}<span class="badge rounded-pill">Keyword: {{ keyword }}</span>{% endif %}
-                    {% if specialty %}<span class="badge rounded-pill">Specialty: {{ specialty }}</span>{% endif %}
-                    {% if location %}<span class="badge rounded-pill">Location: {{ location }}</span>{% endif %}
-                    {% if salary_min %}<span class="badge rounded-pill">Min: {{ salary_min }}</span>{% endif %}
-                    {% if salary_max %}<span class="badge rounded-pill">Max: {{ salary_max }}</span>{% endif %}
-                </div>
-            </div>
-
-            {% if jobs %}
-                {% for job in jobs %}
-                <div class="card job-card mb-4 shadow-sm" id="job-{{ job.id }}">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
-                            <div>
-                                <div class="text-muted small">Posted {{ job.date_posted or 'recently' }}</div>
-                                <h4 class="card-title job-card-title mb-1">{{ job.title }}</h4>
-                            </div>
-                            <a href="{{ url_for('view_job', job_id=job.id) }}"
-                               class="btn btn-sm btn-outline-primary">View Job</a>
-                        </div>
-                        <div class="job-meta mb-3 mt-1">
-                            <span class="d-flex align-items-center">
-                                <i class="bi bi-geo-alt me-1"></i>
-                                {{ job.location or 'Location not provided' }}
-                            </span>
-                            {% if job.salary %}
-                                <span class="badge rounded-pill">{{ job.salary }}</span>
-                            {% endif %}
-                            {% if job.requirements and (job.requirements.specialty or job.requirements.subspecialty) %}
-                                <span class="badge rounded-pill">
-                                    {{ job.requirements.specialty }}{% if job.requirements.subspecialty %} • {{ job.requirements.subspecialty }}{% endif %}
-                                </span>
-                            {% endif %}
-                        </div>
-                        <p class="job-description">{{ job.description }}</p>
+            <div class="card job-browser shadow-sm p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="job-list-count">{{ jobs|length }} job{{ jobs|length != 1 and 's' or '' }} found</div>
+                    <div class="active-filters d-flex gap-2 flex-wrap">
+                        {% if keyword %}<span class="badge rounded-pill">Keyword: {{ keyword }}</span>{% endif %}
+                        {% if specialty %}<span class="badge rounded-pill">Specialty: {{ specialty }}</span>{% endif %}
+                        {% if location %}<span class="badge rounded-pill">Location: {{ location }}</span>{% endif %}
+                        {% if salary_min %}<span class="badge rounded-pill">Min: {{ salary_min }}</span>{% endif %}
+                        {% if salary_max %}<span class="badge rounded-pill">Max: {{ salary_max }}</span>{% endif %}
                     </div>
                 </div>
-                {% endfor %}
-            {% else %}
-                <div class="alert alert-secondary">No jobs match your criteria.</div>
-            {% endif %}
 
-            <div class="d-flex gap-2 mt-4">
-                <a href="{{ url_for('doctor_jobs') }}" class="btn btn-outline-primary">← Back to Full Job Board</a>
-                <a href="{{ url_for('doctor_dashboard') }}" class="btn btn-outline-secondary">Back to Dashboard</a>
+                <div class="row g-3">
+                    <div class="col-lg-5">
+                        <div class="job-list-scroll pe-lg-2">
+                            {% if job_cards %}
+                                {% for job in job_cards %}
+                                    <button type="button" class="job-list-item w-100 text-start mb-2" data-job-id="{{ job.id }}">
+                                        <div class="d-flex justify-content-between align-items-start gap-2">
+                                            <div>
+                                                <div class="text-muted small">Posted {{ job.date_posted }}</div>
+                                                <div class="fw-bold">{{ job.title }}</div>
+                                                <div class="text-secondary small mt-1"><i class="bi bi-geo-alt me-1"></i>{{ job.location }}</div>
+                                            </div>
+                                            <i class="bi bi-chevron-right text-muted"></i>
+                                        </div>
+                                        <div class="job-meta mt-2">
+                                            {% if job.salary %}<span class="badge rounded-pill">{{ job.salary }}</span>{% endif %}
+                                            {% if job.specialty or job.subspecialty %}
+                                                <span class="badge rounded-pill">{{ job.specialty }}{% if job.subspecialty %} • {{ job.subspecialty }}{% endif %}</span>
+                                            {% endif %}
+                                        </div>
+                                        <p class="text-muted small mb-0 mt-2">{{ job.description[:140] }}{% if job.description|length > 140 %}...{% endif %}</p>
+                                    </button>
+                                {% endfor %}
+                            {% else %}
+                                <div class="alert alert-secondary m-0">No jobs match your criteria.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-lg-7">
+                        <div id="jobPreview" class="preview-card h-100 d-flex flex-column justify-content-between">
+                            <div class="text-center text-muted">Select a job to preview the details.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2 mt-4">
+                    <a href="{{ url_for('doctor_jobs') }}" class="btn btn-outline-primary">← Back to Full Job Board</a>
+                    <a href="{{ url_for('doctor_dashboard') }}" class="btn btn-outline-secondary">Back to Dashboard</a>
+                </div>
             </div>
         </div>
     </div>
+
 
     <!-- Leaflet + Bootstrap Icons + JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -2788,7 +2825,49 @@ app.jinja_loader = DictLoader({
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
+    const jobCards = {{ job_cards|tojson|safe }};
     const jobMarkers = {{ job_markers|tojson|safe }};
+
+    const previewEl = document.getElementById('jobPreview');
+    const jobListButtons = Array.from(document.querySelectorAll('.job-list-item'));
+
+    function renderJobPreview(jobId) {
+        if (!previewEl) return;
+        const job = jobCards.find(j => j.id === Number(jobId));
+        if (!job) return;
+
+        const description = (job.description || 'No description provided.').replace(/\n/g, '<br>');
+        const specialtyLine = job.subspecialty ? `${job.specialty || ''} • ${job.subspecialty}` : (job.specialty || '');
+
+        previewEl.innerHTML = `
+            <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                <div>
+                    <div class="text-muted small">Posted ${job.date_posted || 'recently'}</div>
+                    <div class="preview-title">${job.title || 'Untitled Role'}</div>
+                    <div class="text-secondary mt-1"><i class="bi bi-geo-alt me-1"></i>${job.location || 'Location not provided'}</div>
+                </div>
+                <a href="${job.url}" class="btn btn-outline-primary btn-sm">View Full Job</a>
+            </div>
+            <div class="job-meta mb-3">
+                ${job.salary ? `<span class="badge rounded-pill">${job.salary}</span>` : ''}
+                ${specialtyLine ? `<span class="badge rounded-pill">${specialtyLine}</span>` : ''}
+            </div>
+            <div class="preview-description">${description}</div>
+        `;
+    }
+
+    jobListButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            jobListButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderJobPreview(btn.dataset.jobId);
+        });
+    });
+
+    if (jobListButtons.length) {
+        jobListButtons[0].classList.add('active');
+        renderJobPreview(jobListButtons[0].dataset.jobId);
+    }
 
     const map = L.map('job-map').setView([37.5, -96], 4);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -5139,6 +5218,21 @@ def doctor_jobs():
             "lng": lng,
             "jobs": job_entries
         })
+
+    job_cards = []
+    for job in jobs:
+        requirements = job.requirements
+        job_cards.append({
+            "id": job.id,
+            "title": job.title or "",
+            "location": job.location or "Location not provided",
+            "salary": job.salary or "",
+            "description": job.description or "",
+            "date_posted": job.date_posted or "recently",
+            "url": url_for('view_job', job_id=job.id),
+            "specialty": requirements.specialty if requirements else "",
+            "subspecialty": requirements.subspecialty if requirements else "",
+        })
     return render_template(
         'doctor_jobs.html',
         jobs=jobs,
@@ -5147,7 +5241,8 @@ def doctor_jobs():
         location=location,
         specialty=specialty,
         salary_min=salary_min_raw,
-        salary_max=salary_max_raw
+        salary_max=salary_max_raw,
+        job_cards=job_cards
     )
 
     
@@ -6653,6 +6748,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
