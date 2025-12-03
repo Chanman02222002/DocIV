@@ -1036,7 +1036,7 @@ app.jinja_loader = DictLoader({
                             </a>
                             <a class="nav-link text-white" href="{{ url_for('logout') }}">Logout</a>
                         {% elif current_user.role == 'client' %}
-                            <a class="nav-link text-white" href="{{ url_for('client_dashboard') }}">My Dashboard</a>
+                            <a class="nav-link text-white" href="{{ url_for('dashboard') }}">My Dashboard</a>
                             <a class="nav-link text-white" href="{{ url_for('post_job') }}">Post Job</a>
                             <a class="nav-link text-white" href="{{ url_for('client_my_jobs') }}">My Jobs</a>
                             <a class="nav-link text-white" href="{{ url_for('schedule_call') }}">Schedule Call</a>
@@ -6498,6 +6498,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
