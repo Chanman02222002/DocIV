@@ -2850,7 +2850,7 @@ app.jinja_loader = DictLoader({
                         <div class="preview-title">${job.title || 'Untitled Role'}</div>
                         <div class="text-secondary mt-1"><i class="bi bi-geo-alt me-1"></i>${job.location || 'Location not provided'}</div>
                     </div>
-                    <a href="${job.url}" class="btn btn-outline-primary btn-sm">View Full Job</a>
+                    <a href="${job.job_url}" class="btn btn-outline-primary btn-sm">View Full Job</a>
                 </div>
                 <div class="job-meta mb-3">
                     ${job.salary ? `<span class="badge rounded-pill">${job.salary}</span>` : ''}
@@ -6787,6 +6787,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
