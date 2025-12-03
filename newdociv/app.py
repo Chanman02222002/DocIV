@@ -2718,7 +2718,7 @@ app.jinja_loader = DictLoader({
     </div>
 
     <div class="row g-4 align-items-start">
-        <div class="col-lg-4">␊
+        <div class="col-lg-4">
             <div class="card filter-card shadow-sm p-4 h-100">
                 <div class="d-flex align-items-center mb-3">
                     <i class="bi bi-funnel-fill text-primary me-2"></i>
@@ -2760,7 +2760,7 @@ app.jinja_loader = DictLoader({
                 </form>
             </div>
         </div>
-        <div class="col-lg-8">␊
+        <div class="col-lg-8">
             <div class="card job-browser shadow-sm p-4 h-100">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <div class="job-list-count">{{ jobs|length }} job{{ jobs|length != 1 and 's' or '' }} found</div>
@@ -6764,6 +6764,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
