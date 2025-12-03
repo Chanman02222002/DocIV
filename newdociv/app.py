@@ -1791,66 +1791,102 @@ app.jinja_loader = DictLoader({
         {% endblock %}''',
 
     'doctor_profile.html': '''{% extends "base.html" %}{% block content %}
-        <h2>Doctor Profile: {{ doctor.first_name }} {{ doctor.last_name }}</h2>
+        {% set show_compare = compare_mode and job_requirement %}
+        {% macro compare_line(label, value, key) -%}
+            {% set result = comparison.get(key, {'matches': True, 'explanation': 'Not tied to job requirements.'}) %}
+            <p class="d-flex align-items-start">
+                <strong class="me-1">{{ label }}:</strong>
+                <span class="flex-grow-1">{{ value if value else 'Not provided' }}</span>
+                {% if show_compare %}
+                    <span class="ms-2 badge {% if result.matches %}bg-success{% else %}bg-danger{% endif %}">
+                        {% if result.matches %}✓{% else %}✕{% endif %}
+                    </span>
+                    {% if result.explanation %}
+                        <small class="text-muted ms-2">{{ result.explanation }}</small>
+                    {% endif %}
+                {% endif %}
+            </p>
+        {%- endmacro %}
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="mb-0">Doctor Profile: {{ doctor.first_name }} {{ doctor.last_name }}</h2>
+            {% if job_requirement %}
+                <div>
+                    <a href="{{ url_for('doctor_profile', doctor_id=doctor.id, job_id=job_id, compare='1') }}" class="btn btn-outline-primary btn-sm {% if show_compare %}disabled{% endif %}">Compare to Job Needs</a>
+                    {% if show_compare %}
+                        <a href="{{ url_for('doctor_profile', doctor_id=doctor.id, job_id=job_id) }}" class="btn btn-outline-secondary btn-sm ms-2">Clear Comparison</a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+
+        {% if job_requirement %}
+            <div class="alert alert-info">
+                Comparing against job: <strong>{{ associated_job.title }}</strong> ({{ associated_job.location }})
+            </div>
+        {% endif %}
+
         <div class="card shadow p-4 mb-4">
             <h5 class="card-title text-primary">Basic Information</h5>
-            <p><strong>Healthcare Provider Type:</strong> {{ doctor.position }}</p>
-            <p><strong>Specialty:</strong> {{ doctor.specialty }}</p>
-            <p><strong>Subspecialty:</strong> {{ doctor.subspecialty }}</p>
-            <p><strong>Email:</strong> {{ doctor.email }}</p>
-            <p><strong>Phone:</strong> {{ doctor.phone }}</p>
-            <p><strong>Alternative Phone:</strong> {{ doctor.alt_phone }}</p>
-            <p><strong>Address:</strong> {{ doctor.address }}</p>
-            <p><strong>City of Residence:</strong> {{ doctor.city_of_residence }}</p>
+            {{ compare_line('Healthcare Provider Type', doctor.position, 'position') }}
+            {{ compare_line('Specialty', doctor.specialty, 'specialty') }}
+            {{ compare_line('Subspecialty', doctor.subspecialty, 'subspecialty') }}
+            {{ compare_line('Email', doctor.email, 'email') }}
+            {{ compare_line('Phone', doctor.phone, 'phone') }}
+            {{ compare_line('Alternative Phone', doctor.alt_phone, 'alt_phone') }}
+            {{ compare_line('Address', doctor.address, 'address') }}
+            {{ compare_line('City of Residence', doctor.city_of_residence, 'city_of_residence') }}
         </div>
 
         {% if doctor.medical_school %}
         <div class="card shadow p-4 mb-4">
             <h5 class="card-title text-primary">MD/DO Education</h5>
-            <p><strong>Medical School:</strong> {{ doctor.medical_school }}</p>
-            <p><strong>Medical School Graduation:</strong> {{ doctor.med_grad_month_year }}</p>
-            <p><strong>Residency:</strong> {{ doctor.residency }}</p>
-            <p><strong>Residency Graduation:</strong> {{ doctor.residency_grad_month_year }}</p>
-            <p><strong>Fellowships:</strong> {{ doctor.fellowship }}</p>
-            <p><strong>Fellowship Graduation:</strong> {{ doctor.fellowship_grad_month_year }}</p>
+            {{ compare_line('Medical School', doctor.medical_school, 'medical_school') }}
+            {{ compare_line('Medical School Graduation', doctor.med_grad_month_year, 'med_grad_month_year') }}
+            {{ compare_line('Residency', doctor.residency, 'residency') }}
+            {{ compare_line('Residency Graduation', doctor.residency_grad_month_year, 'residency_grad_month_year') }}
+            {{ compare_line('Fellowships', doctor.fellowship, 'fellowship') }}
+            {{ compare_line('Fellowship Graduation', doctor.fellowship_grad_month_year, 'fellowship_grad_month_year') }}
         </div>
         {% endif %}
 
         {% if doctor.bachelors %}
         <div class="card shadow p-4 mb-4">
             <h5 class="card-title text-primary">NP/PA Education</h5>
-            <p><strong>Bachelors Degree:</strong> {{ doctor.bachelors }}</p>
-            <p><strong>Bachelors Graduation:</strong> {{ doctor.bachelors_grad_month_year }}</p>
-            <p><strong>MSN:</strong> {{ doctor.msn }}</p>
-            <p><strong>MSN Graduation:</strong> {{ doctor.msn_grad_month_year }}</p>
-            <p><strong>DNP:</strong> {{ doctor.dnp }}</p>
-            <p><strong>DNP Graduation:</strong> {{ doctor.dnp_grad_month_year }}</p>
-            <p><strong>Additional Training:</strong> {{ doctor.additional_training }}</p>
-            <p><strong>Sponsorship Needed:</strong> {{ 'Yes' if doctor.sponsorship_needed else 'No' }}</p>
+            {{ compare_line('Bachelors Degree', doctor.bachelors, 'bachelors') }}
+            {{ compare_line('Bachelors Graduation', doctor.bachelors_grad_month_year, 'bachelors_grad_month_year') }}
+            {{ compare_line('MSN', doctor.msn, 'msn') }}
+            {{ compare_line('MSN Graduation', doctor.msn_grad_month_year, 'msn_grad_month_year') }}
+            {{ compare_line('DNP', doctor.dnp, 'dnp') }}
+            {{ compare_line('DNP Graduation', doctor.dnp_grad_month_year, 'dnp_grad_month_year') }}
+            {{ compare_line('Additional Training', doctor.additional_training, 'additional_training') }}
+            {{ compare_line('Sponsorship Needed', 'Yes' if doctor.sponsorship_needed else 'No', 'sponsorship') }}
         </div>
         {% endif %}
 
         <div class="card shadow p-4 mb-4">
             <h5 class="card-title text-primary">Licensing & Work Preferences</h5>
-            <p><strong>Certification:</strong> {{ doctor.certification }}</p>
-            <p><strong>EMR:</strong> {{ doctor.emr.replace(',', ', ') if doctor.emr else '' }}</p>
-            <p><strong>Languages:</strong> {{ doctor.languages }}</p>
-            <p><strong>States Licensed:</strong> {{ doctor.states_licensed }}</p>
-            <p><strong>States Willing to Work:</strong> {{ doctor.states_willing_to_work }}</p>
-            <p><strong>Salary Expectation (Total Compensation):</strong> ${{ doctor.salary_expectations }}</p>
+            {{ compare_line('Certification', doctor.certification, 'certification') }}
+            {{ compare_line('Certification Specialty Area', doctor.certification_specialty_area, 'certification_specialty_area') }}
+            {{ compare_line('Clinically Active', doctor.clinically_active, 'clinically_active') }}
+            {{ compare_line('EMR', doctor.emr.replace(',', ', ') if doctor.emr else '', 'emr') }}
+            {{ compare_line('Languages', doctor.languages, 'languages') }}
+            {{ compare_line('States Licensed', doctor.states_licensed, 'states_required') }}
+            {{ compare_line('States Willing to Work', doctor.states_willing_to_work, 'states_preferred') }}
+            {{ compare_line('Salary Expectation (Total Compensation)', ('$' ~ ('{:.0f}'.format(doctor.salary_expectations))) if doctor.salary_expectations else 'Not provided', 'salary') }}
         </div>
 
         <div class="card shadow p-4 mb-4">
             <h5 class="card-title text-primary">Malpractice Cases</h5>
             {% if malpractice_cases %}
                 {% for case in malpractice_cases %}
-                    <p><strong>Incident Year:</strong> {{ case.incident_year }}</p>
-                    <p><strong>Outcome:</strong> {{ case.outcome }}</p>
-                    <p><strong>Payout Amount:</strong> ${{ case.payout_amount }}</p>
+                    {{ compare_line('Incident Year', case.incident_year, 'malpractice_incident_year_' ~ loop.index) }}
+                    {{ compare_line('Outcome', case.outcome, 'malpractice_outcome_' ~ loop.index) }}
+                    {{ compare_line('Payout Amount', '$' ~ case.payout_amount, 'malpractice_payout_' ~ loop.index) }}
                     <hr>
                 {% endfor %}
             {% else %}
-                <p>No malpractice cases reported.</p>
+                {{ compare_line('Malpractice Cases', 'No malpractice cases reported.', 'malpractice_none') }}
             {% endif %}
         </div>
 
@@ -3609,7 +3645,7 @@ app.jinja_loader = DictLoader({
                                 </span>
                                 <span>
                                     {% if doc.id %}
-                                        <a href="{{ url_for('doctor_profile', doctor_id=doc.id) }}"
+                                        <a href="{{ url_for('doctor_profile', doctor_id=doc.id, job_id=job.id) }}"
                                         class="btn btn-sm btn-outline-primary me-2">View Profile</a>
                                         <a href="{{ url_for('send_invite', doctor_id=doc.id, job_id=job.id) }}"
                                         class="btn btn-sm btn-success">Schedule Call</a>
@@ -5670,12 +5706,153 @@ def client_my_jobs():
 
 
 
+def build_job_comparison(doctor, requirement):
+    """Return a dictionary of comparison results between a doctor and job needs."""
+
+    def to_list(value):
+        if not value:
+            return []
+        if isinstance(value, list):
+            return [str(v).strip() for v in value if str(v).strip()]
+        return [item.strip() for item in str(value).split(',') if item.strip()]
+
+    def add_result(key, matches, explanation):
+        comparison[key] = {
+            'matches': matches,
+            'explanation': explanation
+        }
+
+    comparison = {}
+
+    # Direct text comparisons
+    for key, doc_val, job_val, label in [
+        ('position', doctor.position, requirement.position, 'provider type'),
+        ('specialty', doctor.specialty, requirement.specialty, 'specialty'),
+        ('subspecialty', doctor.subspecialty, requirement.subspecialty, 'subspecialty'),
+        ('certification', doctor.certification, requirement.certification, 'certification'),
+        ('certification_specialty_area', doctor.certification_specialty_area, requirement.certification_specialty_area, 'certification focus'),
+        ('clinically_active', doctor.clinically_active, requirement.clinically_active, 'clinical activity')
+    ]:
+        if not job_val:
+            add_result(key, True, 'No job preference set for this item.')
+        elif (doc_val or '').strip().lower() == (job_val or '').strip().lower():
+            add_result(key, True, 'Matches job need.')
+        else:
+            add_result(key, False, f"Job needs {job_val}, but doctor lists {doc_val or 'no data'} for {label}.")
+
+    # EMR comparison
+    job_emrs = to_list(requirement.emr)
+    doctor_emrs = to_list(doctor.emr)
+    if job_emrs:
+        missing_emrs = [emr for emr in job_emrs if emr.lower() not in [d.lower() for d in doctor_emrs]]
+        if missing_emrs:
+            add_result('emr', False, f"Missing EMR experience with {', '.join(missing_emrs)}.")
+        else:
+            add_result('emr', True, 'Doctor has all requested EMR experience.')
+    else:
+        add_result('emr', True, 'No EMR preference set for this job.')
+
+    # Language comparison
+    job_languages = to_list(requirement.languages)
+    doctor_languages = to_list(doctor.languages)
+    if job_languages:
+        missing_languages = [lang for lang in job_languages if lang.lower() not in [d.lower() for d in doctor_languages]]
+        if missing_languages:
+            add_result('languages', False, f"Job prefers {', '.join(job_languages)}, doctor lists {doctor.languages or 'no languages'}.")
+        else:
+            add_result('languages', True, 'Doctor meets language needs.')
+    else:
+        add_result('languages', True, 'No language preference set for this job.')
+
+    # State licensure comparison
+    required_states = to_list(requirement.states_required)
+    doctor_states = to_list(doctor.states_licensed)
+    if required_states:
+        missing_states = [state for state in required_states if state not in doctor_states]
+        if missing_states:
+            add_result('states_required', False, f"Requires licenses in {', '.join(required_states)}, doctor missing {', '.join(missing_states)}.")
+        else:
+            add_result('states_required', True, 'Doctor holds all required state licenses.')
+    else:
+        add_result('states_required', True, 'No required states specified for the job.')
+
+    preferred_states = to_list(requirement.states_preferred)
+    willing_states = to_list(doctor.states_willing_to_work)
+    if preferred_states:
+        missing_pref = [state for state in preferred_states if state not in willing_states]
+        if missing_pref:
+            add_result('states_preferred', False, f"Prefers availability in {', '.join(preferred_states)}, doctor not available in {', '.join(missing_pref)}.")
+        else:
+            add_result('states_preferred', True, 'Doctor open to all preferred states.')
+    else:
+        add_result('states_preferred', True, 'No preferred states specified for the job.')
+
+    # Sponsorship support vs need
+    if requirement.sponsorship_supported:
+        add_result('sponsorship', True, 'Job supports sponsorship needs.')
+    else:
+        if doctor.sponsorship_needed:
+            add_result('sponsorship', False, 'Job does not support sponsorship but doctor requires it.')
+        else:
+            add_result('sponsorship', True, 'No sponsorship needed for this doctor.')
+
+    # Salary alignment
+    def parse_salary_range(range_text):
+        if not range_text:
+            return None, None
+        numbers = re.findall(r"\d+", range_text.replace(',', ''))
+        if not numbers:
+            return None, None
+        if len(numbers) == 1:
+            value = float(numbers[0])
+            return value, value
+        return float(numbers[0]), float(numbers[1])
+
+    min_salary, max_salary = parse_salary_range(requirement.salary_range)
+    if doctor.salary_expectations and max_salary:
+        if doctor.salary_expectations > max_salary:
+            add_result('salary', False, f"Doctor expects ${doctor.salary_expectations:,.0f}, above job budget of ${max_salary:,.0f}.")
+        elif min_salary and doctor.salary_expectations < min_salary:
+            add_result('salary', False, f"Doctor expects ${doctor.salary_expectations:,.0f}, below stated range starting at ${min_salary:,.0f}.")
+        else:
+            add_result('salary', True, 'Doctor salary expectations align with job range.')
+    elif max_salary:
+        add_result('salary', True, 'Job lists salary range; doctor did not specify expectations.')
+    else:
+        add_result('salary', True, 'No salary range specified for this job.')
+
+    return comparison
+
+
 @app.route('/doctor/<int:doctor_id>')
 def doctor_profile(doctor_id):
     doctor = Doctor.query.get_or_404(doctor_id)
     malpractice_cases = json.loads(doctor.malpractice_cases or '[]')
-    return render_template('doctor_profile.html', doctor=doctor, malpractice_cases=malpractice_cases)
+    job_id = request.args.get('job_id', type=int)
+    compare_mode = request.args.get('compare') == '1'
 
+    job_requirement = None
+    associated_job = None
+    comparison = {}
+
+    if job_id:
+        associated_job = Job.query.get(job_id)
+        if associated_job:
+            job_requirement = associated_job.requirements
+
+    if compare_mode and job_requirement:
+        comparison = build_job_comparison(doctor, job_requirement)
+
+    return render_template(
+        'doctor_profile.html',
+        doctor=doctor,
+        malpractice_cases=malpractice_cases,
+        comparison=comparison,
+        compare_mode=compare_mode,
+        job_requirement=job_requirement,
+        job_id=job_id,
+        associated_job=associated_job
+    )
 @app.route('/client/handle_reschedule/<int:call_id>', methods=['POST'])
 @login_required
 def client_handle_reschedule(call_id):
@@ -6142,6 +6319,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
