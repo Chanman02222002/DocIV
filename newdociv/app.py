@@ -2717,9 +2717,9 @@ app.jinja_loader = DictLoader({
       </div>
     </div>
 
-    <div class="row g-4">
-        <div class="col-lg-4">
-            <div class="card filter-card shadow-sm p-4">
+    <div class="row g-4 align-items-start">
+        <div class="col-lg-4">␊
+            <div class="card filter-card shadow-sm p-4 h-100">
                 <div class="d-flex align-items-center mb-3">
                     <i class="bi bi-funnel-fill text-primary me-2"></i>
                     <div>
@@ -2760,8 +2760,8 @@ app.jinja_loader = DictLoader({
                 </form>
             </div>
         </div>
-        <div class="col-lg-8">
-            <div class="card job-browser shadow-sm p-4">
+        <div class="col-lg-8">␊
+            <div class="card job-browser shadow-sm p-4 h-100">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <div class="job-list-count">{{ jobs|length }} job{{ jobs|length != 1 and 's' or '' }} found</div>
                     <div class="active-filters d-flex gap-2 flex-wrap">
@@ -2825,133 +2825,149 @@ app.jinja_loader = DictLoader({
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-    const jobCards = {{ job_cards|tojson|safe }};
-    const jobMarkers = {{ job_markers|tojson|safe }};
+    document.addEventListener('DOMContentLoaded', () => {
+        const jobCards = {{ job_cards|tojson|safe }} || [];
+        const jobMarkers = {{ job_markers|tojson|safe }} || [];
 
-    const previewEl = document.getElementById('jobPreview');
-    const jobListButtons = Array.from(document.querySelectorAll('.job-list-item'));
+        const previewEl = document.getElementById('jobPreview');
+        const jobListButtons = Array.from(document.querySelectorAll('button.job-list-item'));
 
-    function renderJobPreview(jobId) {
-        if (!previewEl) return;
-        const job = jobCards.find(j => j.id === Number(jobId));
-        if (!job) return;
+        function renderJobPreview(jobId) {
+            if (!previewEl) return;
+            const job = jobCards.find(j => String(j.id) === String(jobId));
+            if (!job) {
+                previewEl.innerHTML = '<div class="text-center text-muted">Select a job to preview the details.</div>';
+                return;
+            }
 
-        const description = (job.description || 'No description provided.').replace(/\n/g, '<br>');
-        const specialtyLine = job.subspecialty ? `${job.specialty || ''} • ${job.subspecialty}` : (job.specialty || '');
+            const description = (job.description || 'No description provided.').replace(/\n/g, '<br>');
+            const specialtyLine = job.subspecialty ? `${job.specialty || ''} • ${job.subspecialty}` : (job.specialty || '');
 
-        previewEl.innerHTML = `
-            <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
-                <div>
-                    <div class="text-muted small">Posted ${job.date_posted || 'recently'}</div>
-                    <div class="preview-title">${job.title || 'Untitled Role'}</div>
-                    <div class="text-secondary mt-1"><i class="bi bi-geo-alt me-1"></i>${job.location || 'Location not provided'}</div>
-                </div>
-                <a href="${job.url}" class="btn btn-outline-primary btn-sm">View Full Job</a>
-            </div>
-            <div class="job-meta mb-3">
-                ${job.salary ? `<span class="badge rounded-pill">${job.salary}</span>` : ''}
-                ${specialtyLine ? `<span class="badge rounded-pill">${specialtyLine}</span>` : ''}
-            </div>
-            <div class="preview-description">${description}</div>
-        `;
-    }
-
-    jobListButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            jobListButtons.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            renderJobPreview(btn.dataset.jobId);
-        });
-    });
-
-    if (jobListButtons.length) {
-        jobListButtons[0].classList.add('active');
-        renderJobPreview(jobListButtons[0].dataset.jobId);
-    }
-
-    const map = L.map('job-map').setView([37.5, -96], 4);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: 'Map &copy; OpenStreetMap contributors'
-    }).addTo(map);
-
-    let markerGroup = L.featureGroup();
-    jobMarkers.forEach(markerData => {
-        if (markerData.lat && markerData.lng) {
-            let count = markerData.jobs.length;
-
-            let iconHtml = `
-                <div class="leaflet-marker-icon-numbered">
-                    <img class="pin-img"
-                         src="https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png">
-                    ${count > 1 ? `<div class="marker-badge">${count}</div>` : ""}
-                </div>
-            `;
-
-            let icon = L.divIcon({
-                html: iconHtml,
-                className: '',
-                iconSize: [38, 50],
-                iconAnchor: [19, 50]
-            });
-
-            let popupHTML = `
-                <div class="custom-popup">
-                    <div class="custom-popup-header">
-                        ${markerData.jobs.length === 1
-                          ? markerData.jobs[0].title
-                          : `${markerData.jobs.length} jobs at this location`}
+            previewEl.innerHTML = `
+                <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                    <div>
+                        <div class="text-muted small">Posted ${job.date_posted || 'recently'}</div>
+                        <div class="preview-title">${job.title || 'Untitled Role'}</div>
+                        <div class="text-secondary mt-1"><i class="bi bi-geo-alt me-1"></i>${job.location || 'Location not provided'}</div>
                     </div>
-                    <div class="custom-job-list">
+                    <a href="${job.url}" class="btn btn-outline-primary btn-sm">View Full Job</a>
+                </div>
+                <div class="job-meta mb-3">
+                    ${job.salary ? `<span class="badge rounded-pill">${job.salary}</span>` : ''}
+                    ${specialtyLine ? `<span class="badge rounded-pill">${specialtyLine}</span>` : ''}
+                </div>
+                <div class="preview-description">${description}</div>
             `;
-
-            markerData.jobs.forEach(job => {
-                popupHTML += `
-                    <div class="custom-job">
-                        <div class="custom-job-title">${job.title}</div>
-                        <a href="/doctor/job/${job.id}" target="_blank"
-                           class="custom-view-job">View Job</a>
-                    </div>
-                `;
-            });
-
-            popupHTML += `</div></div>`;
-
-            const marker = L.marker([markerData.lat, markerData.lng], {icon: icon}).addTo(markerGroup);
-            marker.bindPopup(popupHTML);
         }
-    });
 
-    markerGroup.addTo(map);
-
-    if (jobMarkers.length > 0) {
-        try {
-            map.fitBounds(markerGroup.getBounds().pad(0.2));
-        } catch (e) {}
-    }
-
-    document.getElementById('aiSearchBtn').addEventListener('click', function() {
-        new bootstrap.Modal(document.getElementById('aiSearchModal')).show();
-        document.getElementById('aiResultsContainer').style.display = 'none';
-        document.getElementById('aiResultsContainer').innerHTML = '';
-    });
-
-    document.getElementById('aiSearchForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const btn = this.querySelector('button[type=submit]');
-        btn.disabled = true; btn.innerText = "Searching...";
-        const formData = new FormData(this);
-        fetch('{{ url_for("doctor_ai_search_jobs") }}', {
-            method: 'POST',
-            body: formData
-        }).then(res => res.json()).then(data => {
-            btn.disabled = false; btn.innerText = "Search with AI";
-            document.getElementById('aiResultsContainer').style.display = '';
-            document.getElementById('aiResultsContainer').innerHTML = data['html'];
-        }).catch(() => {
-            btn.disabled = false; btn.innerText = "Search with AI";
-            document.getElementById('aiResultsContainer').style.display = '';
-            document.getElementById('aiResultsContainer').innerHTML = '<div class="alert alert-danger">AI search failed. Try again in a few seconds.</div>';
+        jobListButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                jobListButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                renderJobPreview(btn.dataset.jobId);
+            });
         });
+
+        if (jobListButtons.length) {
+            jobListButtons[0].classList.add('active');
+            renderJobPreview(jobListButtons[0].dataset.jobId);
+        }
+
+        const mapContainer = document.getElementById('job-map');
+        if (mapContainer && window.L) {
+            const map = L.map(mapContainer).setView([37.5, -96], 4);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: 'Map &copy; OpenStreetMap contributors'
+            }).addTo(map);
+
+            const markerGroup = L.featureGroup();
+            jobMarkers.forEach(markerData => {
+                if (markerData.lat && markerData.lng) {
+                    const count = markerData.jobs.length;
+
+                    const iconHtml = `
+                        <div class="leaflet-marker-icon-numbered">
+                            <img class="pin-img"
+                                 src="https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png">
+                            ${count > 1 ? `<div class="marker-badge">${count}</div>` : ""}
+                        </div>
+                    `;
+
+                    const icon = L.divIcon({
+                        html: iconHtml,
+                        className: '',
+                        iconSize: [38, 50],
+                        iconAnchor: [19, 50]
+                    });
+
+                    let popupHTML = `
+                        <div class="custom-popup">
+                            <div class="custom-popup-header">
+                                ${markerData.jobs.length === 1
+                                  ? markerData.jobs[0].title
+                                  : `${markerData.jobs.length} jobs at this location`}
+                            </div>
+                            <div class="custom-job-list">
+                    `;
+
+                    markerData.jobs.forEach(job => {
+                        popupHTML += `
+                            <div class="custom-job">
+                                <div class="custom-job-title">${job.title}</div>
+                                <a href="/doctor/job/${job.id}" target="_blank"
+                                   class="custom-view-job">View Job</a>
+                            </div>
+                        `;
+                    });
+
+                    popupHTML += `</div></div>`;
+
+                    const marker = L.marker([markerData.lat, markerData.lng], {icon: icon}).addTo(markerGroup);
+                    marker.bindPopup(popupHTML);
+                }
+            });
+
+            markerGroup.addTo(map);
+
+            if (jobMarkers.length > 0) {
+                try {
+                    map.fitBounds(markerGroup.getBounds().pad(0.2));
+                } catch (e) {}
+            }
+
+            setTimeout(() => map.invalidateSize(), 200);
+        }
+
+        const aiSearchBtn = document.getElementById('aiSearchBtn');
+        const aiResultsContainer = document.getElementById('aiResultsContainer');
+        const aiSearchForm = document.getElementById('aiSearchForm');
+
+        if (aiSearchBtn && aiSearchForm && aiResultsContainer) {
+            aiSearchBtn.addEventListener('click', function() {
+                new bootstrap.Modal(document.getElementById('aiSearchModal')).show();
+                aiResultsContainer.style.display = 'none';
+                aiResultsContainer.innerHTML = '';
+            });
+
+            aiSearchForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const btn = this.querySelector('button[type=submit]');
+                btn.disabled = true; btn.innerText = "Searching...";
+                const formData = new FormData(this);
+                fetch('{{ url_for("doctor_ai_search_jobs") }}', {
+                    method: 'POST',
+                    body: formData
+                }).then(res => res.json()).then(data => {
+                    btn.disabled = false; btn.innerText = "Search with AI";
+                    aiResultsContainer.style.display = '';
+                    aiResultsContainer.innerHTML = data['html'];
+                }).catch(() => {
+                    btn.disabled = false; btn.innerText = "Search with AI";
+                    aiResultsContainer.style.display = '';
+                    aiResultsContainer.innerHTML = '<div class="alert alert-danger">AI search failed. Try again in a few seconds.</div>';
+                });
+            });
+        }
     });
     </script>
     {% endblock %}''',
@@ -6748,6 +6764,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
