@@ -81,6 +81,29 @@ class Job(db.Model):
     longitude = db.Column(db.Float, nullable=True)
 
     poster = db.relationship('User', backref='jobs')
+    requirements = db.relationship('JobRequirement', back_populates='job', uselist=False, cascade="all, delete-orphan")
+
+
+class JobRequirement(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.Integer, db.ForeignKey('job.id'), unique=True)
+    position = db.Column(db.String(10))
+    specialty = db.Column(db.String(100))
+    subspecialty = db.Column(db.String(100))
+    certification = db.Column(db.String(50))
+    certification_specialty_area = db.Column(db.String(100))
+    clinically_active = db.Column(db.String(50))
+    emr = db.Column(db.Text)
+    emr_other = db.Column(db.String(255))
+    languages = db.Column(db.Text)
+    language_other = db.Column(db.String(255))
+    states_required = db.Column(db.Text)
+    states_preferred = db.Column(db.Text)
+    sponsorship_supported = db.Column(db.Boolean, default=False)
+    salary_range = db.Column(db.String(100))
+    notes = db.Column(db.Text)
+
+    job = db.relationship('Job', back_populates='requirements')
 
 
 
@@ -711,6 +734,70 @@ class DoctorForm(FlaskForm):
     submit = SubmitField('Submit')
 
 
+class JobRequirementForm(FlaskForm):
+    position = SelectField('Healthcare Provider Type', choices=[('MD','MD'),('DO','DO'),('NP','NP'),('PA','PA')], validators=[DataRequired()])
+    specialty = SelectField(
+        'Specialty',
+        choices=[(spec, spec) for spec in DoctorForm.specialty_choices],
+        validators=[DataRequired()],
+        validate_choice=False
+    )
+    subspecialty = StringField('Subspecialty', validators=[Optional()])
+    certification = SelectField(
+        'Certification',
+        choices=[
+            ('Board Certified', 'Board Certified'),
+            ('Board Eligible', 'Board Eligible'),
+            ('Not Boarded', 'Not Boarded')
+        ],
+        validators=[Optional()]
+    )
+    certification_specialty_area = StringField('Certification Specialty Area', validators=[Optional()])
+    clinically_active = SelectField(
+        'Clinically Active?',
+        choices=[
+            ('Yes', 'Yes'),
+            ('No', 'No'),
+            ('Never clinically active', 'Never clinically active')
+        ],
+        validators=[Optional()]
+    )
+    emr = SelectMultipleField(
+        'Preferred EMR Experience',
+        choices=[(system, system) for system in DoctorForm.emr_choices],
+        validators=[Optional()],
+        validate_choice=False,
+        option_widget=CheckboxInput(),
+        widget=ListWidget(prefix_label=False)
+    )
+    emr_other = StringField('Other EMR System', validators=[Optional()])
+    languages = SelectMultipleField(
+        'Languages Needed',
+        choices=[(lang, lang) for lang in DoctorForm.language_choices],
+        validators=[Optional()],
+        validate_choice=False,
+        option_widget=CheckboxInput(),
+        widget=ListWidget(prefix_label=False)
+    )
+    language_other = StringField('Other Language(s)', validators=[Optional()])
+    states_required = SelectMultipleField(
+        'States Required',
+        choices=[(state, state) for state in states],
+        option_widget=CheckboxInput(),
+        widget=ListWidget(prefix_label=False)
+    )
+    states_preferred = SelectMultipleField(
+        'Preferred States',
+        choices=[(state, state) for state in states],
+        option_widget=CheckboxInput(),
+        widget=ListWidget(prefix_label=False)
+    )
+    sponsorship_supported = BooleanField('Sponsorship Available', validators=[Optional()])
+    salary_range = StringField('Salary Range / Budget', validators=[Optional()])
+    notes = TextAreaField('Additional Notes', validators=[Optional()])
+    submit = SubmitField('Save Requirements')
+
+
 class ScheduledCallForm(FlaskForm):
     doctor_id = SelectField('Doctor', validators=[DataRequired()])
     datetime = DateTimeLocalField('Call Date & Time', validators=[DataRequired()], format='%Y-%m-%dT%H:%M')
@@ -1227,7 +1314,7 @@ app.jinja_loader = DictLoader({
             {{ form.submit(class="btn btn-primary mt-3") }}
         </form>
         {% endblock %}''',
-    
+
     'post_job.html': '''{% extends "base.html" %}
     {% block content %}
     <div class="container py-4">
@@ -1282,6 +1369,122 @@ app.jinja_loader = DictLoader({
                             </div>
                         </form>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endblock %}''',
+
+    'job_requirements.html': '''{% extends "base.html" %}
+    {% block content %}
+    <style>
+        .wizard-shell {
+            background: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.08), transparent 35%),
+                        radial-gradient(circle at 90% 0%, rgba(16, 185, 129, 0.08), transparent 25%);
+            border-radius: 20px;
+            padding: 1rem 1.5rem 2rem;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.08);
+        }
+        .glass-card {
+            background: rgba(255,255,255,0.9);
+            border: 1px solid rgba(255,255,255,0.5);
+            border-radius: 18px;
+            box-shadow: 0 20px 60px rgba(31,41,55,0.12);
+            backdrop-filter: blur(8px);
+        }
+        .section-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+    </style>
+    <div class="container py-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="wizard-shell">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                        <div>
+                            <p class="text-uppercase text-muted small mb-1">Job Qualification Matrix</p>
+                            <h2 class="fw-bold mb-0">{{ job.title }} — Specific Needs</h2>
+                            <p class="text-muted mb-0">Align these requirements with the doctor profile to ensure a great match.</p>
+                        </div>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <a class="btn btn-outline-secondary" href="{{ url_for('client_dashboard') if current_user.role == 'client' else url_for('home') }}">Back to Dashboard</a>
+                        </div>
+                    </div>
+
+                    <form method="post" class="glass-card p-4">
+                        {{ form.hidden_tag() }}
+
+                        <div class="row g-4">
+                            <div class="col-lg-6">
+                                <p class="section-title">Role & Clinical Focus</p>
+                                <div class="mb-3">{{ form.position.label(class="form-label fw-semibold") }} {{ form.position(class="form-select") }}</div>
+                                <div class="mb-3">{{ form.specialty.label(class="form-label fw-semibold") }} {{ form.specialty(class="form-select") }}</div>
+                                <div class="mb-3">{{ form.subspecialty.label(class="form-label fw-semibold") }} {{ form.subspecialty(class="form-control") }}</div>
+                                <div class="mb-3">{{ form.certification.label(class="form-label fw-semibold") }} {{ form.certification(class="form-select") }}</div>
+                                <div class="mb-3">{{ form.certification_specialty_area.label(class="form-label fw-semibold") }} {{ form.certification_specialty_area(class="form-control") }}</div>
+                                <div class="mb-3">{{ form.clinically_active.label(class="form-label fw-semibold") }} {{ form.clinically_active(class="form-select") }}</div>
+                            </div>
+
+                            <div class="col-lg-6">
+                                <p class="section-title">Systems & Communication</p>
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">{{ form.emr.label.text }}</label>
+                                    <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                                        {% for subfield in form.emr %}
+                                            <div class="form-check">{{ subfield(class="form-check-input", id=subfield.id) }} <label class="form-check-label" for="{{ subfield.id }}">{{ subfield.label.text }}</label></div>
+                                        {% endfor %}
+                                    </div>
+                                    <div class="mt-2">{{ form.emr_other(class="form-control", placeholder="Other EMR systems") }}</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">{{ form.languages.label.text }}</label>
+                                    <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                                        {% for subfield in form.languages %}
+                                            <div class="form-check">{{ subfield(class="form-check-input", id=subfield.id) }} <label class="form-check-label" for="{{ subfield.id }}">{{ subfield.label.text }}</label></div>
+                                        {% endfor %}
+                                    </div>
+                                    <div class="mt-2">{{ form.language_other(class="form-control", placeholder="Other languages") }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-4 mt-2">
+                            <div class="col-lg-6">
+                                <p class="section-title">Location Fit</p>
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">{{ form.states_required.label.text }}</label>
+                                    <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                                        {% for subfield in form.states_required %}
+                                            <div class="form-check">{{ subfield(class="form-check-input", id=subfield.id) }} <label class="form-check-label" for="{{ subfield.id }}">{{ subfield.label.text }}</label></div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">{{ form.states_preferred.label.text }}</label>
+                                    <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                                        {% for subfield in form.states_preferred %}
+                                            <div class="form-check">{{ subfield(class="form-check-input", id=subfield.id) }} <label class="form-check-label" for="{{ subfield.id }}">{{ subfield.label.text }}</label></div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-6">
+                                <p class="section-title">Other Needs</p>
+                                <div class="mb-3 form-check">{{ form.sponsorship_supported(class="form-check-input", id="sponsorshipSupported") }} <label class="form-check-label" for="sponsorshipSupported">{{ form.sponsorship_supported.label.text }}</label></div>
+                                <div class="mb-3">{{ form.salary_range.label(class="form-label fw-semibold") }} {{ form.salary_range(class="form-control", placeholder="e.g., $180k - $220k") }}</div>
+                                <div class="mb-3">{{ form.notes.label(class="form-label fw-semibold") }} {{ form.notes(class="form-control", rows=4, placeholder="Add specifics about schedule, call, patient mix, procedures, etc.") }}</div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end mt-3">
+                            <a class="btn btn-outline-secondary me-2" href="{{ url_for('client_dashboard') if current_user.role == 'client' else url_for('home') }}">Cancel</a>
+                            {{ form.submit(class="btn btn-success px-4") }}
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -4169,14 +4372,73 @@ def post_job():
         )
         db.session.add(job)
         db.session.commit()
-        flash('Job posted successfully!', 'success')
+        flash('Job posted successfully! Add job-specific needs to qualify doctors.', 'success')
 
-        if current_user.role == 'admin':
-            return redirect(url_for('home'))
-        elif current_user.role == 'client':
-            return redirect(url_for('client_dashboard'))
+        return redirect(url_for('job_requirements', job_id=job.id))
 
     return render_template('post_job.html', form=form)
+
+
+@app.route('/job/<int:job_id>/requirements', methods=['GET', 'POST'])
+@login_required
+def job_requirements(job_id):
+    job = Job.query.get_or_404(job_id)
+
+    if current_user.role not in ['client', 'admin']:
+        flash('Only clients and admins can manage job requirements!', 'danger')
+        return redirect(url_for('home'))
+
+    if current_user.role == 'client' and job.poster_id != current_user.id:
+        flash('You can only update requirements for your own jobs.', 'danger')
+        return redirect(url_for('home'))
+
+    form = JobRequirementForm()
+    requirement = JobRequirement.query.filter_by(job_id=job.id).first()
+
+    if request.method == 'GET' and requirement:
+        form.position.data = requirement.position or form.position.data
+        form.specialty.data = requirement.specialty or form.specialty.data
+        form.subspecialty.data = requirement.subspecialty or ''
+        form.certification.data = requirement.certification or ''
+        form.certification_specialty_area.data = requirement.certification_specialty_area or ''
+        form.clinically_active.data = requirement.clinically_active or ''
+        form.emr.data = requirement.emr.split(',') if requirement.emr else []
+        form.emr_other.data = requirement.emr_other or ''
+        form.languages.data = requirement.languages.split(',') if requirement.languages else []
+        form.language_other.data = requirement.language_other or ''
+        form.states_required.data = requirement.states_required.split(',') if requirement.states_required else []
+        form.states_preferred.data = requirement.states_preferred.split(',') if requirement.states_preferred else []
+        form.sponsorship_supported.data = requirement.sponsorship_supported
+        form.salary_range.data = requirement.salary_range or ''
+        form.notes.data = requirement.notes or ''
+
+    if form.validate_on_submit():
+        if not requirement:
+            requirement = JobRequirement(job=job)
+
+        requirement.position = form.position.data
+        requirement.specialty = form.specialty.data
+        requirement.subspecialty = form.subspecialty.data
+        requirement.certification = form.certification.data
+        requirement.certification_specialty_area = form.certification_specialty_area.data
+        requirement.clinically_active = form.clinically_active.data
+        requirement.emr = ",".join(form.emr.data) if form.emr.data else None
+        requirement.emr_other = form.emr_other.data
+        requirement.languages = ",".join(form.languages.data) if form.languages.data else None
+        requirement.language_other = form.language_other.data
+        requirement.states_required = ",".join(form.states_required.data) if form.states_required.data else None
+        requirement.states_preferred = ",".join(form.states_preferred.data) if form.states_preferred.data else None
+        requirement.sponsorship_supported = form.sponsorship_supported.data or False
+        requirement.salary_range = form.salary_range.data
+        requirement.notes = form.notes.data
+
+        db.session.add(requirement)
+        db.session.commit()
+        flash('Job-specific needs saved! Use them to compare with doctor profiles for qualification.', 'success')
+
+        return redirect(url_for('client_dashboard') if current_user.role == 'client' else url_for('home'))
+
+    return render_template('job_requirements.html', form=form, job=job)
 
 @app.route('/doctor/ai_search_jobs', methods=['POST'])
 @login_required
@@ -5880,6 +6142,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
