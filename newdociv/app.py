@@ -36,7 +36,7 @@ from collections import defaultdict
 from flask import send_file
 import pandas as pd
 from io import BytesIO
-from sqlalchemy import inspect, text
+from sqlalchemy import inspect, text, or_
 
 
 
@@ -197,6 +197,46 @@ def geocode_location(location_str):
     if loc:
         return loc.latitude, loc.longitude
     return None, None
+
+
+def parse_salary_range(salary_str):
+    """Extract a numeric salary range from a freeform salary string."""
+    if not salary_str:
+        return None, None
+
+    numbers = [int(num.replace(',', '')) for num in re.findall(r"\d+", salary_str)]
+    if not numbers:
+        return None, None
+
+    low = min(numbers)
+    high = max(numbers)
+    return (low, high) if len(numbers) > 1 else (low, low)
+
+
+def salary_matches_filters(salary_str, min_value, max_value):
+    """Return True if the salary string satisfies the numeric filters."""
+    if min_value is None and max_value is None:
+        return True
+
+    parsed_min, parsed_max = parse_salary_range(salary_str)
+    if parsed_min is None:
+        return False
+
+    if min_value is not None and parsed_min < min_value:
+        return False
+    if max_value is not None:
+        upper_bound = parsed_max if isinstance(parsed_max, int) else parsed_min
+        if upper_bound > max_value:
+            return False
+    return True
+
+
+def parse_salary_input(value):
+    digits = re.findall(r"\d+", value or "")
+    if not digits:
+        return None
+    return int("".join(digits))
+
 
 
 def geocode_missing_jobs():
@@ -2538,30 +2578,70 @@ app.jinja_loader = DictLoader({
             color: #0b3b65;
         }
 
+        .job-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
+        }
+
+        .job-card:hover {
+            box-shadow: 0 15px 40px rgba(0,0,0,0.06);
+            transform: translateY(-2px);
+        }
+
         .job-meta {
             display: flex;
             flex-wrap: wrap;
             gap: 10px;
             font-size: 0.95rem;
-            color: #6c757d;
+            color: #4b5563;
         }
 
         .job-meta .badge {
             background: #eef5ff;
             border: 1px solid #d6e6ff;
+            color: #0b3b65;
         }
 
         .job-description {
-            color: #4b5563;
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
+            color: #374151;
+            white-space: pre-line;
+        }
+
+        .filter-card {
+            position: sticky;
+            top: 20px;
+            border-radius: 16px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .filter-label {
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .filter-hint {
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+
+        .job-list-count {
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .active-filters .badge {
+            background: #e0f2fe;
+            color: #0b3b65;
+            border: 1px solid #cbd5e1;
         }
     </style>
 
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="mb-0">Find Jobs</h2>
+        <div>
+            <p class="text-muted mb-1">Browse opportunities directly from verified hospitals.</p>
+            <h2 class="mb-0">Find Jobs</h2>
+        </div>
         <button class="btn btn-lg btn-info" id="aiSearchBtn" type="button">
             <i class="bi bi-stars"></i> AI Search
         </button>
@@ -2604,52 +2684,100 @@ app.jinja_loader = DictLoader({
       </div>
     </div>
 
-    <form method="get" class="row g-3 mb-4">
-        <div class="col-md-4">
-            <input type="text" name="keyword" value="{{ keyword }}" class="form-control"
-                   placeholder="Enter Job Title / Keyword(s)">
-        </div>
-        <div class="col-md-4">
-            <input type="text" name="location" value="{{ location }}" class="form-control"
-                   placeholder="Enter Location">
-        </div>
-        <div class="col-md-2">
-            <button type="submit" class="btn btn-primary w-100">Search</button>
-        </div>
-        <div class="col-md-2">
-            <a href="{{ url_for('doctor_jobs') }}" class="btn btn-secondary w-100">Clear</a>
-        </div>
-    </form>
-
-    {% if jobs %}
-        {% for job in jobs %}
-        <div class="card mb-4 shadow-sm" id="job-{{ job.id }}">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
-                    <h4 class="card-title job-card-title mb-1">{{ job.title }}</h4>
-                    <a href="{{ url_for('view_job', job_id=job.id) }}"
-                       class="btn btn-sm btn-outline-primary">View Job</a>
+    <div class="row g-4">
+        <div class="col-lg-4">
+            <div class="card filter-card shadow-sm p-4">
+                <div class="d-flex align-items-center mb-3">
+                    <i class="bi bi-funnel-fill text-primary me-2"></i>
+                    <div>
+                        <div class="filter-label">Filters</div>
+                        <div class="filter-hint">Narrow by specialty, geography, and pay.</div>
+                    </div>
                 </div>
-                <div class="job-meta mb-2">
-                    <span class="d-flex align-items-center">
-                        <i class="bi bi-geo-alt me-1"></i>
-                        {{ job.location or 'Location not provided' }}
-                    </span>
-                    {% if job.salary %}
-                        <span class="badge rounded-pill text-primary">{{ job.salary }}</span>
-                    {% endif %}
-                </div>
-                <p class="job-description">{{ job.description }}</p>
+                <form method="get" class="row g-3">
+                    <div class="col-12">
+                        <label class="filter-label">Keyword</label>
+                        <input type="text" name="keyword" value="{{ keyword }}" class="form-control"
+                               placeholder="e.g. Administrative, RN, ICU">
+                    </div>
+                    <div class="col-12">
+                        <label class="filter-label">Specialty</label>
+                        <input type="text" name="specialty" value="{{ specialty }}" class="form-control"
+                               placeholder="e.g. Cardiology, Surgery">
+                    </div>
+                    <div class="col-12">
+                        <label class="filter-label">Location</label>
+                        <input type="text" name="location" value="{{ location }}" class="form-control"
+                               placeholder="City, State or ZIP">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="filter-label">Min Salary</label>
+                        <input type="text" name="salary_min" value="{{ salary_min }}" class="form-control"
+                               placeholder="$120,000">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="filter-label">Max Salary</label>
+                        <input type="text" name="salary_max" value="{{ salary_max }}" class="form-control"
+                               placeholder="$300,000">
+                    </div>
+                    <div class="col-12 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary flex-grow-1">Apply Filters</button>
+                        <a href="{{ url_for('doctor_jobs') }}" class="btn btn-light border">Clear</a>
+                    </div>
+                </form>
             </div>
         </div>
-        {% endfor %}
-    {% else %}
-        <p>No jobs match your criteria.</p>
-    {% endif %}
+        <div class="col-lg-8">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="job-list-count">{{ jobs|length }} job{{ jobs|length != 1 and 's' or '' }} found</div>
+                <div class="active-filters d-flex gap-2 flex-wrap">
+                    {% if keyword %}<span class="badge rounded-pill">Keyword: {{ keyword }}</span>{% endif %}
+                    {% if specialty %}<span class="badge rounded-pill">Specialty: {{ specialty }}</span>{% endif %}
+                    {% if location %}<span class="badge rounded-pill">Location: {{ location }}</span>{% endif %}
+                    {% if salary_min %}<span class="badge rounded-pill">Min: {{ salary_min }}</span>{% endif %}
+                    {% if salary_max %}<span class="badge rounded-pill">Max: {{ salary_max }}</span>{% endif %}
+                </div>
+            </div>
 
-    <div class="d-flex gap-2 mt-4">
-        <a href="{{ url_for('doctor_jobs') }}" class="btn btn-outline-primary">← Back to Full Job Board</a>
-        <a href="{{ url_for('doctor_dashboard') }}" class="btn btn-outline-secondary">Back to Dashboard</a>
+            {% if jobs %}
+                {% for job in jobs %}
+                <div class="card job-card mb-4 shadow-sm" id="job-{{ job.id }}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                            <div>
+                                <div class="text-muted small">Posted {{ job.date_posted or 'recently' }}</div>
+                                <h4 class="card-title job-card-title mb-1">{{ job.title }}</h4>
+                            </div>
+                            <a href="{{ url_for('view_job', job_id=job.id) }}"
+                               class="btn btn-sm btn-outline-primary">View Job</a>
+                        </div>
+                        <div class="job-meta mb-3 mt-1">
+                            <span class="d-flex align-items-center">
+                                <i class="bi bi-geo-alt me-1"></i>
+                                {{ job.location or 'Location not provided' }}
+                            </span>
+                            {% if job.salary %}
+                                <span class="badge rounded-pill">{{ job.salary }}</span>
+                            {% endif %}
+                            {% if job.requirements and (job.requirements.specialty or job.requirements.subspecialty) %}
+                                <span class="badge rounded-pill">
+                                    {{ job.requirements.specialty }}{% if job.requirements.subspecialty %} • {{ job.requirements.subspecialty }}{% endif %}
+                                </span>
+                            {% endif %}
+                        </div>
+                        <p class="job-description">{{ job.description }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="alert alert-secondary">No jobs match your criteria.</div>
+            {% endif %}
+
+            <div class="d-flex gap-2 mt-4">
+                <a href="{{ url_for('doctor_jobs') }}" class="btn btn-outline-primary">← Back to Full Job Board</a>
+                <a href="{{ url_for('doctor_dashboard') }}" class="btn btn-outline-secondary">Back to Dashboard</a>
+            </div>
+        </div>
     </div>
 
     <!-- Leaflet + Bootstrap Icons + JS -->
@@ -4960,25 +5088,43 @@ def doctor_jobs():
 
     sync_direct_jobs_from_excel()
 
-    keyword = request.args.get('keyword', '').lower()
-    location = request.args.get('location', '').lower()
+    keyword = request.args.get('keyword', '').strip()
+    location = request.args.get('location', '').strip()
+    specialty = request.args.get('specialty', '').strip()
+    salary_min_raw = request.args.get('salary_min', '').strip()
+    salary_max_raw = request.args.get('salary_max', '').strip()
 
-    jobs_query = Job.query
+    salary_min = parse_salary_input(salary_min_raw)
+    salary_max = parse_salary_input(salary_max_raw)
+
+    jobs_query = Job.query.outerjoin(JobRequirement)
 
     if keyword:
-        jobs_query = jobs_query.filter(Job.title.ilike(f"%{keyword}%") | Job.description.ilike(f"%{keyword}%"))
+        keyword_like = f"%{keyword}%"
+        jobs_query = jobs_query.filter(
+            or_(Job.title.ilike(keyword_like), Job.description.ilike(keyword_like))
+        )
     if location:
         jobs_query = jobs_query.filter(Job.location.ilike(f"%{location}%"))
-
-
+    if specialty:
+        specialty_like = f"%{specialty}%"
+        jobs_query = jobs_query.filter(
+            or_(
+                JobRequirement.specialty.ilike(specialty_like),
+                JobRequirement.subspecialty.ilike(specialty_like),
+                Job.description.ilike(specialty_like),
+                Job.title.ilike(specialty_like)
+            )
+        )
 
     jobs = jobs_query.order_by(Job.id.desc()).all()
+    if salary_min is not None or salary_max is not None:
+        jobs = [job for job in jobs if salary_matches_filters(job.salary, salary_min, salary_max)]
     marker_groups = defaultdict(list)
     for job in jobs:
         if job.latitude is not None and job.longitude is not None:
             key = (round(job.latitude, 5), round(job.longitude, 5))  # rounding avoids float mismatch
             marker_groups[key].append(job)
-
     job_markers = []
     for (lat, lng), joblist in marker_groups.items():
         job_entries = []
@@ -4993,7 +5139,16 @@ def doctor_jobs():
             "lng": lng,
             "jobs": job_entries
         })
-    return render_template('doctor_jobs.html', jobs=jobs, job_markers=job_markers, keyword=keyword, location=location)
+    return render_template(
+        'doctor_jobs.html',
+        jobs=jobs,
+        job_markers=job_markers,
+        keyword=keyword,
+        location=location,
+        specialty=specialty,
+        salary_min=salary_min_raw,
+        salary_max=salary_max_raw
+    )
 
     
 
@@ -6498,6 +6653,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
