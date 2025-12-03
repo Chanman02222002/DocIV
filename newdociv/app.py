@@ -1223,66 +1223,215 @@ app.jinja_loader = DictLoader({
         {% extends 'base.html' %}
 
         {% block content %}
-        <h2>Client Dashboard</h2>
+        <style>
+            .client-dashboard { color: #0f172a; }
+            .client-dashboard .glass-card {
+                background: linear-gradient(145deg, #f9fbff, #eef4ff);
+                border: 1px solid #dbe7ff;
+                box-shadow: 0 12px 28px rgba(17, 24, 39, 0.08);
+                border-radius: 18px;
+            }
+            .client-dashboard .hero-card {
+                background: radial-gradient(circle at 18% 15%, rgba(14, 165, 233, 0.1), transparent 35%),
+                            radial-gradient(circle at 80% 0%, rgba(52, 211, 153, 0.18), transparent 40%),
+                            linear-gradient(120deg, #f2f6ff, #e7f7ff);
+                border: 1px solid #d7e7ff;
+            }
+            .client-dashboard .badge-soft-primary { background: #e0edff; color: #1d4ed8; }
+            .client-dashboard .badge-soft-success { background: #e8f7ef; color: #15803d; }
+            .client-dashboard .badge-soft-info { background: #e0f2fe; color: #0ea5e9; }
+            .client-dashboard .nav-link { color: #1f2a44; border-radius: 999px; }
+            .client-dashboard .nav-link.active, .client-dashboard .nav-link:hover { color: #0b3a82; background: #e0edff; }
+            .stat-pill { border: 1px solid #dbe7ff; background: #fff; border-radius: 12px; padding: 10px 12px; }
+            .activity-item { padding: 14px; border-radius: 12px; background: #fff; border: 1px solid #e5e7eb; }
+            .activity-item + .activity-item { margin-top: 12px; }
+            .reschedule-card form button { min-width: 96px; }
+            .empty-state { color: #6b7280; }
+        </style>
 
-        <div class="mb-3">
-            <a class="btn btn-success" href="{{ url_for('schedule_call') }}">Schedule Call</a>
-            <a class="btn btn-primary" href="{{ url_for('calls') }}">Scheduled Calls</a>
-            <a class="btn btn-secondary" href="{{ url_for('doctors') }}">View Doctors</a>
-            <a class="btn btn-info" href="{{ url_for('client_inbox') }}">Inbox</a>
-            <a class="btn btn-warning" href="{{ url_for('post_job') }}">Post Job</a>
-            <a class="btn btn-dark" href="{{ url_for('client_my_jobs') }}">My Jobs</a>
-            <a class="btn btn-outline-primary" href="{{ url_for('client_analytics') }}">View Analytics</a>
+        <div class="client-dashboard">
+            <div class="glass-card hero-card d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center mb-4 p-4">
+                <div>
+                    <div class="text-uppercase small text-primary mb-2 fw-semibold">Client dashboard</div>
+                    <h2 class="fw-bold mb-2">Welcome back, {{ current_user.username }}</h2>
+                    <div class="d-flex flex-wrap gap-2">
+                        <span class="badge rounded-pill badge-soft-primary fw-semibold">{{ total_jobs }} open roles</span>
+                        <span class="badge rounded-pill badge-soft-success fw-semibold">{{ active_calls }} upcoming calls</span>
+                        <span class="badge rounded-pill badge-soft-info fw-semibold">{{ total_interest }} interests logged</span>
+                    </div>
+                </div>
+                <div class="d-flex flex-wrap gap-2 mt-3 mt-lg-0">
+                    <a class="btn btn-primary" href="{{ url_for('post_job') }}">Post a job</a>
+                    <a class="btn btn-outline-primary" href="{{ url_for('schedule_call') }}">Schedule call</a>
+                    <a class="btn btn-outline-secondary" href="{{ url_for('client_analytics') }}">View analytics</a>
+                </div>
+            </div>
+
+            <ul class="nav nav-pills mb-4 gap-2 dashboard-tabs">
+                <li class="nav-item"><a class="nav-link active" href="#activity-section">Hiring activity</a></li>
+                <li class="nav-item"><a class="nav-link" href="#calendar-card">Calendar</a></li>
+                <li class="nav-item"><a class="nav-link" href="#inbox-section">Inbox</a></li>
+            </ul>
+
+            <div class="row g-4 align-items-stretch">
+                <div class="col-lg-8" id="activity-section">
+                    <div class="card glass-card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center px-4 py-3">
+                            <div>
+                                <div class="text-uppercase small text-primary fw-semibold">Hiring activity</div>
+                                <h5 class="mb-0">Recent interest on your roles</h5>
+                            </div>
+                            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('client_my_jobs') }}">Manage roles</a>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                <div class="stat-pill"><div class="small text-muted">Roles posted</div><div class="fw-bold h5 mb-0">{{ total_jobs }}</div></div>
+                                <div class="stat-pill"><div class="small text-muted">Total interest</div><div class="fw-bold h5 mb-0">{{ total_interest }}</div></div>
+                                <div class="stat-pill"><div class="small text-muted">Upcoming calls</div><div class="fw-bold h5 mb-0">{{ active_calls }}</div></div>
+                            </div>
+                            {% if job_interest_summary %}
+                                {% for job in job_interest_summary[:4] %}
+                                    <div class="activity-item d-flex justify-content-between align-items-start gap-3">
+                                        <div>
+                                            <div class="fw-semibold">{{ job.title }}</div>
+                                            <div class="text-muted small">{{ job.location }}</div>
+                                        </div>
+                                        <span class="badge bg-primary-subtle text-primary">{{ job.interest_count }} interested</span>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="empty-state">No roles posted yet. Post your first job to start receiving interest.</div>
+                            {% endif %}
+                        </div>
+                        <div class="card-footer d-flex justify-content-between align-items-center px-4 py-3">
+                            <div class="text-muted small">Track interests and schedule calls directly from your dashboard.</div>
+                            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('doctors') }}">Browse doctors</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4 d-flex flex-column gap-4">
+                    <div class="card glass-card calendar-card" id="calendar-card">
+                        <div class="card-header d-flex justify-content-between align-items-center px-4 py-3">
+                            <div>
+                                <div class="text-uppercase small text-primary fw-semibold">Calendar</div>
+                                <h6 class="mb-0">Scheduled calls</h6>
+                            </div>
+                            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('calls') }}">View all</a>
+                        </div>
+                        <div class="card-body p-3">
+                            <div id="client-mini-calendar"></div>
+                            <div class="mt-3">
+                                {% if upcoming_calls %}
+                                    {% for call in upcoming_calls[:3] %}
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <div>
+                                                <div class="fw-semibold">Dr. {{ call.doctor.first_name }} {{ call.doctor.last_name }}</div>
+                                                <div class="text-muted small">{{ call.datetime.strftime('%b %d, %Y %I:%M %p') }}</div>
+                                            </div>
+                                            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('edit_call', call_id=call.id) }}">Edit</a>
+                                        </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="empty-state">No upcoming calls scheduled.</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card glass-card reschedule-card">
+                        <div class="card-header px-4 py-3">
+                            <div class="text-uppercase small text-primary fw-semibold">Reschedule requests</div>
+                            <h6 class="mb-0">Pending decisions</h6>
+                        </div>
+                        <div class="card-body p-4">
+                            {% if reschedule_requests %}
+                                {% for request in reschedule_requests %}
+                                    <div class="mb-4 pb-3 border-bottom">
+                                        <div class="fw-semibold">Dr. {{ request.doctor.first_name }} {{ request.doctor.last_name }}</div>
+                                        <div class="text-muted small">Original: {{ request.datetime.strftime('%b %d, %Y %I:%M %p') }}</div>
+                                        <div class="text-muted small">Requested: {{ request.reschedule_datetime.strftime('%b %d, %Y %I:%M %p') }}</div>
+                                        <div class="mt-2">{{ request.reschedule_note }}</div>
+                                        <form action="{{ url_for('client_handle_reschedule', call_id=request.id) }}" method="post" class="mt-3 d-flex flex-wrap gap-2">
+                                            <textarea name="client_note" class="form-control" placeholder="Optional note"></textarea>
+                                            <div class="d-flex gap-2">
+                                                <button type="submit" name="action" value="accept" class="btn btn-success">Accept</button>
+                                                <button type="submit" name="action" value="decline" class="btn btn-outline-secondary">Decline</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="empty-state">No reschedule requests at this time.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card glass-card mt-4" id="inbox-section">
+                <div class="card-header d-flex justify-content-between align-items-center px-4 py-3">
+                    <div>
+                        <div class="text-uppercase small text-primary fw-semibold">Inbox</div>
+                        <h5 class="mb-0">Latest conversations</h5>
+                    </div>
+                    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('client_inbox') }}">Open inbox</a>
+                </div>
+                <div class="card-body p-4">
+                    {% if message_preview %}
+                        {% for message in message_preview %}
+                            <div class="activity-item">
+                                <div class="d-flex justify-content-between align-items-start gap-3">
+                                    <div>
+                                        <div class="fw-semibold">{{ message.sender.username if message.sender else 'System' }}</div>
+                                        <div class="text-muted">{{ message.content[:180] }}{% if message.content|length > 180 %}...{% endif %}</div>
+                                    </div>
+                                    <small>{{ message.timestamp.strftime('%b %d, %Y %I:%M %p') }}</small>
+                                </div>
+                                {% if message.job %}
+                                    <div class="mt-2 d-flex align-items-center gap-2 text-primary">
+                                        <i class="bi bi-briefcase"></i>
+                                        <a class="link-primary text-decoration-underline" href="{{ url_for('view_job', job_id=message.job.id) }}">{{ message.job.title }}</a>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-state">No messages yet. Conversations will appear here.</div>
+                    {% endif %}
+                </div>
+            </div>
         </div>
 
-        <div id='calendar'></div>
-
-        <div class="mt-4">
-            <h3>Reschedule Requests</h3>
-            {% if reschedule_requests %}
-                <ul class="list-group">
-                {% for request in reschedule_requests %}
-                    <li class="list-group-item">
-                        Doctor: Dr. {{ request.doctor.first_name }} {{ request.doctor.last_name }}<br>
-                        Original: {{ request.datetime.strftime('%Y-%m-%d %H:%M') }}<br>
-                        Requested: {{ request.reschedule_datetime.strftime('%Y-%m-%d %H:%M') }}<br>
-                        Reason: {{ request.reschedule_note }}<br>
-
-                        <form action="{{ url_for('client_handle_reschedule', call_id=request.id) }}" method="post">
-                            <textarea name="client_note" class="form-control mt-2" placeholder="Optional note"></textarea>
-                            <button type="submit" name="action" value="accept" class="btn btn-success mt-2">Accept</button>
-                            <button type="submit" name="action" value="decline" class="btn btn-danger mt-2">Decline</button>
-                        </form>
-                    </li>
-                {% endfor %}
-                </ul>
-            {% else %}
-                <p>No reschedule requests at this time.</p>
-            {% endif %}
-        </div>
+        <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css' rel='stylesheet' />
+        <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
 
         <script>
         document.addEventListener('DOMContentLoaded', function() {
-            var calendarEl = document.getElementById('calendar');
-            var calendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: 'dayGridMonth',
-                headerToolbar: {
-                    left: 'prev,next today',
-                    center: 'title',
-                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
-                },
-                height: 650,
-                events: {{ events | tojson }},
-                eventDidMount: function(info) {
-                    // Tooltip to show event status on hover
-                    let tooltip = new bootstrap.Tooltip(info.el, {
-                        title: info.event.extendedProps.status,
-                        placement: 'top',
-                        trigger: 'hover',
-                        container: 'body'
-                    });
+            const navLinks = document.querySelectorAll('.dashboard-tabs .nav-link');
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    if (this.getAttribute('href').startsWith('#')) {
+                        e.preventDefault();
+                        document.querySelector(this.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth' });
+                        navLinks.forEach(l => l.classList.remove('active'));
+                        this.classList.add('active');
+                    }
+                });
+            });
 
-                    // Strikethrough canceled events
+            const calendarEl = document.getElementById('client-mini-calendar');
+            const calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                height: 320,
+                headerToolbar: {
+                    left: 'title',
+                    center: '',
+                    right: 'prev,next'
+                },
+                events: {{ events | tojson }},
+                eventDisplay: 'block',
+                eventDidMount: function(info) {
                     if (info.event.extendedProps.status === 'Canceled') {
                         info.el.style.textDecoration = 'line-through';
                     }
@@ -1294,9 +1443,6 @@ app.jinja_loader = DictLoader({
             calendar.render();
         });
         </script>
-
-        <!-- Include Bootstrap Tooltip -->
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
         {% endblock %}''',
 
@@ -5597,10 +5743,37 @@ def test_db():
 @app.route('/client/dashboard')
 @login_required
 def client_dashboard():
+    if current_user.role != 'client':
+        flash('Unauthorized access!', 'danger')
+        return redirect(url_for('dashboard'))
+
     scheduled_calls = ScheduledCall.query.filter_by(scheduled_by_id=current_user.id).all()
     reschedule_requests = ScheduledCall.query.filter_by(
         scheduled_by_id=current_user.id, reschedule_requested=True
     ).all()
+
+    # Upcoming calls for quick summary
+    upcoming_calls = [
+        call for call in scheduled_calls
+        if not call.canceled and call.datetime >= datetime.utcnow()
+    ]
+
+    # Job analytics for dashboard cards
+    jobs = Job.query.filter_by(poster_id=current_user.id).all()
+    job_interest_summary = []
+    total_interest = 0
+    for job in jobs:
+        interest_count = Message.query.filter_by(job_id=job.id, message_type='interest').count()
+        total_interest += interest_count
+        job_interest_summary.append({
+            'title': job.title,
+            'location': job.location,
+            'interest_count': interest_count
+        })
+
+    message_preview = Message.query.filter_by(recipient_id=current_user.id).order_by(
+        Message.timestamp.desc()
+    ).limit(4).all()
 
     events = []
     for call in scheduled_calls:
@@ -5624,9 +5797,14 @@ def client_dashboard():
     return render_template(
         'client_dashboard.html',
         events=events,
-        reschedule_requests=reschedule_requests
+        reschedule_requests=reschedule_requests,
+        upcoming_calls=upcoming_calls,
+        job_interest_summary=job_interest_summary,
+        message_preview=message_preview,
+        total_jobs=len(jobs),
+        total_interest=total_interest,
+        active_calls=len(upcoming_calls)
     )
-
 
 
 @app.route('/dashboard')
@@ -6319,6 +6497,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
