@@ -140,7 +140,7 @@ class JobForm(FlaskForm):
     title = StringField('Title', validators=[DataRequired()])
     location = StringField('Location', validators=[DataRequired()])
     salary = StringField('Salary', validators=[DataRequired()])
-    description = StringField('Description', validators=[DataRequired()])
+    description = TextAreaField('Description', validators=[DataRequired()])
     submit = SubmitField('Post Job')
 
 # Database Models Updates
@@ -1230,16 +1230,63 @@ app.jinja_loader = DictLoader({
     
     'post_job.html': '''{% extends "base.html" %}
     {% block content %}
-        <h2>Post a New Job</h2>
-        <form method="post">
-            {{ form.hidden_tag() }}
-            {{ form.title.label }} {{ form.title(class="form-control") }}
-            {{ form.location.label }} {{ form.location(class="form-control") }}
-            {{ form.salary.label }} {{ form.salary(class="form-control") }}
-            {{ form.description.label }} {{ form.description(class="form-control") }}
-            {{ form.submit(class="btn btn-success mt-3") }}
-        </form>
-        {% endblock %}''',
+    <div class="container py-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width:48px; height:48px;">
+                                <i class="bi bi-briefcase-fill"></i>
+                            </div>
+                            <div>
+                                <h3 class="mb-0">Post a New Position</h3>
+                                <small class="text-muted">Share the essentials so we can match you with the right clinicians.</small>
+                            </div>
+                        </div>
+
+                        <form method="post" class="mt-3">
+                            {{ form.hidden_tag() }}
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">{{ form.title.label.text }}</label>
+                                {{ form.title(class="form-control form-control-lg", placeholder="e.g., Family Medicine Physician") }}
+                            </div>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-7">
+                                    <label class="form-label fw-semibold">{{ form.location.label.text }}</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-white"><i class="bi bi-geo-alt"></i></span>
+                                        {{ form.location(class="form-control", placeholder="City, State") }}
+                                    </div>
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label fw-semibold">{{ form.salary.label.text }}</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-white"><i class="bi bi-cash-stack"></i></span>
+                                        {{ form.salary(class="form-control", placeholder="Compensation details") }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">{{ form.description.label.text }}</label>
+                                {{ form.description(class="form-control", rows=5, placeholder="Summarize responsibilities, schedule, and ideal experience") }}
+                                <div class="form-text">Provide key highlights to attract the best candidates.</div>
+                            </div>
+
+                            <div class="d-flex justify-content-end">
+                                <a href="{{ url_for('home') }}" class="btn btn-outline-secondary me-2">Cancel</a>
+                                {{ form.submit(class="btn btn-primary px-4") }}
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endblock %}''',
 
     'register.html': '''{% extends "base.html" %}
     {% block content %}
@@ -5833,6 +5880,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
