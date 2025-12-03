@@ -2942,24 +2942,7 @@ app.jinja_loader = DictLoader({
             setTimeout(() => map.invalidateSize(), 250);
         }
 
-        function ensureLeafletLoaded() {
-            if (window.L) {
-                initializeLeafletMap();
-                return;
-            }
-
-            const leafletCss = document.createElement('link');
-            leafletCss.rel = 'stylesheet';
-            leafletCss.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-            document.head.appendChild(leafletCss);
-
-            const script = document.createElement('script');
-            script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-            script.onload = initializeLeafletMap;
-            document.head.appendChild(script);
-        }
-
-        ensureLeafletLoaded();
+        
 
         const aiSearchBtn = document.getElementById('aiSearchBtn');
         const aiResultsContainer = document.getElementById('aiResultsContainer');
@@ -6787,6 +6770,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
