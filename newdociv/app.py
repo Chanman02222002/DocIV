@@ -2569,6 +2569,7 @@ app.jinja_loader = DictLoader({
         </form>
     {% endblock %}''',
 
+
     'doctor_jobs.html': '''{% extends "base.html" %}
 {% block content %}
 
@@ -2615,6 +2616,31 @@ app.jinja_loader = DictLoader({
             border: 1px solid #e5e7eb;
         }
 
+        .job-snippet-list {
+            max-height: calc(100vh - 260px);
+            overflow-y: auto;
+        }
+
+        .job-snippet {
+            padding: 14px 16px;
+            border-bottom: 1px solid #eef2f7;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+        }
+
+        .job-snippet:last-child {
+            border-bottom: none;
+        }
+
+        .job-snippet:hover {
+            background-color: #f7faff;
+        }
+
+        .job-snippet.active {
+            background-color: #e9f6ff;
+            border-left: 3px solid #5aa4b3;
+        }
+
         .filter-label {
             font-weight: 600;
             color: #111827;
@@ -2646,8 +2672,6 @@ app.jinja_loader = DictLoader({
             <i class="bi bi-stars"></i> AI Search
         </button>
     </div>
-
-    <div id="job-map" style="width:100%;height:420px;border-radius:12px;margin-bottom:36px;"></div>
 
     <!-- AI Search Modal -->
     <div class="modal fade" id="aiSearchModal" tabindex="-1" aria-labelledby="aiSearchModalLabel" aria-hidden="true">
@@ -2685,93 +2709,126 @@ app.jinja_loader = DictLoader({
     </div>
 
     <div class="row g-4">
-        <div class="col-lg-4">
-            <div class="card filter-card shadow-sm p-4">
-                <div class="d-flex align-items-center mb-3">
-                    <i class="bi bi-funnel-fill text-primary me-2"></i>
-                    <div>
-                        <div class="filter-label">Filters</div>
-                        <div class="filter-hint">Narrow by specialty, geography, and pay.</div>
+        <div class="col-lg-5">
+            <div class="card filter-card shadow-sm mb-3">
+                <div class="card-body">
+                    <div class="d-flex align-items-start gap-2 mb-3">
+                        <div class="rounded-circle bg-info bg-opacity-10 p-2 text-info">
+                            <i class="bi bi-funnel"></i>
+                        </div>
+                        <div>
+                            <div class="filter-label mb-0">Filters</div>
+                            <div class="filter-hint">Narrow down jobs by keywords, location, and salary</div>
+                        </div>
                     </div>
-                </div>
-                <form method="get" class="row g-3">
-                    <div class="col-12">
-                        <label class="filter-label">Keyword</label>
-                        <input type="text" name="keyword" value="{{ keyword }}" class="form-control"
-                               placeholder="e.g. Administrative, RN, ICU">
-                    </div>
-                    <div class="col-12">
-                        <label class="filter-label">Specialty</label>
-                        <input type="text" name="specialty" value="{{ specialty }}" class="form-control"
-                               placeholder="e.g. Cardiology, Surgery">
-                    </div>
-                    <div class="col-12">
-                        <label class="filter-label">Location</label>
-                        <input type="text" name="location" value="{{ location }}" class="form-control"
-                               placeholder="City, State or ZIP">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="filter-label">Min Salary</label>
-                        <input type="text" name="salary_min" value="{{ salary_min }}" class="form-control"
-                               placeholder="$120,000">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="filter-label">Max Salary</label>
-                        <input type="text" name="salary_max" value="{{ salary_max }}" class="form-control"
-                               placeholder="$300,000">
-                    </div>
-                    <div class="col-12 d-flex gap-2">
-                        <button type="submit" class="btn btn-primary flex-grow-1">Apply Filters</button>
-                        <a href="{{ url_for('doctor_jobs') }}" class="btn btn-light border">Clear</a>
-                    </div>
-                </form>
-            </div>
-        </div>
-        <div class="col-lg-8">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <div class="job-list-count">{{ jobs|length }} job{{ jobs|length != 1 and 's' or '' }} found</div>
-                <div class="active-filters d-flex gap-2 flex-wrap">
-                    {% if keyword %}<span class="badge rounded-pill">Keyword: {{ keyword }}</span>{% endif %}
-                    {% if specialty %}<span class="badge rounded-pill">Specialty: {{ specialty }}</span>{% endif %}
-                    {% if location %}<span class="badge rounded-pill">Location: {{ location }}</span>{% endif %}
-                    {% if salary_min %}<span class="badge rounded-pill">Min: {{ salary_min }}</span>{% endif %}
-                    {% if salary_max %}<span class="badge rounded-pill">Max: {{ salary_max }}</span>{% endif %}
+                    <form method="get" class="row g-3">
+                        <div class="col-12">
+                            <label class="filter-label">Keyword</label>
+                            <input type="text" name="keyword" value="{{ keyword }}" class="form-control"
+                                   placeholder="e.g. Administrative, RN, ICU">
+                        </div>
+                        <div class="col-12">
+                            <label class="filter-label">Specialty</label>
+                            <input type="text" name="specialty" value="{{ specialty }}" class="form-control"
+                                   placeholder="e.g. Cardiology, Surgery">
+                        </div>
+                        <div class="col-12">
+                            <label class="filter-label">Location</label>
+                            <input type="text" name="location" value="{{ location }}" class="form-control"
+                                   placeholder="City, State or ZIP">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="filter-label">Min Salary</label>
+                            <input type="text" name="salary_min" value="{{ salary_min }}" class="form-control"
+                                   placeholder="$120,000">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="filter-label">Max Salary</label>
+                            <input type="text" name="salary_max" value="{{ salary_max }}" class="form-control"
+                                   placeholder="$300,000">
+                        </div>
+                        <div class="col-12 d-flex gap-2">
+                            <button type="submit" class="btn btn-primary flex-grow-1">Apply Filters</button>
+                            <a href="{{ url_for('doctor_jobs') }}" class="btn btn-light border">Clear</a>
+                        </div>
+                    </form>
                 </div>
             </div>
 
-            {% if jobs %}
-                {% for job in jobs %}
-                <div class="card job-card mb-4 shadow-sm" id="job-{{ job.id }}">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
-                            <div>
-                                <div class="text-muted small">Posted {{ job.date_posted or 'recently' }}</div>
-                                <h4 class="card-title job-card-title mb-1">{{ job.title }}</h4>
-                            </div>
-                            <a href="{{ url_for('view_job', job_id=job.id) }}"
-                               class="btn btn-sm btn-outline-primary">View Job</a>
-                        </div>
-                        <div class="job-meta mb-3 mt-1">
-                            <span class="d-flex align-items-center">
-                                <i class="bi bi-geo-alt me-1"></i>
-                                {{ job.location or 'Location not provided' }}
-                            </span>
-                            {% if job.salary %}
-                                <span class="badge rounded-pill">{{ job.salary }}</span>
-                            {% endif %}
-                            {% if job.requirements and (job.requirements.specialty or job.requirements.subspecialty) %}
-                                <span class="badge rounded-pill">
-                                    {{ job.requirements.specialty }}{% if job.requirements.subspecialty %} • {{ job.requirements.subspecialty }}{% endif %}
-                                </span>
-                            {% endif %}
-                        </div>
-                        <p class="job-description">{{ job.description }}</p>
+            <div class="card shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <div class="job-list-count">{{ jobs|length }} job{{ jobs|length != 1 and 's' or '' }} found</div>
+                    <div class="active-filters d-flex gap-2 flex-wrap">
+                        {% if keyword %}<span class="badge rounded-pill">Keyword: {{ keyword }}</span>{% endif %}
+                        {% if specialty %}<span class="badge rounded-pill">Specialty: {{ specialty }}</span>{% endif %}
+                        {% if location %}<span class="badge rounded-pill">Location: {{ location }}</span>{% endif %}
+                        {% if salary_min %}<span class="badge rounded-pill">Min: {{ salary_min }}</span>{% endif %}
+                        {% if salary_max %}<span class="badge rounded-pill">Max: {{ salary_max }}</span>{% endif %}
                     </div>
                 </div>
-                {% endfor %}
-            {% else %}
-                <div class="alert alert-secondary">No jobs match your criteria.</div>
-            {% endif %}
+                <div class="job-snippet-list" id="jobSnippetList">
+                    {% if jobs %}
+                        {% for job in jobs %}
+                        <div class="job-snippet" data-job='{{ {
+                            "id": job.id,
+                            "title": job.title,
+                            "location": job.location or "Location not provided",
+                            "salary": job.salary or "",
+                            "description": job.description or "",
+                            "date_posted": job.date_posted or "recently",
+                            "specialty": job.requirements.specialty if job.requirements else "",
+                            "subspecialty": job.requirements.subspecialty if job.requirements else "",
+                            "job_url": job.job_url or "",
+                            "view_url": url_for('view_job', job_id=job.id)
+                        }|tojson }}'>
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="me-2">
+                                    <div class="text-muted small">Posted {{ job.date_posted or 'recently' }}</div>
+                                    <h6 class="mb-1">{{ job.title }}</h6>
+                                    <div class="text-muted small d-flex align-items-center gap-2 flex-wrap">
+                                        <span><i class="bi bi-geo-alt"></i> {{ job.location or 'Location not provided' }}</span>
+                                        {% if job.salary %}<span class="badge rounded-pill bg-light text-dark border">{{ job.salary }}</span>{% endif %}
+                                    </div>
+                                </div>
+                                <i class="bi bi-chevron-right text-muted"></i>
+                            </div>
+                            <p class="mb-0 text-muted small">{{ job.description|truncate(140, True) }}</p>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="p-4 text-muted">No jobs match your criteria.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card shadow-sm job-detail" id="jobDetailPanel">
+                {% if jobs %}
+                    {% set job = jobs[0] %}
+                    <div class="card-body" id="jobDetailContent">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <div class="text-muted small">Posted {{ job.date_posted or 'recently' }}</div>
+                                <h3 class="mb-1">{{ job.title }}</h3>
+                                <div class="text-muted"><i class="bi bi-geo-alt"></i> {{ job.location or 'Location not provided' }}</div>
+                            </div>
+                            <a class="btn btn-outline-primary" id="viewJobLink" href="{{ url_for('view_job', job_id=job.id) }}">View Full Job</a>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2 mb-3">
+                            {% if job.salary %}<span class="badge bg-success-subtle text-success border">{{ job.salary }}</span>{% endif %}
+                            {% if job.requirements and (job.requirements.specialty or job.requirements.subspecialty) %}
+                                <span class="badge bg-light text-dark border">{{ job.requirements.specialty }}{% if job.requirements.subspecialty %} • {{ job.requirements.subspecialty }}{% endif %}</span>
+                            {% endif %}
+                        </div>
+                        <div class="job-description" id="jobDescription">{{ job.description }}</div>
+                    </div>
+                {% else %}
+                    <div class="card-body text-center text-muted">
+                        Use the filters to find matching jobs. Selections will appear here.
+                    </div>
+                {% endif %}
+            </div>
 
             <div class="d-flex gap-2 mt-4">
                 <a href="{{ url_for('doctor_jobs') }}" class="btn btn-outline-primary">← Back to Full Job Board</a>
@@ -2780,75 +2837,57 @@ app.jinja_loader = DictLoader({
         </div>
     </div>
 
-    <!-- Leaflet + Bootstrap Icons + JS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-    const jobMarkers = {{ job_markers|tojson|safe }};
+    const escapeHTML = (str = "") => str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
 
-    const map = L.map('job-map').setView([37.5, -96], 4);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: 'Map &copy; OpenStreetMap contributors'
-    }).addTo(map);
-
-    let markerGroup = L.featureGroup();
-    jobMarkers.forEach(markerData => {
-        if (markerData.lat && markerData.lng) {
-            let count = markerData.jobs.length;
-
-            let iconHtml = `
-                <div class="leaflet-marker-icon-numbered">
-                    <img class="pin-img"
-                         src="https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png">
-                    ${count > 1 ? `<div class="marker-badge">${count}</div>` : ""}
+    function renderJobDetail(data) {
+        const panel = document.getElementById('jobDetailPanel');
+        const description = escapeHTML(data.description || 'No description provided').replace(/\n/g, '<br>');
+        const specialty = [data.specialty, data.subspecialty].filter(Boolean).join(' • ');
+        panel.innerHTML = `
+            <div class="card-body" id="jobDetailContent">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <div class="text-muted small">Posted ${escapeHTML(data.date_posted || 'recently')}</div>
+                        <h3 class="mb-1">${escapeHTML(data.title)}</h3>
+                        <div class="text-muted"><i class="bi bi-geo-alt"></i> ${escapeHTML(data.location || 'Location not provided')}</div>
+                    </div>
+                    <a class="btn btn-outline-primary" id="viewJobLink" href="${escapeHTML(data.view_url)}">View Full Job</a>
                 </div>
-            `;
-
-            let icon = L.divIcon({
-                html: iconHtml,
-                className: '',
-                iconSize: [38, 50],
-                iconAnchor: [19, 50]
-            });
-
-            let popupHTML = `
-                <div class="custom-popup">
-                    <div class="custom-popup-header">
-                        ${markerData.jobs.length === 1
-                          ? markerData.jobs[0].title
-                          : `${markerData.jobs.length} jobs at this location`}
-                    </div>
-                    <div class="custom-job-list">
-            `;
-
-            markerData.jobs.forEach(job => {
-                popupHTML += `
-                    <div class="custom-job">
-                        <div class="custom-job-title">${job.title}</div>
-                        <a href="/doctor/job/${job.id}" target="_blank"
-                           class="custom-view-job">View Job</a>
-                    </div>
-                `;
-            });
-
-            popupHTML += `</div></div>`;
-
-            const marker = L.marker([markerData.lat, markerData.lng], {icon: icon}).addTo(markerGroup);
-            marker.bindPopup(popupHTML);
-        }
-    });
-
-    markerGroup.addTo(map);
-
-    if (jobMarkers.length > 0) {
-        try {
-            map.fitBounds(markerGroup.getBounds().pad(0.2));
-        } catch (e) {}
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    ${data.salary ? `<span class="badge bg-success-subtle text-success border">${escapeHTML(data.salary)}</span>` : ''}
+                    ${specialty ? `<span class="badge bg-light text-dark border">${escapeHTML(specialty)}</span>` : ''}
+                </div>
+                <div class="job-description" id="jobDescription">${description}</div>
+                ${data.job_url ? `<div class="mt-3"><a class="btn btn-sm btn-info" target="_blank" href="${escapeHTML(data.job_url)}">Open Posting</a></div>` : ''}
+            </div>
+        `;
     }
+
+    const snippets = Array.from(document.querySelectorAll('.job-snippet'));
+    if (snippets.length) {
+        const initialData = JSON.parse(snippets[0].dataset.job);
+        renderJobDetail(initialData);
+        snippets[0].classList.add('active');
+    }
+
+    snippets.forEach(snippet => {
+        snippet.addEventListener('click', () => {
+            snippets.forEach(s => s.classList.remove('active'));
+            snippet.classList.add('active');
+            const data = JSON.parse(snippet.dataset.job);
+            renderJobDetail(data);
+        });
+    });
 
     document.getElementById('aiSearchBtn').addEventListener('click', function() {
         new bootstrap.Modal(document.getElementById('aiSearchModal')).show();
@@ -2876,6 +2915,7 @@ app.jinja_loader = DictLoader({
     });
     </script>
     {% endblock %}''',
+
     
     'landing_page.html': '''
         {% extends "base.html" %}
@@ -6653,12 +6693,6 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-
-
-
-
-
-
 
 
 
