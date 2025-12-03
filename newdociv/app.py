@@ -2871,10 +2871,14 @@ app.jinja_loader = DictLoader({
         if (jobListButtons.length) {
             jobListButtons[0].classList.add('active');
             renderJobPreview(jobListButtons[0].dataset.jobId);
+        } else if (previewEl) {
+            previewEl.innerHTML = '<div class="text-center text-muted">No jobs available to preview yet.</div>';
         }
 
-        const mapContainer = document.getElementById('job-map');
-        if (mapContainer && window.L) {
+        function initializeLeafletMap() {
+            const mapContainer = document.getElementById('job-map');
+            if (!mapContainer || !window.L) return;
+
             const map = L.map(mapContainer).setView([37.5, -96], 4);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: 'Map &copy; OpenStreetMap contributors'
@@ -2935,8 +2939,27 @@ app.jinja_loader = DictLoader({
                 } catch (e) {}
             }
 
-            setTimeout(() => map.invalidateSize(), 200);
+            setTimeout(() => map.invalidateSize(), 250);
         }
+
+        function ensureLeafletLoaded() {
+            if (window.L) {
+                initializeLeafletMap();
+                return;
+            }
+
+            const leafletCss = document.createElement('link');
+            leafletCss.rel = 'stylesheet';
+            leafletCss.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+            document.head.appendChild(leafletCss);
+
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+            script.onload = initializeLeafletMap;
+            document.head.appendChild(script);
+        }
+
+        ensureLeafletLoaded();
 
         const aiSearchBtn = document.getElementById('aiSearchBtn');
         const aiResultsContainer = document.getElementById('aiResultsContainer');
@@ -6764,6 +6787,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
