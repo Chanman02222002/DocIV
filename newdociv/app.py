@@ -730,7 +730,7 @@ class DoctorForm(FlaskForm):
         'Certification',
         choices=[
             ('Board Certified', 'Board Certified'),
-            ('Board Eligible', 'Board Eligible'),
+            ('Board Certified/Eligible', 'Board Certified/Eligible'),
             ('Not Boarded', 'Not Boarded')
         ],
         validators=[Optional()]
@@ -819,7 +819,7 @@ class JobRequirementForm(FlaskForm):
         'Certification',
         choices=[
             ('Board Certified', 'Board Certified'),
-            ('Board Eligible', 'Board Eligible'),
+            ('Board Certified/Eligible', 'Board Certified/Eligible'),
             ('Not Boarded', 'Not Boarded')
         ],
         validators=[Optional()]
@@ -6761,6 +6761,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
