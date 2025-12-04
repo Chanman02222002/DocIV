@@ -1108,7 +1108,7 @@ app.jinja_loader = DictLoader({
                             </a>
                             <a class="nav-link text-white" href="{{ url_for('logout') }}">Logout</a>
                         {% elif current_user.role == 'client' %}
-                            <a class="nav-link text-white" href="{{ url_for('dashboard') }}">My Dashboard</a>
+                            <a class="nav-link text-white" href="{{ url_for('dashboard') }}">Dashboard</a>
                             <a class="nav-link text-white" href="{{ url_for('post_job') }}">Post Job</a>
                             <a class="nav-link text-white" href="{{ url_for('client_my_jobs') }}">My Jobs</a>
                             <a class="nav-link text-white" href="{{ url_for('schedule_call') }}">Schedule Call</a>
@@ -2055,6 +2055,29 @@ app.jinja_loader = DictLoader({
             {{ compare_line('Alternative Phone', doctor.alt_phone, 'alt_phone') }}
             {{ compare_line('Address', doctor.address, 'address') }}
             {{ compare_line('City of Residence', doctor.city_of_residence, 'city_of_residence') }}
+        </div>
+
+        <div class="card shadow p-4 mb-4">
+            <h5 class="card-title text-primary">Documents</h5>
+            {% if doctor.resume_file %}
+                <p class="mb-2">
+                    <strong>Resume/CV:</strong>
+                    <a href="{{ url_for('static', filename=doctor.resume_file) }}" target="_blank">View uploaded resume</a>
+                </p>
+            {% else %}
+                <p class="mb-2">No resume uploaded.</p>
+            {% endif %}
+
+            {% if additional_files %}
+                <p class="mb-1"><strong>Additional Documents:</strong></p>
+                <ul class="mb-0">
+                    {% for file_path in additional_files %}
+                        <li><a href="{{ url_for('static', filename=file_path) }}" target="_blank">{{ file_path.split('/')[-1] }}</a></li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="mb-0">No additional documents uploaded.</p>
+            {% endif %}
         </div>
 
         {% if doctor.medical_school %}
@@ -6244,8 +6267,10 @@ def build_job_comparison(doctor, requirement):
 def doctor_profile(doctor_id):
     doctor = Doctor.query.get_or_404(doctor_id)
     malpractice_cases = json.loads(doctor.malpractice_cases or '[]')
+    additional_files = json.loads(doctor.additional_files or '[]')
     job_id = request.args.get('job_id', type=int)
     compare_mode = request.args.get('compare') == '1'
+
 
     job_requirement = None
     associated_job = None
@@ -6263,6 +6288,7 @@ def doctor_profile(doctor_id):
         'doctor_profile.html',
         doctor=doctor,
         malpractice_cases=malpractice_cases,
+        additional_files=additional_files,
         comparison=comparison,
         compare_mode=compare_mode,
         job_requirement=job_requirement,
@@ -6735,6 +6761,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
