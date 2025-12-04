@@ -3663,11 +3663,11 @@ app.jinja_loader = DictLoader({
         <p><strong>Description:</strong><br>{{ job.description }}</p>
 
         {% if already_interested %}
-            <div class="alert alert-info mt-3">You've already expressed interest in this job.</div>
-            <button class="btn btn-secondary mt-2" disabled>Interest Already Expressed</button>
+            <div class="alert alert-info mt-3">You've already sent an application for this job.</div>
+            <button class="btn btn-secondary mt-2" disabled>Application Already Sent</button>
         {% else %}
             <form method="post">
-                <button class="btn btn-success mt-2">Express Interest</button>
+                <button class="btn btn-success mt-2">Send Application</button>
             </form>
         {% endif %}
 
@@ -5161,7 +5161,7 @@ def view_job(job_id):
 
     job = Job.query.get_or_404(job_id)
 
-    # Check if doctor already expressed interest
+    # Check if doctor already sent an application
     already_interested = Message.query.filter_by(
         sender_id=current_user.id,
         job_id=job.id,
@@ -5170,7 +5170,7 @@ def view_job(job_id):
 
     if request.method == 'POST':
         if already_interested:
-            flash('You have already expressed interest in this job.', 'info')
+            flash('You have already sent an application for this job.', 'info')
         else:
             recipient_user = job.poster or get_or_create_system_user()
             if not recipient_user:
@@ -5181,12 +5181,12 @@ def view_job(job_id):
                     recipient_id=recipient_user.id,
                     job_id=job.id,
                     doctor_id=current_user.doctor.id,
-                    content=f"Dr. {current_user.doctor.first_name} {current_user.doctor.last_name} expressed interest in your job '{job.title}'.",
+                    content=f"Dr. {current_user.doctor.first_name} {current_user.doctor.last_name} sent an application for your job '{job.title}'.",
                     message_type='interest'
                 )
                 db.session.add(message)
                 db.session.commit()
-                flash('Your interest has been sent to the client.', 'success')
+                flash('Your application has been sent to the client.', 'success')
         return redirect(url_for('doctor_jobs'))
     return render_template('view_job.html', job=job, already_interested=already_interested)
 
@@ -5608,14 +5608,14 @@ def express_interest(job_id):
         recipient_id=recipient_user.id,
         job_id=job.id,
         doctor_id=current_user.doctor.id,
-        content=f"{current_user.doctor.first_name} {current_user.doctor.last_name} expressed interest in your job: '{job.title}'.",
+        content=f"{current_user.doctor.first_name} {current_user.doctor.last_name} sent an application for your job: '{job.title}'.",
         message_type='interest'  # <-- clearly marked interest message
     )
 
     db.session.add(message)
     db.session.commit()
 
-    flash('Interest sent to client!', 'success')
+    flash('Application sent to client!', 'success')
     return redirect(url_for('doctor_jobs'))
 
 @app.route('/send_invite/<int:doctor_id>/<int:job_id>', methods=['GET', 'POST'])
@@ -6237,7 +6237,7 @@ def download_job_applicants(job_id):
         flash('Not authorized for this job.', 'danger')
         return redirect(url_for('client_analytics'))
 
-    # Get all doctors who expressed interest (via Message table)
+    # Get all doctors who sent applications (via Message table)
     messages = Message.query.filter_by(job_id=job.id, message_type='interest').all()
     doctor_ids = {msg.doctor_id for msg in messages if msg.doctor_id}
 
@@ -6653,6 +6653,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
