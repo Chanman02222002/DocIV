@@ -5186,7 +5186,7 @@ def view_job(job_id):
                 )
                 db.session.add(message)
                 db.session.commit()
-                flash('Your application has been sent to the client.', 'success')
+                flash('Your application has been sent directly to this hospital, watch your inbox for any updates.', 'success')
         return redirect(url_for('doctor_jobs'))
     return render_template('view_job.html', job=job, already_interested=already_interested)
 
@@ -6653,6 +6653,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
