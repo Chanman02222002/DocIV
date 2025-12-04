@@ -2933,302 +2933,276 @@ app.jinja_loader = DictLoader({
     {% endblock %}''',
     
     'landing_page.html': '''
-        {% extends "base.html" %}
-        {% block content %}
-        <!-- AOS Animate On Scroll CSS -->
-        <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet" />
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>JobsDirect Medical</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
-        <style>
-            .chart-container {
-                transition: transform 0.3s ease;
-            }
-            .chart-container:hover {
-                transform: scale(1.05);
-            }
+    <style>
+        :root {
+            --brand-teal: #8ecad4;
+            --brand-teal-dark: #5aa4b3;
+            --brand-blue: #1e3a8a;
+            --brand-gray: #374151;
+        }
 
-            .emoji-grid {
-                gap: 10px;
-            }
+        body {
+            background: #ffffff;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
 
-            .emoji-table td {
-                font-size: 1.5rem;
-                padding: 3px;
-                text-align: center;
-            }
+        /* ------- NEW NAVBAR (PDF STYLE) ------- */
+        .top-nav {
+            width: 100%;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+        }
+        .top-nav img {
+            height: 60px;
+        }
+        .nav-links a {
+            margin-left: 25px;
+            color: var(--brand-gray);
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .nav-links a:hover {
+            color: var(--brand-teal-dark);
+        }
 
-            :root {
-                --brand-teal: #8ecad4;
-                --brand-teal-dark: #5aa4b3;
-                --brand-teal-soft: #e8f5f7;
-                --brand-charcoal: #1f2b2f;
-            }
+        /* ------- HEXAGON GRID SECTION ------- */
+        .hex-section {
+            position: relative;
+            width: 100%;
+            padding: 40px 0;
+            background: #f5fafd;
+        }
 
-            .hero {
-                background: linear-gradient(180deg, #f6fbfc 0%, var(--brand-teal-soft) 100%);
-                color: var(--brand-charcoal);
-                padding-top: 80px;
-                padding-bottom: 40px;
-            }
+        .hex-container {
+            max-width: 1200px;
+            margin: auto;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-gap: 20px;
+        }
+        .hex {
+            width: 100%;
+            padding-top: 115%;
+            background-size: cover;
+            background-position: center;
+            clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+        }
 
-            .highlight {
-                color: var(--brand-teal-dark);
-            }
+        .headline-box {
+            grid-column: 2 / span 2;
+            background: white;
+            padding: 30px;
+            border-radius: 14px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+            text-align: center;
+        }
 
-            .btn-custom {
-                background-color: var(--brand-teal-dark);
-                color: #fff;
-                border: none;
-                padding: 12px 26px;
-                border-radius: 40px;
-                box-shadow: 0 10px 30px rgba(90, 164, 179, 0.28);
-                transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
-            }
+        .headline-box h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #000;
+        }
 
-            .btn-custom:hover {
-                background-color: var(--brand-teal);
-                transform: translateY(-2px);
-                box-shadow: 0 14px 36px rgba(90, 164, 179, 0.35);
-            }
+        .headline-box .subtext {
+            font-size: 1.1rem;
+            margin-top: 10px;
+            color: #333;
+        }
 
-            .plus-sign {
-                font-size: 3rem;
-                color: var(--brand-teal-dark);
-                margin-left: 15px;
-            }
+        /* ------- LOGIN BUTTONS ------- */
+        .login-button-box {
+            margin-top: 30px;
+            text-align: center;
+        }
 
-            .section-alt h5,
-            .section-alt p,
-            .section-alt small {
-                margin: 0;
-            }
+        .login-btn {
+            display: block;
+            width: 300px;
+            margin: 10px auto;
+            padding: 14px;
+            border-radius: 50px;
+            background: var(--brand-teal-dark);
+            color: #fff;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .login-btn:hover {
+            background: #4c8f9f;
+        }
 
-            @media (max-width: 768px) {
-                .plus-sign {
-                margin-left: 0;
-                margin-top: 10px;
-                }
-            }
-            .emoji-table td {
-                transition: transform 0.4s cubic-bezier(.3,1.5,.5,1);
-                will-change: transform;
-            }
-            </style>
+        .cta-btn {
+            background: #1e3a8a;
+        }
+        .cta-btn:hover {
+            background: #162e67;
+        }
 
+        /* ------- FEATURES SECTION ------- */
+        .features-section {
+            padding: 60px 20px;
+            background: white;
+        }
 
-        <!-- Hero Section -->
-        <div class="hero text-center">
-            <div class="container" style="padding-bottom: 200px;">  
-                <!-- was 60px-->
-                 <img id="hero-logo" src="{{ url_for('static', filename='jobsdirectmedicalcutright.png') }}" alt="DocIV Logo" class="img-fluid mb-4" style="max-width: 500px; transition: transform 0.3s ease;">
-                <p class="lead">A direct line from the <span class="highlight">Doctor</span> to the <span class="highlight">Hospital</span>, eliminating annoying recruiters forever.</p>
-                <div class="mt-4">
-                    <a href="{{ url_for('login') }}" class="btn btn-custom">Physician Login</a>
-                    <a href="{{ url_for('login') }}" class="btn btn-custom">Hospital Login</a>
-                </div>
-            </div>
+        .features-title {
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 30px;
+        }
+
+        .feature-list {
+            max-width: 1000px;
+            margin: auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-gap: 25px;
+        }
+
+        .feature-box {
+            background: #f0f8fa;
+            padding: 20px;
+            border-radius: 14px;
+            font-size: 1.1rem;
+        }
+
+        /* ------- HOW IT WORKS ------- */
+        .how-it-works {
+            background: #eef7fb;
+            padding: 60px 20px;
+        }
+
+        .how-title {
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 30px;
+        }
+
+        .how-steps {
+            max-width: 800px;
+            margin: auto;
+        }
+
+        .how-step {
+            margin-bottom: 25px;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .how-step span {
+            background: var(--brand-teal-dark);
+            color: white;
+            padding: 10px 16px;
+            border-radius: 50%;
+            font-weight: 700;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ===== NEW PDF-STYLE NAVBAR ===== -->
+    <div class="top-nav">
+        <img src="{{ url_for('static', filename='jobsdirectmedicalcutright.png') }}">
+        <div class="nav-links">
+            <a href="{{ url_for('login') }}">Login</a>
+            <a href="{{ url_for('create_account') }}">Create Account</a>
         </div>
+    </div>
 
-        <!-- Problem Statement -->
-          <div class="section text-white" style="background-color: var(--brand-teal-dark); text-align: left; padding: 30px 0;">
-            <div class="container">
-                <h2 class="mb-4" style="margin-left: 20px;">Cut Out the Noise</h2>
-                <p style="max-width: 800px; margin-left: 20px;">
-                    Did you know that the average physician is contacted by over 
-                    <strong>20 recruiters per month</strong>?<br>
-                    <span style="display: inline-block; margin-top: 10px;">
-                        DocIV puts an end to this disruption by promising you that your precious data will never be given to any recruiters. 
-                        Your profile will only be viewed by verified hospital-employed recruiters.
-                    </span>
+    <!-- ===== HEXAGON HERO SECTION ===== -->
+    <section class="hex-section">
+        <div class="hex-container">
+
+            <div class="hex" style="background-image:url('https://i.imgur.com/5b0J3Zy.jpeg');"></div>
+            <div class="hex" style="background-image:url('https://i.imgur.com/jnX0zXc.jpeg');"></div>
+
+            <div class="headline-box">
+                <h1>Tired of nonstop recruiter outreach?</h1>
+                <p class="subtext">
+                    Your information is shared only with the actual hiring entity — NEVER with third parties.
                 </p>
-            </div>
-        </div>
 
-        <div class="section section-alt text-center" style="padding: 50px 0;">
-        <!-- was  100px-->
-        <div class="container">
-            <h2 class="mb-5">Why DocIV Matters</h2>
-            <div class="row justify-content-center g-5 align-items-end">
-
-            <!-- Chart 1: Horizontal Bar -->
-            <div class="col-md-4 d-flex flex-column align-items-center">
-                <div class="chart-container mb-4">
-                <canvas id="chart-overwhelm" width="300" height="180"></canvas>
+                <div class="login-button-box">
+                    <a class="login-btn" href="{{ url_for('login', role='professional') }}">
+                        Healthcare Professional Login
+                    </a>
+                    <a class="login-btn" href="{{ url_for('login', role='organization') }}">
+                        Healthcare Organization Login
+                    </a>
+                    <a class="login-btn cta-btn" href="{{ url_for('create_account') }}">
+                        Create Account
+                    </a>
                 </div>
-                <h5 class="mt-2">Physician Burnout from Recruiters</h5>
-                <p class="fw-bold mb-1">73% feel overwhelmed</p>
-                <small class="text-muted">Source: Merritt Hawkins Survey, 2021</small>
             </div>
 
-            <!-- Chart 2: Grid + Plus -->
-            <div class="col-md-4 d-flex flex-column align-items-center">
-                <div class="emoji-grid mb-4 d-flex align-items-center">
-                    <table class="emoji-table" id="emojiTable">
-                        {% for i in range(5) %}
-                        <tr>
-                        {% for j in range(10) %}
-                        <td>{% if (i + j) % 2 == 0 %}📧{% else %}📱{% endif %}</td>
-                        {% endfor %}
-                        </tr>
-                        {% endfor %}
-                    </table>
-                    <div class="plus-sign">+</div>
-                </div>
-                <h5 class="mt-2">Unwanted Contact Monthly</h5>
-                <p class="fw-bold mb-1">50+ cold calls/emails</p>
-                <small class="text-muted">Source: Doximity Physician Insights, 2022</small>
-            </div>
+            <div class="hex" style="background-image:url('https://i.imgur.com/LP0E7xg.jpeg');"></div>
+            <div class="hex" style="background-image:url('https://i.imgur.com/vWbIr5W.jpeg');"></div>
 
-            <!-- Chart 3: Pie -->
-            <div class="col-md-4 d-flex flex-column align-items-center">
-                <div class="chart-container mb-4" style="max-width: 230px;">
-                <canvas id="chart-direct" width="230" height="230"></canvas>
-                </div>
-                <h5 class="mt-2">Hospitals Want Direct Communication</h5>
-                <p class="fw-bold mb-1">90% prefer to skip agencies</p>
-                <small class="text-muted">Source: MGMA Stat Poll, 2023</small>
-            </div>
+        </div>
+    </section>
 
+    <!-- ===== FEATURES SECTION ===== -->
+    <section class="features-section">
+        <div class="features-title">Why JobsDirect Helps You Avoid Unwanted Contact</div>
+
+        <div class="feature-list">
+            <div class="feature-box">
+                • Skip the unwanted recruiter outreach<br>
+                • Know exactly which hospitals and organizations you're applying to
+            </div>
+            <div class="feature-box">
+                • Save time with fewer, more relevant job options<br>
+                • Set your specialty and location preferences
+            </div>
+            <div class="feature-box">
+                • Direct communication without third-party recruiters<br>
+                • Candidate data remains private
+            </div>
+            <div class="feature-box">
+                • Review job details visually on the map<br>
+                • Apply using your CV + optional AI assistance
             </div>
         </div>
-        </div>
+    </section>
 
-        <!-- How It Works Section -->
-        <div class="section text-center">
-            <div class="container" style="padding-bottom: 200px;">
-            <!-- was  60px-->
-                <img src="{{ url_for('static', filename='dociv_workflow.png') }}" alt="DocIV Workflow Graphic" class="img-fluid mt-4 shadow rounded" style="max-width: 500px;">
+    <!-- ===== HOW IT WORKS SECTION ===== -->
+    <section class="how-it-works">
+        <div class="how-title">How it works</div>
+
+        <div class="how-steps">
+            <div class="how-step">
+                <span>1</span>
+                Healthcare Professional → Apply & set your preferences
+            </div>
+            <div class="how-step">
+                <span>2</span>
+                Healthcare Organization → Review profiles & schedule calls
+            </div>
+            <div class="how-step">
+                <span>3</span>
+                Healthcare Professional → Receive transparency & clear communication
             </div>
         </div>
+    </section>
 
-        <!-- Call to Action -->
-        <div class="section section-alt text-center">
-            <div class="container">
-                <h2>Ready to Experience DocIV?</h2>
-                <a href="{{ url_for('login') }}" class="btn btn-custom mt-3">Get Started</a>
-            </div>
-        </div>
-
-        <!-- Scripts -->
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
-        <script>
-            AOS.init({ duration: 800, once: true });
-
-            // Mousemove parallax effect
-            document.addEventListener("mousemove", function (e) {
-                const logo = document.getElementById("hero-logo");
-                if (!logo) return;
-                const moveX = (e.clientX / window.innerWidth - 0.5) * 10;
-                const moveY = (e.clientY / window.innerHeight - 0.5) * 10;
-                logo.style.transform = `translate(${moveX}px, ${moveY}px)`;
-            });
-
-            // Horizontal bar chart
-            new Chart(document.getElementById('chart-overwhelm'), {
-                type: 'bar',
-                data: {
-                    labels: ['Feel overwhelmed by recruiters'],
-                    datasets: [{
-                        data: [73],
-                        backgroundColor:  '#5aa4b3'
-                    }]
-                },
-                options: {
-                    indexAxis: 'y',
-                    scales: {
-                        x: {
-                            min: 0,
-                            max: 100,
-                            ticks: {
-                                stepSize: 25,
-                                callback: val => val + '%'
-                            }
-                        },
-                        y: {
-                            display: false
-                        }
-                    },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: ctx => ctx.raw + '% of physicians'
-                            }
-                        }
-                    }
-                }
-            });
-
-            // Pie chart
-            new Chart(document.getElementById('chart-direct'), {
-                type: 'pie',
-                data: {
-                    labels: ['Prefer Direct', 'Prefer Recruiters'],
-                    datasets: [{
-                        data: [90, 10],
-                        backgroundColor: ['#5aa4b3', '#d4e9ed']
-                    }]
-                },
-                options: {
-                    plugins: {
-                        legend: { position: 'bottom' },
-                        tooltip: {
-                            callbacks: {
-                                label: ctx => `${ctx.label}: ${ctx.raw}%`
-                            }
-                        }
-                    }
-                }
-            });
-            (function() {
-            const table = document.getElementById('emojiTable');
-            if (!table) return;
-
-            const rows = Array.from(table.rows);
-            const cols = rows[0] ? rows[0].cells.length : 0;
-
-            // Parent for the grid (should be .emoji-grid or similar)
-            const gridParent = table.parentElement;
-
-            function handleMove(e) {
-                // Get mouse X,Y relative to gridParent
-                let rect = gridParent.getBoundingClientRect();
-                let mx = (e.clientX - rect.left) / rect.width;
-                let my = (e.clientY - rect.top) / rect.height;
-
-                rows.forEach((row, i) => {
-                    Array.from(row.cells).forEach((cell, j) => {
-                        let dx = (j / (cols-1)) - mx;
-                        let dy = (i / (rows.length-1)) - my;
-                        let dist = Math.sqrt(dx*dx + dy*dy);
-
-                        let angle = Math.atan2(dy, dx);
-                        let mag = Math.max(0, 0.22 - dist); // lower = more local effect
-
-                        let tx = Math.cos(angle) * mag * 150;
-                        let ty = Math.sin(angle) * mag * 90;
-
-                        let wave = Math.sin(Date.now()/350 + i*0.7 + j*0.5) * 2;
-
-                        cell.style.transform = `translate(${tx}px, ${ty + wave}px) scale(1.12)`;
-                    });
-                });
-            }
-
-            function resetGrid() {
-                rows.forEach(row => {
-                    Array.from(row.cells).forEach(cell => {
-                        cell.style.transform = '';
-                    });
-                });
-            }
-
-            gridParent.addEventListener('mousemove', handleMove);
-            gridParent.addEventListener('mouseleave', resetGrid);
-        })();
-        </script>
-        {% endblock %}
-        ''',
+</body>
+</html>
+''',
 
     'admin_analytics.html': '''{% extends "base.html" %}
         {% block content %}
@@ -6761,6 +6735,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
