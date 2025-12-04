@@ -151,6 +151,30 @@ def ensure_job_columns():
 ensure_job_columns()
 
 
+def ensure_doctor_columns():
+    """Add new doctor columns to existing databases without migrations."""
+    with app.app_context():
+        inspector = inspect(db.engine)
+        if not inspector.has_table('doctor'):
+            return
+
+        existing = {col['name'] for col in inspector.get_columns('doctor')}
+        statements = []
+
+        if 'resume_file' not in existing:
+            statements.append("ALTER TABLE doctor ADD COLUMN resume_file VARCHAR(255)")
+        if 'additional_files' not in existing:
+            statements.append("ALTER TABLE doctor ADD COLUMN additional_files TEXT")
+
+        if statements:
+            with db.engine.begin() as conn:
+                for stmt in statements:
+                    conn.execute(text(stmt))
+
+
+ensure_doctor_columns()
+
+
 # Doctor Registration Form (For Admin)
 class DoctorRegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
@@ -577,6 +601,8 @@ class Doctor(db.Model):
     salary_expectations = db.Column(db.Float)
     joined = db.Column(db.DateTime, default=datetime.utcnow)
     profile_picture = db.Column(db.String(255), nullable=True)
+    resume_file = db.Column(db.String(255), nullable=True)
+    additional_files = db.Column(db.Text, nullable=True)
 
 
 
@@ -769,6 +795,12 @@ class DoctorForm(FlaskForm):
     salary_expectations = FloatField('Salary Expectation (Total Compensation)', validators=[Optional()])
     profile_picture = FileField('Profile Picture', validators=[
         FileAllowed(['jpg', 'png', 'jpeg'], 'Images only!')
+    ])
+    resume_upload = FileField('CV / Resume', validators=[
+        FileAllowed(['pdf', 'doc', 'docx'], 'Documents only!')
+    ])
+    additional_files = FileField('Additional Relevant Files', validators=[
+        FileAllowed(['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'], 'Invalid file type!')
     ])
 
     submit = SubmitField('Submit')
@@ -3352,6 +3384,30 @@ app.jinja_loader = DictLoader({
 
                             <input type="hidden" name="cropped_image_data" id="croppedImageData">
                             <button type="button" class="btn btn-outline-primary w-100 mt-2" id="cropBtn" style="display:none;">Crop and Save</button>
+
+                            <div class="mb-3 mt-4">
+                                <label class="form-label fw-semibold">{{ form.resume_upload.label.text }}</label>
+                                {{ form.resume_upload(class="form-control") }}
+                                <small class="text-muted">Upload your latest CV or resume (PDF, DOC, DOCX).</small>
+                                {% if doctor.resume_file %}
+                                    <div class="mt-2">
+                                        <a href="{{ url_for('static', filename=doctor.resume_file) }}" target="_blank">View current CV/Resume</a>
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">{{ form.additional_files.label.text }}</label>
+                                {{ form.additional_files(class="form-control", multiple=True) }}
+                                <small class="text-muted">Upload licenses, certifications, or other supporting files (you can select multiple).</small>
+                                {% if additional_files %}
+                                    <ul class="list-unstyled small mt-2 mb-0">
+                                        {% for file_path in additional_files %}
+                                            <li><a href="{{ url_for('static', filename=file_path) }}" target="_blank">{{ file_path.split('/')[-1] }}</a></li>
+                                        {% endfor %}
+                                    </ul>
+                                {% endif %}
+                            </div>
                         </div>
 
                         <div class="col-md-8">
@@ -5725,6 +5781,31 @@ def doctor_edit_profile():
                     img.save(cropped_path)
                     doctor.profile_picture = f"upload/{cropped_filename}"
 
+                upload_dir = Path(app.static_folder) / "upload"
+                upload_dir.mkdir(parents=True, exist_ok=True)
+
+                resume_file = form.resume_upload.data
+                if resume_file and resume_file.filename:
+                    resume_filename = secure_filename(resume_file.filename)
+                    resume_filename = f"resume_{doctor.id}_{int(time.time())}_{resume_filename}"
+                    resume_path = upload_dir / resume_filename
+                    resume_file.save(resume_path)
+                    doctor.resume_file = f"upload/{resume_filename}"
+
+                additional_uploads = request.files.getlist(form.additional_files.name)
+                new_files = []
+                for idx, extra_file in enumerate(additional_uploads):
+                    if extra_file and extra_file.filename:
+                        extra_filename = secure_filename(extra_file.filename)
+                        extra_filename = f"additional_{doctor.id}_{int(time.time())}_{idx}_{extra_filename}"
+                        extra_path = upload_dir / extra_filename
+                        extra_file.save(extra_path)
+                        new_files.append(f"upload/{extra_filename}")
+
+                if new_files:
+                    existing_files = json.loads(doctor.additional_files or "[]")
+                    doctor.additional_files = json.dumps(existing_files + new_files)
+
                 doctor.position = form.position.data
                 doctor.specialty = form.specialty.data
                 doctor.subspecialty = form.subspecialty.data
@@ -5842,7 +5923,8 @@ def doctor_edit_profile():
         form.states_willing_to_work.data = doctor.states_willing_to_work.split(',') if doctor.states_willing_to_work else []
         form.salary_expectations.data = doctor.salary_expectations
 
-    return render_template('doctor_edit_profile.html', form=form, doctor=doctor, zip=zip)
+    additional_files = json.loads(doctor.additional_files or "[]")
+    return render_template('doctor_edit_profile.html', form=form, doctor=doctor, zip=zip, additional_files=additional_files)
 
 
 
@@ -6653,6 +6735,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
