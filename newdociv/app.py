@@ -4931,7 +4931,7 @@ def doctor_ai_search_jobs():
             <div style="color:#1f2937;">{location}</div>
             {salary}
             <p style="margin-top:10px;color:#374151;">{summary}</p>
-            <a href="/doctor/job/{job_id}" style="background:#0b3a82;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;margin-top:8px;">View Job</a>
+            <a href="/doctor/job/{job_id}" style="background:#0b3a82;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;display:inline-block;margin-top:8px;text-transform:uppercase;text-align:center;font-weight:700;letter-spacing:0.4px;">VIEW JOB</a>
         </div>
         <p style="font-style:italic;color:#4b5563;">Why this job? {reason}</p>
         """.format(
@@ -4981,7 +4981,7 @@ For each section:
     - Location
     - Salary (if available)
     - Professional, vivid summary explaining why this job fits the criteria, referencing the doctor's preferences.
-    - A large blue "View Job" button: `<a href=\"/doctor/job/{{job_id}}\" style=\"background:#0066cc;color:white;padding:10px 28px;font-size:1.1em;border-radius:7px;display:inline-block;text-decoration:none;margin-top:10px;\">View Job</a>`
+    - A large blue "VIEW JOB" button: `<a href=\"/doctor/job/{{job_id}}\" style=\"background:#0066cc;color:white;padding:12px 22px;font-size:1.05em;border-radius:6px;display:inline-block;text-decoration:none;margin-top:10px;text-transform:uppercase;text-align:center;font-weight:700;letter-spacing:0.4px;\">VIEW JOB</a>`
     - Below the card, show a short "Why This Job?" blurb in italic, describing why this was selected for that category.
 - Do not use code blocks.
 - Do not include any images, icons, or emojis.
@@ -6720,6 +6720,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
