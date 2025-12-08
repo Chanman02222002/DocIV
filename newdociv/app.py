@@ -5151,29 +5151,39 @@ def doctor_jobs():
     salary_min = parse_salary_input(salary_min_raw)
     salary_max = parse_salary_input(salary_max_raw)
 
-    jobs_query = Job.query.outerjoin(JobRequirement)
+    # Keep the map and list aligned with the AI search results by starting from
+    # the same doctor-scoped job pool used by the AI endpoint, then apply
+    # lightweight in-memory filters for the search inputs.
+    jobs = list(get_doctor_jobs(current_user.doctor))
 
     if keyword:
-        keyword_like = f"%{keyword}%"
-        jobs_query = jobs_query.filter(
-            or_(Job.title.ilike(keyword_like), Job.description.ilike(keyword_like))
-        )
+        keyword_lower = keyword.lower()
+        jobs = [
+            job for job in jobs
+            if keyword_lower in (job.title or '').lower()
+            or keyword_lower in (job.description or '').lower()
+        ]
     if location:
-        jobs_query = jobs_query.filter(Job.location.ilike(f"%{location}%"))
+        location_lower = location.lower()
+        jobs = [
+            job for job in jobs
+            if location_lower in (job.location or '').lower()
+        ]
     if specialty:
-        specialty_like = f"%{specialty}%"
-        jobs_query = jobs_query.filter(
-            or_(
-                JobRequirement.specialty.ilike(specialty_like),
-                JobRequirement.subspecialty.ilike(specialty_like),
-                Job.description.ilike(specialty_like),
-                Job.title.ilike(specialty_like)
+        specialty_lower = specialty.lower()
+        jobs = [
+            job for job in jobs
+            if (
+                (specialty_lower in ((job.requirements.specialty if job.requirements else '') or '').lower())
+                or (specialty_lower in ((job.requirements.subspecialty if job.requirements else '') or '').lower())
+                or (specialty_lower in (job.description or '').lower())
+                or (specialty_lower in (job.title or '').lower())
             )
-        )
+        ]
 
-    jobs = jobs_query.order_by(Job.id.desc()).all()
     if salary_min is not None or salary_max is not None:
         jobs = [job for job in jobs if salary_matches_filters(job.salary, salary_min, salary_max)]
+
     job_markers = build_job_markers(jobs)
     return render_template(
         'doctor_jobs.html',
@@ -6720,6 +6730,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
