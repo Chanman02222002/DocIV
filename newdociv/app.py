@@ -1096,13 +1096,33 @@ app.jinja_loader = DictLoader({
                 color: #333;
                 font-size: 0.97em;
             }
-            .custom-view-job {
-                color: var(--brand-teal-dark);
-                font-weight: bold;
-                text-decoration: underline;
+            .custom-view-job,
+            .view-job-btn {
+                background: var(--brand-teal-dark);
+                border: 1px solid var(--brand-teal-dark);
+                border-radius: 8px;
+                color: #fff !important;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 700;
                 font-size: 0.97em;
+                letter-spacing: 0.02em;
+                line-height: 1.2;
                 margin-top: 4px;
-                display: inline-block;
+                min-width: 120px;
+                padding: 10px 18px;
+                text-align: center;
+                text-decoration: none !important;
+                text-transform: uppercase;
+                transition: background 0.2s ease, transform 0.1s ease;
+            }
+            .custom-view-job:hover,
+            .view-job-btn:hover {
+                background: #0d5f8f;
+                color: #fff !important;
+                text-decoration: none;
+                transform: translateY(-1px);
             }
         </style>
     </head>
@@ -2686,7 +2706,7 @@ app.jinja_loader = DictLoader({
                             <div class="custom-job">
                                 <div class="custom-job-title">${job.title}</div>
                                 <a href="/doctor/job/${job.id}" target="_blank"
-                                   class="custom-view-job">View Job</a>
+                                   class="custom-view-job view-job-btn">View Job</a>
                             </div>
                         `;
                     });
@@ -2938,7 +2958,7 @@ app.jinja_loader = DictLoader({
                                 <h4 class="card-title job-card-title mb-1">{{ job.title }}</h4>
                             </div>
                             <a href="{{ url_for('view_job', job_id=job.id) }}"
-                               class="btn btn-sm btn-outline-primary">View Job</a>
+                               class="btn btn-sm btn-outline-primary view-job-btn">View Job</a>
                         </div>
                         <div class="job-meta mb-3 mt-1">
                             <span class="d-flex align-items-center">
@@ -3019,7 +3039,7 @@ app.jinja_loader = DictLoader({
                     <div class="custom-job">
                         <div class="custom-job-title">${job.title}</div>
                         <a href="/doctor/job/${job.id}" target="_blank"
-                           class="custom-view-job">View Job</a>
+                           class="custom-view-job view-job-btn">View Job</a>
                     </div>
                 `;
             });
@@ -6783,6 +6803,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
