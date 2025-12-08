@@ -410,6 +410,32 @@ def get_doctor_jobs(doctor):
             scoped_jobs = fallback_jobs or scoped_jobs
 
     return scoped_jobs
+
+
+def build_job_markers(jobs):
+    """Create marker payloads for Leaflet maps grouped by coordinates."""
+    marker_groups = defaultdict(list)
+    for job in jobs:
+        if job.latitude is not None and job.longitude is not None:
+            key = (round(job.latitude, 5), round(job.longitude, 5))
+            marker_groups[key].append(job)
+
+    job_markers = []
+    for (lat, lng), joblist in marker_groups.items():
+        job_entries = []
+        for job in joblist:
+            job_entries.append({
+                "id": job.id,
+                "title": job.title,
+                "location": job.location,
+            })
+        job_markers.append({
+            "lat": lat,
+            "lng": lng,
+            "jobs": job_entries
+        })
+
+    return job_markers
 def format_city_state(city, state):
     parts = []
     if city:
@@ -2276,6 +2302,19 @@ app.jinja_loader = DictLoader({
 
         <div class="row g-4 align-items-stretch">
             <div class="col-lg-8" id="suggested-section">
+                <div class="card glass-card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center px-4 py-3">
+                        <div>
+                            <div class="text-uppercase small text-primary fw-semibold">Job Locations</div>
+                            <h6 class="mb-0">Opportunities near you</h6>
+                        </div>
+                        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('doctor_jobs') }}">Full Map</a>
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="job-map" style="height:320px; width:100%;"></div>
+                    </div>
+                </div>
+
                 <div class="card glass-card h-100">
                     <div class="card-header d-flex justify-content-between align-items-center px-4 py-3">
                         <div>
@@ -2385,6 +2424,8 @@ app.jinja_loader = DictLoader({
 
     <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css' rel='stylesheet' />
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -2437,9 +2478,11 @@ app.jinja_loader = DictLoader({
         const baseKey = `doctorSuggestedBase_{{ doctor.id }}`;
         const metaKey = `doctorSuggestedMeta_{{ doctor.id }}`;
         const profileSignature = `{{ doctor.specialty or '' }}|{{ doctor.subspecialty or '' }}|{{ doctor.city_of_residence or '' }}|{{ doctor.states_licensed or '' }}|{{ doctor.states_willing_to_work or '' }}|{{ doctor.salary_expectations or '' }}`;
+        const jobMarkers = {{ job_markers|tojson|safe }};
 
         let suggestions = [];
         let baseSuggestions = [];
+
 
         const showLoading = () => {
             loading.classList.remove('d-none');
@@ -2573,8 +2616,72 @@ app.jinja_loader = DictLoader({
                 modal.hide();
             });
         });
+
+        // Job map
+        if (document.getElementById('job-map')) {
+            const map = L.map('job-map').setView([37.5, -96], 4);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: 'Map &copy; OpenStreetMap contributors'
+            }).addTo(map);
+
+            let markerGroup = L.featureGroup();
+            jobMarkers.forEach(markerData => {
+                if (markerData.lat && markerData.lng) {
+                    let count = markerData.jobs.length;
+
+                    let iconHtml = `
+                        <div class="leaflet-marker-icon-numbered">
+                            <img class="pin-img"
+                                 src="https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png">
+                            ${count > 1 ? `<div class="marker-badge">${count}</div>` : ""}
+                        </div>
+                    `;
+
+                    let icon = L.divIcon({
+                        html: iconHtml,
+                        className: '',
+                        iconSize: [38, 50],
+                        iconAnchor: [19, 50]
+                    });
+
+                    let popupHTML = `
+                        <div class="custom-popup">
+                            <div class="custom-popup-header">
+                                ${markerData.jobs.length === 1
+                                  ? markerData.jobs[0].title
+                                  : `${markerData.jobs.length} jobs at this location`}
+                            </div>
+                            <div class="custom-job-list">
+                    `;
+
+                    markerData.jobs.forEach(job => {
+                        popupHTML += `
+                            <div class="custom-job">
+                                <div class="custom-job-title">${job.title}</div>
+                                <a href="/doctor/job/${job.id}" target="_blank"
+                                   class="custom-view-job">View Job</a>
+                            </div>
+                        `;
+                    });
+
+                    popupHTML += `</div></div>`;
+
+                    const marker = L.marker([markerData.lat, markerData.lng], {icon: icon}).addTo(markerGroup);
+                    marker.bindPopup(popupHTML);
+                }
+            });
+
+            markerGroup.addTo(map);
+
+            if (jobMarkers.length > 0) {
+                try {
+                    map.fitBounds(markerGroup.getBounds().pad(0.2));
+                } catch (e) {}
+            }
+        }
     });
     </script>
+
 
     <!-- Refine Suggestions Modal -->
     <div class="modal fade" id="refineModal" tabindex="-1" aria-labelledby="refineModalLabel" aria-hidden="true">
@@ -5067,25 +5174,7 @@ def doctor_jobs():
     jobs = jobs_query.order_by(Job.id.desc()).all()
     if salary_min is not None or salary_max is not None:
         jobs = [job for job in jobs if salary_matches_filters(job.salary, salary_min, salary_max)]
-    marker_groups = defaultdict(list)
-    for job in jobs:
-        if job.latitude is not None and job.longitude is not None:
-            key = (round(job.latitude, 5), round(job.longitude, 5))  # rounding avoids float mismatch
-            marker_groups[key].append(job)
-    job_markers = []
-    for (lat, lng), joblist in marker_groups.items():
-        job_entries = []
-        for job in joblist:
-            job_entries.append({
-                "id": job.id,
-                "title": job.title,
-                "location": job.location,
-            })
-        job_markers.append({
-            "lat": lat,
-            "lng": lng,
-            "jobs": job_entries
-        })
+    job_markers = build_job_markers(jobs)
     return render_template(
         'doctor_jobs.html',
         jobs=jobs,
@@ -5151,6 +5240,7 @@ def doctor_dashboard():
     # Ensure the latest direct jobs are available for suggestions and AI search.
     sync_direct_jobs_from_excel()
 
+    jobs_for_map = get_doctor_jobs(doctor)
     scheduled_calls = ScheduledCall.query.filter_by(doctor_id=doctor.id).order_by(ScheduledCall.datetime.asc()).all()
     pending_invites = ScheduledCall.query.filter_by(doctor_id=doctor.id, invite_status='Pending').all()
     inbox_preview = (
@@ -5189,6 +5279,7 @@ def doctor_dashboard():
         events=events,
         pending_invites=pending_invites,
         inbox_preview=inbox_preview,
+        job_markers=build_job_markers(jobs_for_map),
     )
 
 
@@ -6629,6 +6720,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
