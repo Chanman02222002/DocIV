@@ -2936,273 +2936,167 @@ app.jinja_loader = DictLoader({
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>JobsDirect Medical</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
     <style>
         :root {
             --brand-teal: #8ecad4;
-            --brand-teal-dark: #5aa4b3;
             --brand-blue: #1e3a8a;
             --brand-gray: #374151;
         }
 
-        body {
-            background: #ffffff;
-            font-family: 'Segoe UI', Tahoma, sans-serif;
+        html, body {
             margin: 0;
-            padding: 0;
+            height: 100%;
+            background: #0f172a;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
         }
 
-        /* ------- NEW NAVBAR (PDF STYLE) ------- */
-        .top-nav {
-            width: 100%;
-            padding: 20px 40px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: white;
-        }
-        .top-nav img {
-            height: 60px;
-        }
-        .nav-links a {
-            margin-left: 25px;
-            color: var(--brand-gray);
-            font-weight: 600;
-            text-decoration: none;
-        }
-        .nav-links a:hover {
-            color: var(--brand-teal-dark);
-        }
-
-        /* ------- HEXAGON GRID SECTION ------- */
-        .hex-section {
+        .hero-shell {
             position: relative;
-            width: 100%;
-            padding: 40px 0;
-            background: #f5fafd;
-        }
-
-        .hex-container {
-            max-width: 1200px;
-            margin: auto;
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            grid-gap: 20px;
-        }
-        .hex {
-            width: 100%;
-            padding-top: 115%;
-            background-size: cover;
-            background-position: center;
-            clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
-        }
-
-        .headline-box {
-            grid-column: 2 / span 2;
-            background: white;
-            padding: 30px;
-            border-radius: 14px;
-            box-shadow: 0 4px 14px rgba(0,0,0,0.12);
-            text-align: center;
-        }
-
-        .headline-box h1 {
-            font-size: 2rem;
-            font-weight: 800;
-            color: #000;
-        }
-
-        .headline-box .subtext {
-            font-size: 1.1rem;
-            margin-top: 10px;
-            color: #333;
-        }
-
-        /* ------- LOGIN BUTTONS ------- */
-        .login-button-box {
-            margin-top: 30px;
-            text-align: center;
-        }
-
-        .login-btn {
-            display: block;
-            width: 300px;
-            margin: 10px auto;
-            padding: 14px;
-            border-radius: 50px;
-            background: var(--brand-teal-dark);
-            color: #fff;
-            font-size: 1.1rem;
-            font-weight: 600;
-            text-decoration: none;
-        }
-        .login-btn:hover {
-            background: #4c8f9f;
-        }
-
-        .cta-btn {
-            background: #1e3a8a;
-        }
-        .cta-btn:hover {
-            background: #162e67;
-        }
-
-        /* ------- FEATURES SECTION ------- */
-        .features-section {
-            padding: 60px 20px;
-            background: white;
-        }
-
-        .features-title {
-            text-align: center;
-            font-size: 2rem;
-            font-weight: 700;
-            margin-bottom: 30px;
-        }
-
-        .feature-list {
-            max-width: 1000px;
-            margin: auto;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-gap: 25px;
-        }
-
-        .feature-box {
-            background: #f0f8fa;
-            padding: 20px;
-            border-radius: 14px;
-            font-size: 1.1rem;
-        }
-
-        /* ------- HOW IT WORKS ------- */
-        .how-it-works {
-            background: #eef7fb;
-            padding: 60px 20px;
-        }
-
-        .how-title {
-            text-align: center;
-            font-size: 2rem;
-            font-weight: 700;
-            margin-bottom: 30px;
-        }
-
-        .how-steps {
-            max-width: 800px;
-            margin: auto;
-        }
-
-        .how-step {
-            margin-bottom: 25px;
-            font-size: 1.2rem;
+            min-height: 100vh;
+            overflow: hidden;
+            display: flex;
             display: flex;
             align-items: center;
-            gap: 15px;
+            justify-content: center;
+            background: radial-gradient(circle at 20% 20%, rgba(142, 202, 212, 0.08), transparent 30%),
+                        radial-gradient(circle at 80% 10%, rgba(30, 58, 138, 0.1), transparent 35%),
+                        #0f172a;
         }
 
-        .how-step span {
-            background: var(--brand-teal-dark);
-            color: white;
-            padding: 10px 16px;
-            border-radius: 50%;
+        .pdf-frame {
+            position: absolute;
+            inset: 0;
+        }
+
+        .pdf-frame embed {
+            width: 100%;
+            height: 100%;
+            border: none;
+            object-fit: contain;
+            background: #0f172a;
+            filter: drop-shadow(0 20px 50px rgba(0,0,0,0.35));
+        }
+
+        .hotspot-layer {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+
+        .hotspot {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            width: 18%;
+            min-width: 200px;
+            max-width: 380px;
+            aspect-ratio: 3.2 / 1;
+            border-radius: 999px;
+            border: 2px solid rgba(255, 255, 255, 0.45);
+            background: rgba(255, 255, 255, 0.02);
+            color: #ffffff;
+            font-size: 1.05rem;
             font-weight: 700;
+            letter-spacing: 0.3px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
+            backdrop-filter: blur(4px);
+            transition: all 0.2s ease;
+            pointer-events: auto;
+        }
+
+        .hotspot:hover {
+            background: rgba(142, 202, 212, 0.35);
+            border-color: rgba(142, 202, 212, 0.85);
+            transform: translate(-50%, -50%) scale(1.02);
+        }
+
+        .hotspot:focus-visible {
+            outline: 3px solid var(--brand-teal);
+            outline-offset: 2px;
+        }
+
+        .hotspot.pro {
+            top: 62%;
+            left: 50%;
+        }
+
+        .hotspot.org {
+            top: 72%;
+            left: 50%;
+        }
+
+        .hotspot.create {
+            top: 82%;
+            left: 50%;
+            width: 20%;
+            background: rgba(30, 58, 138, 0.65);
+            border-color: rgba(30, 58, 138, 0.9);
+        }
+
+        .hotspot.create:hover {
+            background: rgba(30, 58, 138, 0.85);
+        }
+
+        .fallback-links {
+            position: absolute;
+            bottom: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.55);
+            color: #e5e7eb;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.25);
+        }
+
+        .fallback-links a {
+            color: var(--brand-teal);
+            font-weight: 700;
+            text-decoration: none;
+            margin: 0 8px;
+        }
+
+        .fallback-links a:hover {
+            text-decoration: underline;
         }
     </style>
 </head>
-
 <body>
 
-    <!-- ===== NEW PDF-STYLE NAVBAR ===== -->
-    <div class="top-nav">
-        <img src="{{ url_for('static', filename='jobsdirectmedicalcutright.png') }}">
-        <div class="nav-links">
-            <a href="{{ url_for('login') }}">Login</a>
+     <div class="hero-shell">
+        <div class="pdf-frame" aria-hidden="true">
+            <embed src="{{ url_for('static', filename='FILE_6696.pdf') }}#toolbar=0&navpanes=0&scrollbar=0" type="application/pdf">
+        </div>
+    <div class="hotspot-layer">
+            <a class="hotspot pro" href="{{ url_for('login', role='professional') }}">Healthcare Professional Login</a>
+            <a class="hotspot org" href="{{ url_for('login', role='organization') }}">Healthcare Organization Login</a>
+            <a class="hotspot create" href="{{ url_for('create_account') }}">Create Account</a>
+        </div>
+    
+
+        <div class="fallback-links">
+            Having trouble clicking? Use these links:
+            <a href="{{ url_for('login', role='professional') }}">Professional</a>
+            ·
+            <a href="{{ url_for('login', role='organization') }}">Organization</a>
+            ·
             <a href="{{ url_for('create_account') }}">Create Account</a>
         </div>
     </div>
-
-    <!-- ===== HEXAGON HERO SECTION ===== -->
-    <section class="hex-section">
-        <div class="hex-container">
-
-            <div class="hex" style="background-image:url('https://i.imgur.com/5b0J3Zy.jpeg');"></div>
-            <div class="hex" style="background-image:url('https://i.imgur.com/jnX0zXc.jpeg');"></div>
-
-            <div class="headline-box">
-                <h1>Tired of nonstop recruiter outreach?</h1>
-                <p class="subtext">
-                    Your information is shared only with the actual hiring entity — NEVER with third parties.
-                </p>
-
-                <div class="login-button-box">
-                    <a class="login-btn" href="{{ url_for('login', role='professional') }}">
-                        Healthcare Professional Login
-                    </a>
-                    <a class="login-btn" href="{{ url_for('login', role='organization') }}">
-                        Healthcare Organization Login
-                    </a>
-                    <a class="login-btn cta-btn" href="{{ url_for('create_account') }}">
-                        Create Account
-                    </a>
-                </div>
-            </div>
-
-            <div class="hex" style="background-image:url('https://i.imgur.com/LP0E7xg.jpeg');"></div>
-            <div class="hex" style="background-image:url('https://i.imgur.com/vWbIr5W.jpeg');"></div>
-
-        </div>
-    </section>
-
-    <!-- ===== FEATURES SECTION ===== -->
-    <section class="features-section">
-        <div class="features-title">Why JobsDirect Helps You Avoid Unwanted Contact</div>
-
-        <div class="feature-list">
-            <div class="feature-box">
-                • Skip the unwanted recruiter outreach<br>
-                • Know exactly which hospitals and organizations you're applying to
-            </div>
-            <div class="feature-box">
-                • Save time with fewer, more relevant job options<br>
-                • Set your specialty and location preferences
-            </div>
-            <div class="feature-box">
-                • Direct communication without third-party recruiters<br>
-                • Candidate data remains private
-            </div>
-            <div class="feature-box">
-                • Review job details visually on the map<br>
-                • Apply using your CV + optional AI assistance
-            </div>
-        </div>
-    </section>
-
-    <!-- ===== HOW IT WORKS SECTION ===== -->
-    <section class="how-it-works">
-        <div class="how-title">How it works</div>
-
-        <div class="how-steps">
-            <div class="how-step">
-                <span>1</span>
-                Healthcare Professional → Apply & set your preferences
-            </div>
-            <div class="how-step">
-                <span>2</span>
-                Healthcare Organization → Review profiles & schedule calls
-            </div>
-            <div class="how-step">
-                <span>3</span>
-                Healthcare Professional → Receive transparency & clear communication
-            </div>
-        </div>
-    </section>
-
 </body>
 </html>
 ''',
+
 
     'admin_analytics.html': '''{% extends "base.html" %}
         {% block content %}
@@ -6735,6 +6629,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
