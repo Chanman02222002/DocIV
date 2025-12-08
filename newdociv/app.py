@@ -175,6 +175,22 @@ def ensure_doctor_columns():
 ensure_doctor_columns()
 
 
+def parse_salary_input(raw_value):
+    """Normalize currency-formatted salary strings to a float value."""
+    if not raw_value:
+        return 0.0
+    numeric = re.sub(r'[^0-9.]', '', str(raw_value))
+    try:
+        return float(numeric) if numeric else 0.0
+    except ValueError:
+        return 0.0
+
+
+def format_salary_display(value):
+    """Format numeric salary for display with dollar sign and commas."""
+    return f"${value:,.0f}" if value else ""
+
+
 # Doctor Registration Form (For Admin)
 class DoctorRegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
@@ -818,7 +834,18 @@ class DoctorForm(FlaskForm):
         widget=ListWidget(prefix_label=False)
     )
 
-    salary_expectations = FloatField('Salary Expectation (Total Compensation)', validators=[Optional()])
+    salary_expectations = StringField(
+        'Salary Expectation (Total Compensation)',
+        validators=[
+            Optional(),
+            Regexp(r'^\$\d{1,3}(,\d{3})*(\.\d{2})?$', message="Use format like $400,000")
+        ],
+        render_kw={
+            "placeholder": "$400,000",
+            "pattern": r"^\$\d{1,3}(,\d{3})*(\.\d{2})?$",
+            "title": "Enter requested compensation with $ and commas, e.g., $400,000"
+        }
+    )
     profile_picture = FileField('Profile Picture', validators=[
         FileAllowed(['jpg', 'png', 'jpeg'], 'Images only!')
     ])
@@ -3515,7 +3542,11 @@ app.jinja_loader = DictLoader({
                         <div class="col-lg-6">
                             <p class="section-title">Compensation</p>
                             <div class="row g-3 mb-3">
-                                <div class="col-md-8">{{ form.salary_expectations.label(class="form-label fw-semibold") }} {{ form.salary_expectations(class="form-control") }}</div>
+                                <div class="col-md-8">
+                                    {{ form.salary_expectations.label(class="form-label fw-semibold") }}
+                                    {{ form.salary_expectations(class="form-control") }}
+                                    <small class="text-muted">Use $ and commas (e.g., $400,000).</small>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -3644,6 +3675,7 @@ app.jinja_loader = DictLoader({
             const positionSelect = document.getElementById('position');
             const mdDoSections = document.querySelectorAll('.md-do-fields');
             const npPaSections = document.querySelectorAll('.np-pa-fields');
+            const salaryInput = document.getElementById('salary_expectations');
 
             function syncPositionSections() {
                 const pos = positionSelect.value;
@@ -3656,6 +3688,38 @@ app.jinja_loader = DictLoader({
 
             positionSelect.addEventListener('change', syncPositionSections);
             syncPositionSections();
+
+            const formatSalaryInput = () => {
+                if (!salaryInput || !salaryInput.value.trim()) return;
+                const numeric = salaryInput.value.replace(/[^0-9.]/g, '');
+                if (!numeric) {
+                    salaryInput.value = '';
+                    return;
+                }
+                const parts = numeric.split('.');
+                const dollars = parts[0] || '0';
+                const cents = parts[1] ? parts[1].slice(0, 2) : '';
+                const formatted = `$${Number(dollars).toLocaleString('en-US')}${cents ? '.' + cents : ''}`;
+                salaryInput.value = formatted;
+            };
+
+            if (salaryInput) {
+                if (salaryInput.value) {
+                    formatSalaryInput();
+                }
+
+                salaryInput.addEventListener('input', () => {
+                    if (salaryInput.value && !salaryInput.value.startsWith('$')) {
+                        salaryInput.value = `$${salaryInput.value.replace(/\$/g, '')}`;
+                    }
+                });
+                salaryInput.addEventListener('blur', formatSalaryInput);
+
+                const profileWizard = document.getElementById('profileWizard');
+                if (profileWizard) {
+                    profileWizard.addEventListener('submit', formatSalaryInput);
+                }
+            }
 
             document.getElementById('clinically_active').addEventListener('change', function () {
                 const selectedOption = this.value;
@@ -4352,7 +4416,7 @@ def add_doctor():
             languages=",".join(language_selections),
             states_licensed=",".join(form.states_licensed.data),
             states_willing_to_work=",".join(form.states_willing_to_work.data),
-            salary_expectations=form.salary_expectations.data or 0.0,
+            salary_expectations=parse_salary_input(form.salary_expectations.data),
             joined=datetime.utcnow()
         )
 
@@ -5837,8 +5901,7 @@ def doctor_edit_profile():
                 doctor.languages = ",".join(form.languages.data)
                 doctor.states_licensed = ",".join(form.states_licensed.data)
                 doctor.states_willing_to_work = ",".join(form.states_willing_to_work.data)
-                doctor.salary_expectations = form.salary_expectations.data or 0.0
-
+                doctor.salary_expectations = parse_salary_input(form.salary_expectations.data)
                 db.session.commit()
                 flash('Doctor updated successfully!', 'success')
                 return redirect(url_for('doctor_dashboard'))
@@ -5903,7 +5966,7 @@ def doctor_edit_profile():
         form.languages.data = doctor.languages.split(',') if doctor.languages else []
         form.states_licensed.data = doctor.states_licensed.split(',') if doctor.states_licensed else []
         form.states_willing_to_work.data = doctor.states_willing_to_work.split(',') if doctor.states_willing_to_work else []
-        form.salary_expectations.data = doctor.salary_expectations
+        form.salary_expectations.data = format_salary_display(doctor.salary_expectations)
 
     additional_files = json.loads(doctor.additional_files or "[]")
     return render_template('doctor_edit_profile.html', form=form, doctor=doctor, zip=zip, additional_files=additional_files)
@@ -6446,7 +6509,7 @@ def edit_doctor(doctor_id):
             doctor.languages = ",".join(language_selections)
             doctor.states_licensed = ",".join(form.states_licensed.data or [])
             doctor.states_willing_to_work = ",".join(form.states_willing_to_work.data or [])
-            doctor.salary_expectations = form.salary_expectations.data or 0.0
+            doctor.salary_expectations = parse_salary_input(form.salary_expectations.data)
             db.session.commit()
             flash('Doctor updated successfully!', 'success')
             return redirect(url_for('doctor_profile', doctor_id=doctor.id))
@@ -6528,7 +6591,7 @@ def edit_doctor(doctor_id):
         form.language_other.data = ", ".join([value for value in language_values if value not in valid_language_options])
         form.states_licensed.data = doctor.states_licensed.split(',') if doctor.states_licensed else []
         form.states_willing_to_work.data = doctor.states_willing_to_work.split(',') if doctor.states_willing_to_work else []
-        form.salary_expectations.data = doctor.salary_expectations
+        form.salary_expectations.data = format_salary_display(doctor.salary_expectations)
             
     return render_template('edit_doctor.html', form=form, doctor=doctor, zip=zip)
 
@@ -6720,6 +6783,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
