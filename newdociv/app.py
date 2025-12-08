@@ -2323,7 +2323,7 @@ app.jinja_loader = DictLoader({
         <div class="glass-card hero-card d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center mb-4 p-4">
             <div>
                 <div class="text-uppercase small text-primary mb-2 fw-semibold">Doctor dashboard</div>
-                <h2 class="fw-bold mb-2">Welcome, Dr. {{ doctor.first_name }} {{ doctor.last_name }}</h2>
+                <h2 class="fw-bold mb-2">Welcome, Dr. {{ doctor.last_name }}</h2>
                 <div class="d-flex flex-wrap gap-2">
                     <span class="badge rounded-pill bg-primary-soft fw-semibold">{{ doctor.specialty or 'Specialty not set'}}</span>
                     {% if doctor.subspecialty %}
@@ -6803,6 +6803,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
