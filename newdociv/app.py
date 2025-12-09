@@ -1023,14 +1023,8 @@ app.jinja_loader = DictLoader({
             }
 
             .navbar {
-                background-color: #121212 !important;
-                box-shadow: none !important;
-            }
-
-            .navbar-brand img {
-                height: 50px !important;
-                width: auto;
-                margin-right: 10px;
+                background: linear-gradient(120deg, #0b1224 0%, #0f1c35 50%, #0b1224 100%) !important;
+                box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25) !important;
             }
 
             .navbar-brand {
@@ -1042,6 +1036,72 @@ app.jinja_loader = DictLoader({
                 font-size: 0.95rem;
                 font-weight: 500;
                 margin-left: 15px;
+            }
+
+            .epic-brand {
+                color: #f8fafc;
+                text-decoration: none;
+                gap: 12px;
+            }
+
+            .epic-logo-shell {
+                width: 58px;
+                height: 58px;
+                border-radius: 18px;
+                background: radial-gradient(circle at 25% 20%, rgba(56, 189, 248, 0.55), rgba(14, 165, 233, 0.25)),
+                            radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.6), rgba(74, 222, 128, 0.18)),
+                            linear-gradient(140deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+                border: 1px solid rgba(255, 255, 255, 0.18);
+                box-shadow: 0 18px 35px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12);
+                display: grid;
+                place-items: center;
+                overflow: hidden;
+                position: relative;
+            }
+
+            .epic-logo-shell::after {
+                content: '';
+                position: absolute;
+                inset: 6px;
+                border-radius: 14px;
+                background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0));
+                pointer-events: none;
+            }
+
+            .epic-logo-shell img {
+                position: relative;
+                z-index: 1;
+                max-width: 70%;
+                max-height: 70%;
+                object-fit: contain;
+                filter: drop-shadow(0 6px 12px rgba(0,0,0,0.25));
+            }
+
+            .epic-logo-initials {
+                position: relative;
+                z-index: 1;
+                color: #e2e8f0;
+                font-weight: 800;
+                font-size: 1.25rem;
+                letter-spacing: 0.02em;
+            }
+
+            .epic-brand-text {
+                display: flex;
+                flex-direction: column;
+                line-height: 1.1;
+            }
+
+            .epic-brand-title {
+                font-size: 1rem;
+                font-weight: 700;
+                color: #e2e8f0;
+            }
+
+            .epic-brand-subtitle {
+                font-size: 0.82rem;
+                color: #cbd5e1;
+                letter-spacing: 0.01em;
             }
 
             h1, h2, h3, h4 {
@@ -1173,9 +1233,24 @@ app.jinja_loader = DictLoader({
     <body>
         <nav class="navbar navbar-expand-lg navbar-dark">
             <div class="container">
-                <a class="navbar-brand d-flex align-items-center" href="{{ url_for('landing_page') if request.endpoint == 'login' else url_for('dashboard') }}">
-                    <img src="{{ url_for('static', filename='jobsdirectmedicalcutright.png') }}" alt="Logo">
-                
+                {% set brand_name = (current_user.organization_name if current_user.is_authenticated and current_user.organization_name else 'Jobs Direct Medical') %}
+                {% set brand_initials = brand_name[:2].upper() %}
+                {% set org_logo = current_user.organization_logo if current_user.is_authenticated else None %}
+                {% set org_logo_url = org_logo if org_logo and '://' in org_logo else (url_for('static', filename=org_logo) if org_logo else None) %}
+                <a class="navbar-brand d-flex align-items-center epic-brand" href="{{ url_for('landing_page') if request.endpoint == 'login' else url_for('dashboard') }}">
+                    <span class="epic-logo-shell">
+                        {% if current_user.is_authenticated and current_user.role == 'client' and org_logo_url %}
+                            <img src="{{ org_logo_url }}" alt="{{ brand_name }} logo">
+                        {% elif current_user.is_authenticated and current_user.role == 'client' %}
+                            <span class="epic-logo-initials">{{ brand_initials }}</span>
+                        {% else %}
+                            <img src="{{ url_for('static', filename='jobsdirectmedicalcutright.png') }}" alt="Logo">
+                        {% endif %}
+                    </span>
+                    <span class="epic-brand-text">
+                        <span class="epic-brand-title">{{ brand_name }}</span>
+                        <span class="epic-brand-subtitle">Tailored staffing experience</span>
+                    </span>
                 </a>
                 <div class="navbar-nav ms-auto">
                     {% if current_user.is_authenticated %}
@@ -1230,6 +1305,7 @@ app.jinja_loader = DictLoader({
                             <a class="nav-link text-white" href="{{ url_for('schedule_call') }}">Schedule Call</a>
                             <a class="nav-link text-white" href="{{ url_for('calls') }}">Scheduled Calls</a>
                             <a class="nav-link text-white" href="{{ url_for('doctors') }}">View Doctors</a>
+                            <a class="nav-link text-white" href="{{ url_for('client_profile') }}">Profile</a>
                             <a class="nav-link text-white position-relative" href="{{ url_for('client_inbox') }}">
                                 Inbox
                                 {% if unread_count > 0 %}
@@ -1410,7 +1486,6 @@ app.jinja_loader = DictLoader({
 
     'client_dashboard.html': '''
         {% extends 'base.html' %}
-
         {% block content %}
         <style>␊
             .client-dashboard { color: #0f172a; }
@@ -1485,7 +1560,6 @@ app.jinja_loader = DictLoader({
                 <li class="nav-item"><a class="nav-link active" href="#activity-section">Hiring activity</a></li>
                 <li class="nav-item"><a class="nav-link" href="#calendar-card">Calendar</a></li>
                 <li class="nav-item"><a class="nav-link" href="#inbox-section">Inbox</a></li>
-                <li class="nav-item"><a class="nav-link" href="#profile-section">Profile</a></li>
             </ul>
             <div class="row g-4 align-items-stretch">
                 <div class="col-lg-8" id="activity-section">
@@ -1617,42 +1691,7 @@ app.jinja_loader = DictLoader({
             </div>
 
             <div class="card glass-card mt-4" id="profile-section">
-                <div class="card-header d-flex justify-content-between align-items-center px-4 py-3">
-                    <div>
-                        <div class="text-uppercase small text-primary fw-semibold">Profile</div>
-                        <h5 class="mb-0">Update your organization details</h5>
-                    </div>
                 </div>
-                <div class="card-body p-4">
-                    <form method="post" action="{{ url_for('client_profile_update') }}" enctype="multipart/form-data" class="row g-3">
-                        {{ profile_form.hidden_tag() }}
-                        <div class="col-md-6">
-                            {{ profile_form.organization_name.label(class="form-label fw-semibold") }}
-                            {{ profile_form.organization_name(class="form-control", placeholder="e.g., Mercy General Hospital") }}
-                            <div class="form-text">Shown on your dashboard and job posts.</div>
-                        </div>
-                        <div class="col-md-6">
-                            {{ profile_form.organization_logo.label(class="form-label fw-semibold") }}
-                            {{ profile_form.organization_logo(class="form-control") }}
-                            <div class="form-text">Upload a clear PNG, JPG, or GIF for best results.</div>
-                        </div>
-                        <div class="col-12 d-flex align-items-center gap-3">
-                            {% if profile_logo_url %}
-                                <span class="profile-logo">
-                                    <img src="{{ profile_logo_url }}" alt="{{ display_name }} logo preview">
-                                </span>
-                                <span class="text-muted small">Current logo preview</span>
-                            {% else %}
-                                <span class="text-muted">No logo uploaded yet.</span>
-                            {% endif %}
-                        </div>
-                        <div class="col-12 d-flex justify-content-end">
-                            {{ profile_form.submit(class="btn btn-primary") }}
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
 
         <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css' rel='stylesheet' />
         <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
@@ -1697,6 +1736,114 @@ app.jinja_loader = DictLoader({
 
         {% endblock %}''',
 
+    'client_profile.html': '''
+        {% extends 'base.html' %}
+
+        {% block content %}
+        <style>
+            .client-profile-page { color: #0f172a; }
+            .client-profile-page .glass-card {
+                background: linear-gradient(135deg, #f7fbff, #eef4ff);
+                border: 1px solid #dbeafe;
+                border-radius: 18px;
+                box-shadow: 0 20px 50px rgba(15, 23, 42, 0.1);
+            }
+            .profile-hero {
+                background: radial-gradient(circle at 15% 20%, rgba(59, 130, 246, 0.12), transparent 35%),
+                            radial-gradient(circle at 85% 0%, rgba(45, 212, 191, 0.2), transparent 40%),
+                            linear-gradient(120deg, #e8f3ff, #f5fbff);
+                border: 1px solid #d7e7ff;
+                overflow: hidden;
+            }
+            .profile-hero .badge-soft { background: rgba(59, 130, 246, 0.15); color: #1d4ed8; }
+            .profile-logo-large {
+                width: 104px;
+                height: 104px;
+                border-radius: 24px;
+                display: grid;
+                place-items: center;
+                background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.18));
+                border: 1px dashed #bfdbfe;
+                overflow: hidden;
+            }
+            .profile-logo-large img {
+                max-width: 80%;
+                max-height: 80%;
+                object-fit: contain;
+            }
+            .profile-logo-placeholder {
+                font-weight: 800;
+                color: #1d4ed8;
+                font-size: 1.4rem;
+                letter-spacing: 0.04em;
+            }
+            .profile-form .form-label { color: #0f172a; font-weight: 700; }
+            .profile-form .helper { color: #64748b; }
+        </style>
+
+        <div class="client-profile-page">
+            <div class="glass-card profile-hero p-4 p-lg-5 mb-4">
+                <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-4">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="profile-logo-large">
+                            {% if profile_logo_url %}
+                                <img src="{{ profile_logo_url }}" alt="{{ display_name }} logo">
+                            {% else %}
+                                <span class="profile-logo-placeholder">{{ display_name[:2].upper() }}</span>
+                            {% endif %}
+                        </span>
+                        <div>
+                            <div class="badge rounded-pill badge-soft mb-2">Brand identity</div>
+                            <h2 class="fw-bold mb-1">Make it unmistakably yours</h2>
+                            <p class="mb-0 text-muted">Refresh your organization name and logo to infuse every dashboard view with your brand.</p>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <div class="fw-semibold text-primary">Live preview</div>
+                        <div class="text-muted" style="max-width: 320px;">Your logo now powers the navigation and upcoming job postings for a bespoke feel.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card glass-card profile-form">
+                <div class="card-header px-4 py-3">
+                    <div class="text-uppercase small text-primary fw-semibold">Organization profile</div>
+                    <h5 class="mb-0">Update your brand details</h5>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post" action="{{ url_for('client_profile') }}" enctype="multipart/form-data" class="row g-4">
+                        {{ form.hidden_tag() }}
+                        <div class="col-md-6">
+                            {{ form.organization_name.label(class="form-label") }}
+                            {{ form.organization_name(class="form-control", placeholder="e.g., Mercy General Hospital") }}
+                            <div class="helper mt-1">This name appears in your navigation, dashboard greetings, and job cards.</div>
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.organization_logo.label(class="form-label") }}
+                            {{ form.organization_logo(class="form-control") }}
+                            <div class="helper mt-1">PNG, JPG, or GIF recommended. We'll resize for a crisp glow in the navbar.</div>
+                        </div>
+                        <div class="col-12">
+                            <div class="d-flex align-items-center gap-3">
+                                <span class="profile-logo-large">
+                                    {% if profile_logo_url %}
+                                        <img src="{{ profile_logo_url }}" alt="{{ display_name }} logo preview">
+                                    {% else %}
+                                        <span class="profile-logo-placeholder">{{ display_name[:2].upper() }}</span>
+                                    {% endif %}
+                                </span>
+                                <div class="text-muted">Preview of how your mark appears inside the new epic navbar treatment.</div>
+                            </div>
+                        </div>
+                        <div class="col-12 d-flex justify-content-end">
+                            {{ form.submit(class="btn btn-primary px-4") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endblock %}
+    ''',
 
 
 
@@ -6257,13 +6404,10 @@ def client_dashboard():
         flash('Unauthorized access!', 'danger')
         return redirect(url_for('dashboard'))
 
-    profile_form = ClientProfileForm()
-    profile_form.organization_name.data = current_user.organization_name or current_user.username
     scheduled_calls = ScheduledCall.query.filter_by(scheduled_by_id=current_user.id).all()
     reschedule_requests = ScheduledCall.query.filter_by(
         scheduled_by_id=current_user.id, reschedule_requested=True
     ).all()
-
     # Upcoming calls for quick summary
     upcoming_calls = [
         call for call in scheduled_calls
@@ -6318,19 +6462,21 @@ def client_dashboard():
         total_jobs=len(jobs),
         total_interest=total_interest,
         active_calls=len(upcoming_calls),
-        profile_form=profile_form,
         display_name=display_name
     )
 
 
-@app.route('/client/profile', methods=['POST'])
+@app.route('/client/profile', methods=['GET', 'POST'])
 @login_required
-def client_profile_update():
+def client_profile():
     if current_user.role != 'client':
         flash('Unauthorized access!', 'danger')
         return redirect(url_for('dashboard'))
 
     form = ClientProfileForm()
+
+    if request.method == 'GET':
+        form.organization_name.data = current_user.organization_name or current_user.username
 
     if form.validate_on_submit():
         current_user.organization_name = form.organization_name.data
@@ -6352,12 +6498,16 @@ def client_profile_update():
 
         db.session.commit()
         flash('Profile updated successfully.', 'success')
-    else:
+        return redirect(url_for('client_profile'))
+    elif request.method == 'POST':
         error_messages = [f"{field.label.text}: {error}" for field, errors in form.errors.items() for error in errors]
         flash(' '.join(error_messages) or 'Could not update profile.', 'danger')
 
-    return redirect(url_for('client_dashboard'))
+    profile_logo = current_user.organization_logo
+    profile_logo_url = profile_logo if profile_logo and '://' in profile_logo else (url_for('static', filename=profile_logo) if profile_logo else None)
+    display_name = current_user.organization_name or current_user.username
 
+    return render_template('client_profile.html', form=form, profile_logo_url=profile_logo_url, display_name=display_name)
 
 @app.route('/dashboard')
 @login_required
@@ -7052,6 +7202,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
