@@ -2503,7 +2503,7 @@ app.jinja_loader = DictLoader({
                         <div id="suggested-empty" class="text-muted" style="display:none;">No matches yet. Update your specialty or try refining your criteria.</div>
                     </div>
                     <div class="card-footer d-flex flex-wrap justify-content-between align-items-center px-4 py-3 gap-2">
-                        <div class="text-muted small mb-0">Showing matches for {{ doctor.specialty or 'your specialty' }}. Ranked by specialty, pay, and location fit.</div>
+                        <div class="text-muted small mb-0">Showing matches for {{ doctor.specialty or 'your specialty' }}. Ranked by specialty, location, and pay fit.</div>
                         <a class="btn btn-outline-primary btn-sm" href="{{ url_for('doctor_jobs') }}">View all jobs</a>
                     </div>
                 </div>
@@ -7052,6 +7052,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
