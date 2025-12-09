@@ -2315,10 +2315,22 @@ app.jinja_loader = DictLoader({
         .suggested-card:hover { transform: translateY(-4px); box-shadow: 0 10px 24px rgba(17, 24, 39, 0.12); }
         .suggested-card h5 { color: #0b3a82; }
         .suggested-pill { background: #e0edff; color: #0b3a82; }
+        .view-role-btn {
+            border-radius: 10px;
+            text-transform: uppercase;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 18px;
+            letter-spacing: 0.5px;
+        }
+        .view-role-btn.btn-sm {
+            font-size: 0.85rem;
+        }
         .calendar-card { min-height: 360px; }
         #mini-calendar a { color: #0b3a82; }
     </style>
-
     <div class="doctor-dashboard">
         <div class="glass-card hero-card d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center mb-4 p-4">
             <div>
@@ -2569,7 +2581,7 @@ app.jinja_loader = DictLoader({
                         </div>
                         <p class="mt-3 mb-0 text-secondary">${escapeHtml(job.rationale)}</p>
                     </div>
-                    <a class="btn btn-outline-primary btn-sm align-self-stretch" href="/doctor/job/${job.id}">View role</a>
+                    <a class="btn btn-outline-primary btn-sm align-self-stretch view-role-btn" href="/doctor/job/${job.id}">VIEW ROLE</a>
                 `;
                 list.appendChild(row);
             });
@@ -6805,6 +6817,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
