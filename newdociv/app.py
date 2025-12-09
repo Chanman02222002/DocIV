@@ -2380,8 +2380,9 @@ app.jinja_loader = DictLoader({
                         <div id="suggested-list" class="d-flex flex-column gap-3" style="display:none;"></div>
                         <div id="suggested-empty" class="text-muted" style="display:none;">No matches yet. Update your specialty or try refining your criteria.</div>
                     </div>
-                    <div class="card-footer d-flex justify-content-between align-items-center px-4 py-3">
-                        <div class="text-muted small">Showing matches for {{ doctor.specialty or 'your specialty' }}. Ranked by specialty, pay, and location fit.</div>
+                    <div class="card-footer d-flex flex-wrap justify-content-between align-items-center px-4 py-3 gap-2">
+                        <div class="text-muted small mb-0">Showing matches for {{ doctor.specialty or 'your specialty' }}. Ranked by specialty, pay, and location fit.</div>
+                        <a class="btn btn-outline-primary btn-sm" href="{{ url_for('doctor_jobs') }}">View all jobs</a>
                     </div>
                 </div>
             </div>
@@ -2397,6 +2398,40 @@ app.jinja_loader = DictLoader({
                     </div>
                     <div class="card-body p-3">
                         <div id="mini-calendar"></div>
+                    </div>
+                </div>
+
+                <div class="card glass-card" id="inbox-section">
+                    <div class="card-header d-flex justify-content-between align-items-center px-4 py-3">
+                        <div>
+                            <div class="text-uppercase small text-primary fw-semibold">Inbox</div>
+                            <h5 class="mb-0">Latest conversations</h5>
+                        </div>
+                        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('doctor_inbox') }}">View all</a>
+                    </div>
+                    <div class="card-body p-4">
+                        {% if inbox_preview %}
+                            {% for message in inbox_preview %}
+                            <div class="inbox-item">
+                                <div class="d-flex justify-content-between align-items-start gap-3">
+                                    <div>
+                                        <div class="fw-semibold">{{ message.sender.username if message.sender else 'System'}}
+                                        </div>
+                                        <div class="text-muted">{{ message.content[:180] }}{% if message.content|length > 180 %}...{% endif %}</div>
+                                    </div>
+                                    <small>{{ message.timestamp.strftime('%b %d, %Y %I:%M %p') }}</small>
+                                </div>
+                                {% if message.job %}
+                                <div class="mt-2 d-flex align-items-center gap-2 text-primary">
+                                    <i class="bi bi-briefcase"></i>
+                                    <a class="link-primary text-decoration-underline" href="{{ url_for('view_job', job_id=message.job.id) }}">{{ message.job.title }}</a>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-muted">No messages yet. Keep an eye out for client conversations.</div>
+                        {% endif %}
                     </div>
                 </div>
 
@@ -2432,39 +2467,6 @@ app.jinja_loader = DictLoader({
                         {% endif %}
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <div class="card glass-card mt-4" id="inbox-section">
-            <div class="card-header d-flex justify-content-between align-items-center px-4 py-3">
-                <div>
-                    <div class="text-uppercase small text-primary fw-semibold">Inbox</div>
-                    <h5 class="mb-0">Latest conversations</h5>
-                </div>
-                <a class="btn btn-sm btn-outline-primary" href="{{ url_for('doctor_inbox') }}">View all</a>
-            </div>
-            <div class="card-body p-4">
-                {% if inbox_preview %}
-                    {% for message in inbox_preview %}
-                    <div class="inbox-item">
-                        <div class="d-flex justify-content-between align-items-start gap-3">
-                            <div>
-                                <div class="fw-semibold">{{ message.sender.username if message.sender else 'System'}}</div>
-                                <div class="text-muted">{{ message.content[:180] }}{% if message.content|length > 180 %}...{% endif %}</div>
-                            </div>
-                            <small>{{ message.timestamp.strftime('%b %d, %Y %I:%M %p') }}</small>
-                        </div>
-                        {% if message.job %}
-                        <div class="mt-2 d-flex align-items-center gap-2 text-primary">
-                            <i class="bi bi-briefcase"></i>
-                            <a class="link-primary text-decoration-underline" href="{{ url_for('view_job', job_id=message.job.id) }}">{{ message.job.title }}</a>
-                        </div>
-                        {% endif %}
-                    </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="text-muted">No messages yet. Keep an eye out for client conversations.</div>
-                {% endif %}
             </div>
         </div>
     </div>
@@ -6803,6 +6805,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
