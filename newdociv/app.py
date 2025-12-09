@@ -70,6 +70,8 @@ class User(UserMixin, db.Model):
 
 class Job(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    facility_name = db.Column(db.String(150))
+    facility_logo_url = db.Column(db.Text)
     title = db.Column(db.String(100))
     location = db.Column(db.String(100))
     salary = db.Column(db.String(50))
@@ -133,6 +135,10 @@ def ensure_job_columns():
         existing = {col['name'] for col in inspector.get_columns('job')}
         statements = []
 
+        if 'facility_name' not in existing:
+            statements.append("ALTER TABLE job ADD COLUMN facility_name VARCHAR(150)")
+        if 'facility_logo_url' not in existing:
+            statements.append("ALTER TABLE job ADD COLUMN facility_logo_url TEXT")
         if 'job_url' not in existing:
             statements.append("ALTER TABLE job ADD COLUMN job_url TEXT")
         if 'date_posted' not in existing:
@@ -200,6 +206,8 @@ class DoctorRegistrationForm(FlaskForm):
 
 # Job Posting Form (For User)
 class JobForm(FlaskForm):
+    facility_name = StringField('Hospital/Clinic Name', validators=[DataRequired()])
+    facility_logo_url = StringField('Logo URL', validators=[Optional()])
     title = StringField('Title', validators=[DataRequired()])
     location = StringField('Location', validators=[DataRequired()])
     salary = StringField('Salary', validators=[DataRequired()])
@@ -1628,6 +1636,17 @@ app.jinja_loader = DictLoader({
                             {{ form.hidden_tag() }}
 
                             <div class="mb-3">
+                                <label class="form-label fw-semibold">{{ form.facility_name.label.text }}</label>
+                                {{ form.facility_name(class="form-control", placeholder="Hospital or clinic name") }}
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">{{ form.facility_logo_url.label.text }}</label>
+                                {{ form.facility_logo_url(class="form-control", placeholder="https://example.com/logo.png") }}
+                                <div class="form-text">Paste a publicly accessible logo URL to feature it on the job card.</div>
+                            </div>
+
+                            <div class="mb-3">
                                 <label class="form-label fw-semibold">{{ form.title.label.text }}</label>
                                 {{ form.title(class="form-control form-control-lg", placeholder="e.g., Family Medicine Physician") }}
                             </div>
@@ -2777,6 +2796,12 @@ app.jinja_loader = DictLoader({
         <form method="post">
             {{ form.hidden_tag() }}
             <div class="mb-3">
+                {{ form.facility_name.label }} {{ form.facility_name(class="form-control") }}
+            </div>
+            <div class="mb-3">
+                {{ form.facility_logo_url.label }} {{ form.facility_logo_url(class="form-control") }}
+            </div>
+            <div class="mb-3">
                 {{ form.title.label }} {{ form.title(class="form-control") }}
             </div>
             <div class="mb-3">
@@ -2806,6 +2831,30 @@ app.jinja_loader = DictLoader({
             border-radius: 16px;
             transition: box-shadow 0.2s ease, transform 0.2s ease;
         }
+
+        .job-logo-wrap {
+            width: 64px;
+            height: 64px;
+            border-radius: 14px;
+            border: 1px solid #e5e7eb;
+            background: #f8fafc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .job-logo-img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .job-logo-placeholder {
+            font-weight: 700;
+            color: #0b3b65;
+        }
+
 
         .job-card:hover {
             box-shadow: 0 15px 40px rgba(0,0,0,0.06);
@@ -2966,14 +3015,25 @@ app.jinja_loader = DictLoader({
                 {% for job in jobs %}
                 <div class="card job-card mb-4 shadow-sm" id="job-{{ job.id }}">
                     <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
-                            <div>
-                                <div class="text-muted small">Posted {{ job.date_posted or 'recently' }}</div>
-                                <h4 class="card-title job-card-title mb-1">{{ job.title }}</h4>
+                        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="job-logo-wrap">
+                                    {% if job.facility_logo_url %}
+                                        <img src="{{ job.facility_logo_url }}" alt="{{ job.facility_name or 'Facility logo' }}" class="job-logo-img">
+                                    {% else %}
+                                        <div class="job-logo-placeholder">{{ (job.facility_name or job.title or 'H')[0]|upper }}</div>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <div class="text-uppercase text-muted small">Hospital/Clinic</div>
+                                    <h5 class="mb-1">{{ job.facility_name or 'Facility name unavailable' }}</h5>
+                                    <div class="text-muted small">Posted {{ job.date_posted or 'recently' }}</div>
+                                </div>
                             </div>
                             <a href="{{ url_for('view_job', job_id=job.id) }}"
                                class="btn btn-sm btn-outline-primary view-job-btn">View Job</a>
                         </div>
+                        <h4 class="card-title job-card-title mb-2 mt-3">{{ job.title }}</h4>
                         <div class="job-meta mb-3 mt-1">
                             <span class="d-flex align-items-center">
                                 <i class="bi bi-geo-alt me-1"></i>
@@ -3808,10 +3868,50 @@ app.jinja_loader = DictLoader({
     'view_job.html': '''
     {% extends "base.html" %}
     {% block content %}
+    <style>
+        .job-logo-wrap {
+            width: 72px;
+            height: 72px;
+            border-radius: 16px;
+            border: 1px solid #e5e7eb;
+            background: #f8fafc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .job-logo-img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .job-logo-placeholder {
+            font-weight: 700;
+            color: #0b3b65;
+        }
+    </style>
     <div class="card shadow p-4">
-        <h3>{{ job.title }}</h3>
-        <p><strong>Location:</strong> {{ job.location }}</p>
-        <p><strong>Salary:</strong> {{ job.salary }}</p>
+        <div class="d-flex align-items-center gap-3 mb-3">
+            <div class="job-logo-wrap">
+                {% if job.facility_logo_url %}
+                    <img src="{{ job.facility_logo_url }}" alt="{{ job.facility_name or 'Facility logo' }}" class="job-logo-img">
+                {% else %}
+                    <div class="job-logo-placeholder">{{ (job.facility_name or job.title or 'H')[0]|upper }}</div>
+                {% endif %}
+            </div>
+            <div>
+                <div class="text-uppercase text-muted small">Hospital/Clinic</div>
+                <h5 class="mb-1">{{ job.facility_name or 'Facility name unavailable' }}</h5>
+                <div class="text-muted">{{ job.location or 'Location not provided' }}</div>
+            </div>
+        </div>
+        <h3 class="mb-2">{{ job.title }}</h3>
+        <p class="text-muted">Posted {{ job.date_posted or 'recently' }}</p>
+        {% if job.salary %}
+            <p><strong>Salary:</strong> {{ job.salary }}</p>
+        {% endif %}
         <p><strong>Description:</strong><br>{{ job.description }}</p>
 
         {% if already_interested %}
@@ -4825,6 +4925,8 @@ def post_job():
         # Geocode location before creating the Job
         lat, lng = geocode_location(form.location.data)
         job = Job(
+            facility_name=form.facility_name.data,
+            facility_logo_url=form.facility_logo_url.data,
             title=form.title.data,
             location=form.location.data,
             salary=form.salary.data,
@@ -5817,10 +5919,11 @@ def edit_job(job_id):
 
     if form.validate_on_submit():
         job.title = form.title.data
+        job.facility_name = form.facility_name.data
+        job.facility_logo_url = form.facility_logo_url.data
         job.location = form.location.data
         job.salary = form.salary.data
         job.description = form.description.data
-
         db.session.commit()
         flash('Job updated successfully!', 'success')
         return redirect(url_for('client_my_jobs'))
@@ -6817,6 +6920,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
