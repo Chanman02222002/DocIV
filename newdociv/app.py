@@ -59,6 +59,8 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.Text, nullable=False)
     role = db.Column(db.String(20), default='client')  # default as client
+    organization_name = db.Column(db.String(150))
+    organization_logo = db.Column(db.String(255))
 
     doctor = db.relationship('Doctor', back_populates='user', uselist=False)
 
@@ -157,6 +159,31 @@ def ensure_job_columns():
 ensure_job_columns()
 
 
+def ensure_user_columns():
+    """Add new user columns to existing databases without migrations."""
+    with app.app_context():
+        inspector = inspect(db.engine)
+        if not inspector.has_table('user'):
+            return
+
+        existing = {col['name'] for col in inspector.get_columns('user')}
+        statements = []
+
+        if 'organization_name' not in existing:
+            statements.append("ALTER TABLE user ADD COLUMN organization_name VARCHAR(150)")
+        if 'organization_logo' not in existing:
+            statements.append("ALTER TABLE user ADD COLUMN organization_logo VARCHAR(255)")
+
+        if statements:
+            with db.engine.begin() as conn:
+                for stmt in statements:
+                    conn.execute(text(stmt))
+
+
+ensure_user_columns()
+
+
+
 def ensure_doctor_columns():
     """Add new doctor columns to existing databases without migrations."""
     with app.app_context():
@@ -207,12 +234,20 @@ class DoctorRegistrationForm(FlaskForm):
 # Job Posting Form (For User)
 class JobForm(FlaskForm):
     facility_name = StringField('Hospital/Clinic Name', validators=[DataRequired()])
-    facility_logo_url = StringField('Logo URL', validators=[Optional()])
     title = StringField('Title', validators=[DataRequired()])
     location = StringField('Location', validators=[DataRequired()])
     salary = StringField('Salary', validators=[DataRequired()])
     description = TextAreaField('Description', validators=[DataRequired()])
     submit = SubmitField('Post Job')
+
+
+class ClientProfileForm(FlaskForm):
+    organization_name = StringField('Organization Name', validators=[DataRequired()])
+    organization_logo = FileField(
+        'Upload Logo',
+        validators=[Optional(), FileAllowed(['jpg', 'jpeg', 'png', 'gif'], 'Images only!')]
+    )
+    submit = SubmitField('Save Profile')
 
 # Database Models Updates
 
@@ -1377,7 +1412,7 @@ app.jinja_loader = DictLoader({
         {% extends 'base.html' %}
 
         {% block content %}
-        <style>
+        <style>␊
             .client-dashboard { color: #0f172a; }
             .client-dashboard .glass-card {
                 background: linear-gradient(145deg, #f9fbff, #eef4ff);
@@ -1401,13 +1436,38 @@ app.jinja_loader = DictLoader({
             .activity-item + .activity-item { margin-top: 12px; }
             .reschedule-card form button { min-width: 96px; }
             .empty-state { color: #6b7280; }
+            .profile-logo {
+                width: 64px;
+                height: 64px;
+                border-radius: 14px;
+                background: #fff;
+                border: 1px solid #dbe7ff;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                overflow: hidden;
+            }
+            .profile-logo img {
+                max-width: 100%;
+                max-height: 100%;
+                object-fit: contain;
+            }
         </style>
 
         <div class="client-dashboard">
+            {% set profile_logo = current_user.organization_logo %}
+            {% set profile_logo_url = profile_logo if profile_logo and '://' in profile_logo else (url_for('static', filename=profile_logo) if profile_logo else None) %}
             <div class="glass-card hero-card d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center mb-4 p-4">
                 <div>
                     <div class="text-uppercase small text-primary mb-2 fw-semibold">Client dashboard</div>
-                    <h2 class="fw-bold mb-2">Welcome back, {{ current_user.organization_name }}</h2>
+                    <div class="d-flex align-items-center gap-3">
+                        <h2 class="fw-bold mb-2 mb-lg-0">Welcome back, {{ display_name }}</h2>
+                        {% if profile_logo_url %}
+                            <span class="profile-logo">
+                                <img src="{{ profile_logo_url }}" alt="{{ display_name }} logo">
+                            </span>
+                        {% endif %}
+                    </div>
                     <div class="d-flex flex-wrap gap-2">
                         <span class="badge rounded-pill badge-soft-primary fw-semibold">{{ total_jobs }} open roles</span>
                         <span class="badge rounded-pill badge-soft-success fw-semibold">{{ active_calls }} upcoming calls</span>
@@ -1425,8 +1485,8 @@ app.jinja_loader = DictLoader({
                 <li class="nav-item"><a class="nav-link active" href="#activity-section">Hiring activity</a></li>
                 <li class="nav-item"><a class="nav-link" href="#calendar-card">Calendar</a></li>
                 <li class="nav-item"><a class="nav-link" href="#inbox-section">Inbox</a></li>
+                <li class="nav-item"><a class="nav-link" href="#profile-section">Profile</a></li>
             </ul>
-
             <div class="row g-4 align-items-stretch">
                 <div class="col-lg-8" id="activity-section">
                     <div class="card glass-card h-100">
@@ -1555,6 +1615,43 @@ app.jinja_loader = DictLoader({
                     {% endif %}
                 </div>
             </div>
+
+            <div class="card glass-card mt-4" id="profile-section">
+                <div class="card-header d-flex justify-content-between align-items-center px-4 py-3">
+                    <div>
+                        <div class="text-uppercase small text-primary fw-semibold">Profile</div>
+                        <h5 class="mb-0">Update your organization details</h5>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post" action="{{ url_for('client_profile_update') }}" enctype="multipart/form-data" class="row g-3">
+                        {{ profile_form.hidden_tag() }}
+                        <div class="col-md-6">
+                            {{ profile_form.organization_name.label(class="form-label fw-semibold") }}
+                            {{ profile_form.organization_name(class="form-control", placeholder="e.g., Mercy General Hospital") }}
+                            <div class="form-text">Shown on your dashboard and job posts.</div>
+                        </div>
+                        <div class="col-md-6">
+                            {{ profile_form.organization_logo.label(class="form-label fw-semibold") }}
+                            {{ profile_form.organization_logo(class="form-control") }}
+                            <div class="form-text">Upload a clear PNG, JPG, or GIF for best results.</div>
+                        </div>
+                        <div class="col-12 d-flex align-items-center gap-3">
+                            {% if profile_logo_url %}
+                                <span class="profile-logo">
+                                    <img src="{{ profile_logo_url }}" alt="{{ display_name }} logo preview">
+                                </span>
+                                <span class="text-muted small">Current logo preview</span>
+                            {% else %}
+                                <span class="text-muted">No logo uploaded yet.</span>
+                            {% endif %}
+                        </div>
+                        <div class="col-12 d-flex justify-content-end">
+                            {{ profile_form.submit(class="btn btn-primary") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
 
         <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css' rel='stylesheet' />
@@ -1641,16 +1738,10 @@ app.jinja_loader = DictLoader({
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label fw-semibold">{{ form.facility_logo_url.label.text }}</label>
-                                {{ form.facility_logo_url(class="form-control", placeholder="https://example.com/logo.png") }}
-                                <div class="form-text">Paste a publicly accessible logo URL to feature it on the job card.</div>
-                            </div>
-
-                            <div class="mb-3">
                                 <label class="form-label fw-semibold">{{ form.title.label.text }}</label>
                                 {{ form.title(class="form-control form-control-lg", placeholder="e.g., Family Medicine Physician") }}
                             </div>
-
+                            
                             <div class="row g-3 mb-3">
                                 <div class="col-md-7">
                                     <label class="form-label fw-semibold">{{ form.location.label.text }}</label>
@@ -2799,9 +2890,6 @@ app.jinja_loader = DictLoader({
                 {{ form.facility_name.label }} {{ form.facility_name(class="form-control") }}
             </div>
             <div class="mb-3">
-                {{ form.facility_logo_url.label }} {{ form.facility_logo_url(class="form-control") }}
-            </div>
-            <div class="mb-3">
                 {{ form.title.label }} {{ form.title(class="form-control") }}
             </div>
             <div class="mb-3">
@@ -3015,15 +3103,16 @@ app.jinja_loader = DictLoader({
                 {% for job in jobs %}
                 <div class="card job-card mb-4 shadow-sm" id="job-{{ job.id }}">
                     <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
-                            <div class="d-flex align-items-center gap-3">
-                                <div class="job-logo-wrap">
-                                    {% if job.facility_logo_url %}
-                                        <img src="{{ job.facility_logo_url }}" alt="{{ job.facility_name or 'Facility logo' }}" class="job-logo-img">
-                                    {% else %}
-                                        <div class="job-logo-placeholder">{{ (job.facility_name or job.title or 'H')[0]|upper }}</div>
-                                    {% endif %}
-                                </div>
+                                <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                                    <div class="d-flex align-items-center gap-3">
+                                        {% set logo_path = (job.poster.organization_logo if job.poster else None) or job.facility_logo_url %}
+                                        <div class="job-logo-wrap">
+                                            {% if logo_path %}
+                                                <img src="{{ logo_path if '://' in logo_path else url_for('static', filename=logo_path) }}" alt="{{ job.facility_name or 'Facility logo' }}" class="job-logo-img">
+                                            {% else %}
+                                                <div class="job-logo-placeholder">{{ (job.facility_name or job.title or 'H')[0]|upper }}</div>
+                                            {% endif %}
+                                        </div>
                                 <div>
                                     <div class="text-uppercase text-muted small">Hospital/Clinic</div>
                                     <h5 class="mb-1">{{ job.facility_name or 'Facility name unavailable' }}</h5>
@@ -3894,9 +3983,10 @@ app.jinja_loader = DictLoader({
     </style>
     <div class="card shadow p-4">
         <div class="d-flex align-items-center gap-3 mb-3">
+            {% set logo_path = (job.poster.organization_logo if job.poster else None) or job.facility_logo_url %}
             <div class="job-logo-wrap">
-                {% if job.facility_logo_url %}
-                    <img src="{{ job.facility_logo_url }}" alt="{{ job.facility_name or 'Facility logo' }}" class="job-logo-img">
+                {% if logo_path %}
+                    <img src="{{ logo_path if '://' in logo_path else url_for('static', filename=logo_path) }}" alt="{{ job.facility_name or 'Facility logo' }}" class="job-logo-img">
                 {% else %}
                     <div class="job-logo-placeholder">{{ (job.facility_name or job.title or 'H')[0]|upper }}</div>
                 {% endif %}
@@ -4926,7 +5016,7 @@ def post_job():
         lat, lng = geocode_location(form.location.data)
         job = Job(
             facility_name=form.facility_name.data,
-            facility_logo_url=form.facility_logo_url.data,
+            facility_logo_url=current_user.organization_logo,
             title=form.title.data,
             location=form.location.data,
             salary=form.salary.data,
@@ -5920,7 +6010,7 @@ def edit_job(job_id):
     if form.validate_on_submit():
         job.title = form.title.data
         job.facility_name = form.facility_name.data
-        job.facility_logo_url = form.facility_logo_url.data
+        job.facility_logo_url = current_user.organization_logo
         job.location = form.location.data
         job.salary = form.salary.data
         job.description = form.description.data
@@ -6167,6 +6257,8 @@ def client_dashboard():
         flash('Unauthorized access!', 'danger')
         return redirect(url_for('dashboard'))
 
+    profile_form = ClientProfileForm()
+    profile_form.organization_name.data = current_user.organization_name or current_user.username
     scheduled_calls = ScheduledCall.query.filter_by(scheduled_by_id=current_user.id).all()
     reschedule_requests = ScheduledCall.query.filter_by(
         scheduled_by_id=current_user.id, reschedule_requested=True
@@ -6214,6 +6306,8 @@ def client_dashboard():
             'status': status,
         })
 
+    display_name = current_user.organization_name or current_user.username
+
     return render_template(
         'client_dashboard.html',
         events=events,
@@ -6223,8 +6317,46 @@ def client_dashboard():
         message_preview=message_preview,
         total_jobs=len(jobs),
         total_interest=total_interest,
-        active_calls=len(upcoming_calls)
+        active_calls=len(upcoming_calls),
+        profile_form=profile_form,
+        display_name=display_name
     )
+
+
+@app.route('/client/profile', methods=['POST'])
+@login_required
+def client_profile_update():
+    if current_user.role != 'client':
+        flash('Unauthorized access!', 'danger')
+        return redirect(url_for('dashboard'))
+
+    form = ClientProfileForm()
+
+    if form.validate_on_submit():
+        current_user.organization_name = form.organization_name.data
+
+        logo_file = form.organization_logo.data
+        if logo_file and logo_file.filename:
+            upload_dir = Path(app.static_folder) / "upload"
+            upload_dir.mkdir(parents=True, exist_ok=True)
+
+            filename = secure_filename(logo_file.filename)
+            filename = f"org_logo_{current_user.id}_{int(time.time())}_{filename}"
+            file_path = upload_dir / filename
+            logo_file.save(file_path)
+            current_user.organization_logo = f"upload/{filename}"
+
+            Job.query.filter_by(poster_id=current_user.id).update(
+                {Job.facility_logo_url: current_user.organization_logo}
+            )
+
+        db.session.commit()
+        flash('Profile updated successfully.', 'success')
+    else:
+        error_messages = [f"{field.label.text}: {error}" for field, errors in form.errors.items() for error in errors]
+        flash(' '.join(error_messages) or 'Could not update profile.', 'danger')
+
+    return redirect(url_for('client_dashboard'))
 
 
 @app.route('/dashboard')
@@ -6920,6 +7052,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
