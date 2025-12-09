@@ -1100,9 +1100,9 @@ app.jinja_loader = DictLoader({
             .view-job-btn {
                 background: var(--brand-teal-dark);
                 border: 1px solid var(--brand-teal-dark);
-                border-radius: 8px;
+                border-radius: 4px;
                 color: #fff !important;
-                display: inline-flex;
+                display: flex;
                 align-items: center;
                 justify-content: center;
                 font-weight: 700;
@@ -1114,7 +1114,7 @@ app.jinja_loader = DictLoader({
                 padding: 10px 18px;
                 text-align: center;
                 text-decoration: none !important;
-                text-transform: uppercase;
+                text-transform: uppercase !important;
                 transition: background 0.2s ease, transform 0.1s ease;
             }
             .custom-view-job:hover,
@@ -2362,7 +2362,7 @@ app.jinja_loader = DictLoader({
                     </div>
                 </div>
 
-                <div class="card glass-card h-100">
+                <div class="card glass-card">
                     <div class="card-header d-flex justify-content-between align-items-center px-4 py-3">
                         <div>
                             <div class="text-uppercase small text-primary fw-semibold">Opportunities</div>
@@ -6805,6 +6805,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
