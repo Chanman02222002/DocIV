@@ -2028,9 +2028,8 @@ app.jinja_loader = DictLoader({
                             </div>
                         </div>
 
-                        <form method="post" class="mt-3">
+                        <form method="post" class="mt-3" id="post-job-form">
                             {{ form.hidden_tag() }}
-
                             <div class="mb-3">
                                 <label class="form-label fw-semibold">{{ form.facility_name.label.text }}</label>
                                 {{ form.facility_name(class="form-control", placeholder="Hospital or clinic name") }}
@@ -2064,11 +2063,101 @@ app.jinja_loader = DictLoader({
                                 <div class="form-text">Provide key highlights to attract the best candidates.</div>
                             </div>
 
-                            <div class="d-flex justify-content-end">
-                                <a href="{{ url_for('home') }}" class="btn btn-outline-secondary me-2">Cancel</a>
+                            <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+                                <button type="button" class="btn btn-outline-primary" id="ai-curate-btn">
+                                    <span class="ai-label">AI Post</span>
+                                    <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true" id="ai-spinner"></span>
+                                </button>
+                                <div id="ai-status" class="text-muted small me-auto ms-2"></div>
+                                <a href="{{ url_for('home') }}" class="btn btn-outline-secondary">Cancel</a>
                                 {{ form.submit(class="btn btn-primary px-4") }}
                             </div>
                         </form>
+
+                        <div id="ai-preview-card" class="card mt-4 border-0 shadow-sm d-none">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-2">
+                                    <span class="badge bg-primary me-2">AI Draft</span>
+                                    <small class="text-muted">Review and edit before posting</small>
+                                </div>
+                                <textarea id="ai-preview-text" class="form-control" rows="8"></textarea>
+                                <div class="d-flex justify-content-between align-items-center mt-3">
+                                    <div class="text-muted small" id="ai-error"></div>
+                                    <div>
+                                        <button class="btn btn-outline-secondary me-2" id="ai-dismiss">Clear</button>
+                                        <button class="btn btn-primary" id="ai-apply">Use in Post</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <script>
+                            document.addEventListener('DOMContentLoaded', () => {
+                                const aiBtn = document.getElementById('ai-curate-btn');
+                                const aiSpinner = document.getElementById('ai-spinner');
+                                const aiStatus = document.getElementById('ai-status');
+                                const aiPreviewCard = document.getElementById('ai-preview-card');
+                                const aiPreviewText = document.getElementById('ai-preview-text');
+                                const aiApply = document.getElementById('ai-apply');
+                                const aiDismiss = document.getElementById('ai-dismiss');
+                                const aiError = document.getElementById('ai-error');
+
+                                function toggleLoading(isLoading) {
+                                    aiSpinner.classList.toggle('d-none', !isLoading);
+                                    aiBtn.disabled = isLoading;
+                                    aiStatus.textContent = isLoading ? 'Curating your post…' : '';
+                                }
+
+                                aiBtn?.addEventListener('click', async () => {
+                                    const payload = {
+                                        facility_name: document.getElementById('facility_name').value,
+                                        title: document.getElementById('title').value,
+                                        location: document.getElementById('location').value,
+                                        salary: document.getElementById('salary').value,
+                                        description: document.getElementById('description').value,
+                                    };
+
+                                    aiError.textContent = '';
+                                    toggleLoading(true);
+
+                                    try {
+                                        const response = await fetch('{{ url_for('ai_curate_job_post') }}', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify(payload),
+                                        });
+
+                                        const data = await response.json();
+                                        if (!response.ok) {
+                                            throw new Error(data.error || 'Unable to generate draft.');
+                                        }
+
+                                        aiPreviewText.value = data.content || '';
+                                        aiPreviewCard.classList.remove('d-none');
+                                        aiStatus.textContent = 'Preview generated. Edit before posting.';
+                                    } catch (error) {
+                                        aiError.textContent = error.message;
+                                        aiPreviewCard.classList.remove('d-none');
+                                    } finally {
+                                        toggleLoading(false);
+                                    }
+                                });
+
+                                aiApply?.addEventListener('click', () => {
+                                    const descriptionField = document.getElementById('description');
+                                    if (descriptionField && aiPreviewText.value.trim()) {
+                                        descriptionField.value = aiPreviewText.value.trim();
+                                        descriptionField.focus();
+                                    }
+                                });
+
+                                aiDismiss?.addEventListener('click', () => {
+                                    aiPreviewText.value = '';
+                                    aiPreviewCard.classList.add('d-none');
+                                    aiStatus.textContent = '';
+                                });
+                            });
+                        </script>
                     </div>
                 </div>
             </div>
@@ -5515,7 +5604,6 @@ def post_job():
     if current_user.role not in ['client', 'admin']:
         flash('Only clients and admins can post jobs!', 'danger')
         return redirect(url_for('home'))
-
     form = JobForm()
     if form.validate_on_submit():
         # Geocode location before creating the Job
@@ -5539,6 +5627,80 @@ def post_job():
 
     return render_template('post_job.html', form=form)
 
+
+@app.route('/ai_curate_job_post', methods=['POST'])
+@login_required
+def ai_curate_job_post():
+    """Generate a curated job post draft using the provided form values."""
+    if current_user.role not in ['client', 'admin']:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    data = request.get_json(force=True, silent=True) or {}
+    facility_name = (data.get('facility_name') or '').strip()
+    title = (data.get('title') or '').strip()
+    location = (data.get('location') or '').strip()
+    salary = (data.get('salary') or '').strip()
+    description = (data.get('description') or '').strip()
+
+    if not title or not location:
+        return jsonify({'error': 'Please provide at least a title and location to generate a draft.'}), 400
+
+    sections = [
+        f"Role: {title}",
+        f"Facility: {facility_name}" if facility_name else None,
+        f"Location: {location}",
+        f"Compensation: {salary}" if salary else None,
+        f"Notes: {description}" if description else None,
+    ]
+    provided_facts = "\n".join([s for s in sections if s])
+
+    curated_content = None
+    api_key = os.getenv("OPENAI_API_KEY")
+    if api_key:
+        try:
+            client = openai.OpenAI(api_key=api_key)
+            ai_prompt = f"""
+You are crafting a concise, polished job-posting draft strictly from the provided details. Do not invent any benefits, amenities, or city facts that are not explicitly provided. Emphasize the provided city/location string without adding external knowledge. Keep the tone professional and inviting.
+
+Required output (plain text, no markdown headers):
+- Job Title line
+- Location line that highlights the provided city/state text
+- Facility line (only if supplied)
+- Compensation line (only if supplied)
+- A short 3-5 sentence overview that weaves in the given notes/description and the provided location wording.
+
+Provided information:
+{provided_facts}
+"""
+            response = client.chat.completions.create(
+                model="gpt-4.1-nano",
+                messages=[
+                    {"role": "system", "content": "You turn structured job info into concise, factual postings."},
+                    {"role": "user", "content": ai_prompt}
+                ],
+                max_tokens=500,
+                temperature=0.5,
+            )
+            curated_content = response.choices[0].message.content
+        except Exception as exc:
+            print(f"AI curation failed, using fallback: {exc}")
+    else:
+        print("AI curation skipped: missing OPENAI_API_KEY")
+
+    if not curated_content:
+        overview_lines = [
+            f"Job Title: {title}",
+            f"Location: {location}",
+        ]
+        if facility_name:
+            overview_lines.append(f"Facility: {facility_name}")
+        if salary:
+            overview_lines.append(f"Compensation: {salary}")
+        if description:
+            overview_lines.append("Overview: " + description)
+        curated_content = "\n".join(overview_lines)
+
+    return jsonify({'content': curated_content})
 
 @app.route('/job/<int:job_id>/requirements', methods=['GET', 'POST'])
 @login_required
@@ -7647,6 +7809,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
