@@ -6601,7 +6601,7 @@ def client_dashboard():
             'status': status,
         })
 
-    display_name = current_user.organization_name or current_user.username
+    display_name = current_user.organization_name or 'Your organization'
 
     return render_template(
         'client_dashboard.html',
@@ -7388,6 +7388,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
