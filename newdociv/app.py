@@ -7232,9 +7232,10 @@ def public_register_client():
 
     username = data.get('username')
     email = data.get('email')
+    organization_name = data.get('organization_name')
     password = data.get('password')
     confirm_password = data.get('confirm_password')
-
+    
     if password != confirm_password:
         flash('Passwords do not match.', 'danger')
         return redirect(url_for('create_account'))
@@ -7243,7 +7244,12 @@ def public_register_client():
         flash('Username or email already exists.', 'danger')
         return redirect(url_for('create_account'))
 
-    user = User(username=username, email=email, role='client')
+     user = User(
+        username=username,
+        email=email,
+        role='client',
+        organization_name=organization_name or username,
+    )
     user.set_password(password)
     db.session.add(user)
     db.session.commit()
@@ -7388,6 +7394,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
