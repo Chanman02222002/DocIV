@@ -1604,9 +1604,8 @@ app.jinja_loader = DictLoader({
                                 <div class="empty-state">No roles posted yet. Post your first job to start receiving interest.</div>
                             {% endif %}
                         </div>
-                        <div class="card-footer d-flex justify-content-between align-items-center px-4 py-3">
+                        <div class="card-footer px-4 py-3">
                             <div class="text-muted small">Track interests and schedule calls directly from your dashboard.</div>
-                            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('doctors') }}">Browse doctors</a>
                         </div>
                     </div>
                 </div>
@@ -7389,6 +7388,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
