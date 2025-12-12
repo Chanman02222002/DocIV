@@ -63,7 +63,8 @@ class User(UserMixin, db.Model):
     organization_logo = db.Column(db.String(255))
 
     doctor = db.relationship('Doctor', back_populates='user', uselist=False)
-
+    contacts = db.relationship('ClientContact', back_populates='client', cascade="all, delete-orphan")
+    
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
@@ -108,6 +109,18 @@ class JobRequirement(db.Model):
     notes = db.Column(db.Text)
 
     job = db.relationship('Job', back_populates='requirements')
+
+
+class ClientContact(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    client_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    name = db.Column(db.String(150), nullable=False)
+    position = db.Column(db.String(150))
+    email = db.Column(db.String(150), nullable=False)
+    receive_updates = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    client = db.relationship('User', back_populates='contacts')
 
 
 
@@ -1779,8 +1792,35 @@ app.jinja_loader = DictLoader({
             }
             .profile-form .form-label { color: #0f172a; font-weight: 700; }
             .profile-form .helper { color: #64748b; }
+            .team-card {
+                border: 1px solid #dbeafe;
+                border-radius: 14px;
+                background: rgba(255, 255, 255, 0.8);
+                box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+            }
+            .team-card .form-label { font-weight: 600; color: #0f172a; }
+            .contact-pill {
+                background: rgba(59, 130, 246, 0.12);
+                color: #1d4ed8;
+                font-weight: 700;
+                padding: 6px 12px;
+                border-radius: 999px;
+                font-size: 0.85rem;
+            }
+            .contact-actions button { min-width: 44px; }
+            .contact-row {
+                background: linear-gradient(135deg, #ffffff, #f8fbff);
+                border: 1px solid #e2e8f0;
+                border-radius: 12px;
+            }
+            .contact-row .form-control { background: #ffffff; }
+            .add-contact-btn {
+                border-style: dashed;
+                color: #1d4ed8;
+                background: rgba(59, 130, 246, 0.08);
+            }
+            .update-badge { color: #0ea5e9; font-weight: 700; }
         </style>
-
         <div class="client-profile-page">
             <div class="glass-card profile-hero p-4 p-lg-5 mb-4">
                 <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-4">
@@ -1835,13 +1875,125 @@ app.jinja_loader = DictLoader({
                                 <div class="text-muted">Preview of how your mark appears inside the new epic navbar treatment.</div>
                             </div>
                         </div>
-                        <div class="col-12 d-flex justify-content-end">
+                        <div class="col-12">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <div>
+                                    <div class="text-uppercase small text-primary fw-semibold">Team notifications</div>
+                                    <h6 class="mb-0">Choose who should receive updates</h6>
+                                    <div class="helper">Add as many teammates as you'd like. Toggle updates for individuals with a single click.</div>
+                                </div>
+                                <span class="contact-pill">Unlimited contacts</span>
+                            </div>
+                            <div id="contactList" class="row g-3" data-existing-count="{{ contacts|length }}">
+                                {% set initial_contacts = contacts if contacts else [None] %}
+                                {% for contact in initial_contacts %}
+                                <div class="col-12 contact-wrapper" data-index="{{ loop.index0 }}">
+                                    <div class="p-3 contact-row d-flex flex-column flex-lg-row gap-3">
+                                        <div class="flex-grow-1">
+                                            <label class="form-label">Full name</label>
+                                            <input type="text" name="contact_name[]" class="form-control" placeholder="Alex Rivera" value="{{ contact.name if contact else '' }}">
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <label class="form-label">Position</label>
+                                            <input type="text" name="contact_position[]" class="form-control" placeholder="Recruiting Lead" value="{{ contact.position if contact else '' }}">
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <label class="form-label">Email address</label>
+                                            <input type="email" name="contact_email[]" class="form-control" placeholder="team@organization.com" value="{{ contact.email if contact else '' }}" required>
+                                        </div>
+                                        <div class="d-flex flex-column justify-content-between align-items-start contact-actions" style="min-width: 200px;">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input contact-updates" type="checkbox" name="contact_receive_updates[]" value="{{ loop.index0 }}" {% if contact and contact.receive_updates %}checked{% elif not contact %}checked{% endif %}>
+                                                <label class="form-check-label fw-semibold">Email updates</label>
+                                            </div>
+                                            <button type="button" class="btn btn-outline-danger btn-sm remove-contact">Remove</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <div class="mt-3">
+                                <button type="button" class="btn add-contact-btn" id="addContactBtn"><i class="bi bi-plus-lg me-1"></i>Add team member</button>
+                            </div>
+                        </div>
+                        <div class="col-12 d-flex justify-content-end mt-3">
                             {{ form.submit(class="btn btn-primary px-4") }}
                         </div>
                     </form>
                 </div>
             </div>
         </div>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const contactList = document.getElementById('contactList');
+                const addContactBtn = document.getElementById('addContactBtn');
+                let contactIndex = parseInt(contactList?.dataset.existingCount || '0', 10) || contactList.querySelectorAll('.contact-wrapper').length;
+
+                const renumberContacts = () => {
+                    const wrappers = contactList.querySelectorAll('.contact-wrapper');
+                    wrappers.forEach((wrapper, idx) => {
+                        wrapper.dataset.index = idx;
+                        const checkbox = wrapper.querySelector('.contact-updates');
+                        if (checkbox) {
+                            checkbox.value = idx;
+                        }
+                    });
+                };
+
+                const buildContactCard = (index) => {
+                    return `
+                    <div class="col-12 contact-wrapper" data-index="${index}">
+                        <div class="p-3 contact-row d-flex flex-column flex-lg-row gap-3">
+                            <div class="flex-grow-1">
+                                <label class="form-label">Full name</label>
+                                <input type="text" name="contact_name[]" class="form-control" placeholder="Alex Rivera">
+                            </div>
+                            <div class="flex-grow-1">
+                                <label class="form-label">Position</label>
+                                <input type="text" name="contact_position[]" class="form-control" placeholder="Recruiting Lead">
+                            </div>
+                            <div class="flex-grow-1">
+                                <label class="form-label">Email address</label>
+                                <input type="email" name="contact_email[]" class="form-control" placeholder="team@organization.com" required>
+                            </div>
+                            <div class="d-flex flex-column justify-content-between align-items-start contact-actions" style="min-width: 200px;">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input contact-updates" type="checkbox" name="contact_receive_updates[]" value="${index}" checked>
+                                    <label class="form-check-label fw-semibold">Email updates</label>
+                                </div>
+                                <button type="button" class="btn btn-outline-danger btn-sm remove-contact">Remove</button>
+                            </div>
+                        </div>
+                    </div>`;
+                };
+
+                const bindRemoveHandlers = () => {
+                    contactList.querySelectorAll('.remove-contact').forEach((btn) => {
+                        btn.onclick = () => {
+                            const wrapper = btn.closest('.contact-wrapper');
+                            if (wrapper) {
+                                wrapper.remove();
+                                if (!contactList.querySelector('.contact-wrapper')) {
+                                    contactList.insertAdjacentHTML('beforeend', buildContactCard(0));
+                                    contactIndex = 1;
+                                }
+                                renumberContacts();
+                            }
+                        };
+                    });
+                };
+
+                addContactBtn?.addEventListener('click', () => {
+                    contactList.insertAdjacentHTML('beforeend', buildContactCard(contactIndex));
+                    contactIndex += 1;
+                    bindRemoveHandlers();
+                    renumberContacts();
+                });
+
+                bindRemoveHandlers();
+                renumberContacts();
+            });
+        </script>
         {% endblock %}
     ''',
 
@@ -6496,6 +6648,33 @@ def client_profile():
                 {Job.facility_logo_url: current_user.organization_logo}
             )
 
+        contact_names = request.form.getlist('contact_name[]')
+        contact_positions = request.form.getlist('contact_position[]')
+        contact_emails = request.form.getlist('contact_email[]')
+        contact_updates = request.form.getlist('contact_receive_updates[]')
+
+        checked_indices = {int(idx) for idx in contact_updates if idx.isdigit()}
+
+        current_user.contacts.clear()
+        db.session.flush()
+
+        for index, (name, position, email) in enumerate(zip(contact_names, contact_positions, contact_emails)):
+            name = (name or '').strip()
+            position = (position or '').strip()
+            email = (email or '').strip()
+
+            if not (name or email or position):
+                continue
+
+            contact = ClientContact(
+                client_id=current_user.id,
+                name=name or 'Team Member',
+                position=position or None,
+                email=email,
+                receive_updates=index in checked_indices,
+            )
+            db.session.add(contact)
+
         db.session.commit()
         flash('Profile updated successfully.', 'success')
         return redirect(url_for('client_profile'))
@@ -6507,7 +6686,15 @@ def client_profile():
     profile_logo_url = profile_logo if profile_logo and '://' in profile_logo else (url_for('static', filename=profile_logo) if profile_logo else None)
     display_name = current_user.organization_name or current_user.username
 
-    return render_template('client_profile.html', form=form, profile_logo_url=profile_logo_url, display_name=display_name)
+    contacts = ClientContact.query.filter_by(client_id=current_user.id).order_by(ClientContact.created_at.asc()).all()
+
+    return render_template(
+        'client_profile.html',
+        form=form,
+        profile_logo_url=profile_logo_url,
+        display_name=display_name,
+        contacts=contacts,
+    )
 
 @app.route('/dashboard')
 @login_required
@@ -7202,6 +7389,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
