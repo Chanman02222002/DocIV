@@ -7244,7 +7244,7 @@ def public_register_client():
         flash('Username or email already exists.', 'danger')
         return redirect(url_for('create_account'))
 
-     user = User(
+    user = User(
         username=username,
         email=email,
         role='client',
@@ -7394,6 +7394,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
