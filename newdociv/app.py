@@ -1540,6 +1540,26 @@ app.jinja_loader = DictLoader({
                 max-height: 100%;
                 object-fit: contain;
             }
+            .job-applicants-card .list-group-item-action.active {
+                background: linear-gradient(135deg, #e0edff, #f5f9ff);
+                color: #0b3a82;
+                border-color: #d1defb;
+                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+            }
+            .job-applicants-card .list-group-item-action {
+                border: none;
+                border-bottom: 1px solid #e5e7eb;
+                padding: 14px 16px;
+                background: #fff;
+            }
+            .job-applicants-card .list-group-item-action:last-child { border-bottom: none; }
+            .job-applicants-card .applicant-pill {
+                background: #e8f5ff;
+                color: #0f172a;
+                border: 1px solid #d1e9ff;
+                border-radius: 10px;
+                padding: 10px 12px;
+            }
         </style>
 
         <div class="client-dashboard">
@@ -1606,6 +1626,75 @@ app.jinja_loader = DictLoader({
                         </div>
                         <div class="card-footer px-4 py-3">
                             <div class="text-muted small">Track interests and schedule calls directly from your dashboard.</div>
+                        </div>
+                    </div>
+
+                    <div class="card glass-card mt-4 job-applicants-card" id="job-applicants-section">
+                        <div class="card-header d-flex justify-content-between align-items-center px-4 py-3">
+                            <div>
+                                <div class="text-uppercase small text-primary fw-semibold">Open roles</div>
+                                <h5 class="mb-0">Applicant activity</h5>
+                            </div>
+                            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('client_my_jobs') }}">View all jobs</a>
+                        </div>
+                        <div class="card-body p-0">
+                            {% if jobs_with_applicants %}
+                                <div class="row g-0">
+                                    <div class="col-lg-5 border-end">
+                                        <div class="list-group list-group-flush">
+                                            {% for job in jobs_with_applicants %}
+                                                <button class="list-group-item list-group-item-action d-flex justify-content-between align-items-start {% if loop.first %}active{% endif %}" data-target="#job-applicants-{{ job.id }}">
+                                                    <div>
+                                                        <div class="fw-semibold">{{ job.title }}</div>
+                                                        <div class="small text-muted">{{ job.location or 'Location TBD' }}</div>
+                                                    </div>
+                                                    <span class="badge bg-primary-subtle text-primary">{{ job.applicant_count }} applied</span>
+                                                </button>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-7 p-3">
+                                        {% for job in jobs_with_applicants %}
+                                            <div class="job-applicant-panel {% if not loop.first %}d-none{% endif %}" id="job-applicants-{{ job.id }}">
+                                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                                    <div>
+                                                        <h6 class="mb-1">{{ job.title }}</h6>
+                                                        <div class="text-muted small">{{ job.location or 'Remote friendly' }}</div>
+                                                        {% if job.salary %}<div class="small text-success">{{ job.salary }}</div>{% endif %}
+                                                    </div>
+                                                    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('download_job_applicants', job_id=job.id) }}">Export</a>
+                                                </div>
+                                                {% if job.applicants %}
+                                                    <div class="d-flex flex-column gap-3">
+                                                        {% for applicant in job.applicants %}
+                                                            <div class="applicant-pill">
+                                                                <div class="d-flex justify-content-between align-items-start gap-3">
+                                                                    <div>
+                                                                        <div class="fw-semibold">{{ applicant.name }}</div>
+                                                                        <div class="text-muted small">{{ applicant.position }} • {{ applicant.specialty or 'General practice' }}</div>
+                                                                        {% if applicant.city %}<div class="small text-muted">{{ applicant.city }}</div>{% endif %}
+                                                                    </div>
+                                                                    <div class="text-end">
+                                                                        <div class="badge bg-light text-primary border">{{ applicant.timestamp }}</div>
+                                                                        <a class="d-block small mt-2" href="{{ url_for('doctor_profile', doctor_id=applicant.id, compare_to_job=job.id) }}">View profile</a>
+                                                                    </div>
+                                                                </div>
+                                                                {% if applicant.email %}
+                                                                    <div class="small text-muted mt-2">{{ applicant.email }}</div>
+                                                                {% endif %}
+                                                            </div>
+                                                        {% endfor %}
+                                                    </div>
+                                                {% else %}
+                                                    <div class="p-3 empty-state">No applicants yet for this role.</div>
+                                                {% endif %}
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% else %}
+                                <div class="p-4 empty-state">Post a role to start collecting applicants.</div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -1719,6 +1808,19 @@ app.jinja_loader = DictLoader({
                         navLinks.forEach(l => l.classList.remove('active'));
                         this.classList.add('active');
                     }
+                });
+            });
+
+            const jobButtons = document.querySelectorAll('#job-applicants-section .list-group-item-action');
+            jobButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const targetPanel = document.querySelector(this.dataset.target);
+                    document.querySelectorAll('#job-applicants-section .job-applicant-panel').forEach(panel => panel.classList.add('d-none'));
+                    if (targetPanel) {
+                        targetPanel.classList.remove('d-none');
+                    }
+                    jobButtons.forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
                 });
             });
 
@@ -6568,14 +6670,42 @@ def client_dashboard():
     # Job analytics for dashboard cards
     jobs = Job.query.filter_by(poster_id=current_user.id).all()
     job_interest_summary = []
+    jobs_with_applicants = []
     total_interest = 0
     for job in jobs:
-        interest_count = Message.query.filter_by(job_id=job.id, message_type='interest').count()
-        total_interest += interest_count
+        interest_messages = Message.query.filter_by(job_id=job.id, message_type='interest').order_by(
+            Message.timestamp.desc()
+        ).all()
+        applicant_map = {}
+
+        for msg in interest_messages:
+            if not msg.doctor:
+                continue
+            total_interest += 1
+            if msg.doctor_id not in applicant_map:
+                applicant_map[msg.doctor_id] = {
+                    'id': msg.doctor.id,
+                    'name': f"Dr. {msg.doctor.first_name} {msg.doctor.last_name}",
+                    'position': msg.doctor.position,
+                    'specialty': msg.doctor.specialty,
+                    'city': msg.doctor.city_of_residence,
+                    'email': msg.doctor.email,
+                    'timestamp': msg.timestamp.strftime('%b %d, %Y')
+                }
+
         job_interest_summary.append({
             'title': job.title,
             'location': job.location,
-            'interest_count': interest_count
+            'interest_count': len(interest_messages)
+        })
+
+        jobs_with_applicants.append({
+            'id': job.id,
+            'title': job.title,
+            'location': job.location,
+            'salary': job.salary,
+            'applicant_count': len(applicant_map),
+            'applicants': list(applicant_map.values())
         })
 
     message_preview = Message.query.filter_by(recipient_id=current_user.id).order_by(
@@ -6609,6 +6739,7 @@ def client_dashboard():
         reschedule_requests=reschedule_requests,
         upcoming_calls=upcoming_calls,
         job_interest_summary=job_interest_summary,
+        jobs_with_applicants=jobs_with_applicants,
         message_preview=message_preview,
         total_jobs=len(jobs),
         total_interest=total_interest,
@@ -7394,6 +7525,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
