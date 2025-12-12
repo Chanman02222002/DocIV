@@ -1592,13 +1592,14 @@ app.jinja_loader = DictLoader({
                             </div>
                             {% if job_interest_summary %}
                                 {% for job in job_interest_summary[:4] %}
-                                    <div class="activity-item d-flex justify-content-between align-items-start gap-3">
+                                    <a class="activity-item d-flex justify-content-between align-items-start gap-3 text-decoration-none text-reset"
+                                       href="{{ url_for('edit_job', job_id=job.id) }}">
                                         <div>
                                             <div class="fw-semibold">{{ job.title }}</div>
                                             <div class="text-muted small">{{ job.location }}</div>
                                         </div>
                                         <span class="badge bg-primary-subtle text-primary">{{ job.interest_count }} interested</span>
-                                    </div>
+                                    </a>
                                 {% endfor %}
                             {% else %}
                                 <div class="empty-state">No roles posted yet. Post your first job to start receiving interest.</div>
@@ -6825,11 +6826,11 @@ def client_dashboard():
         interest_count = Message.query.filter_by(job_id=job.id, message_type='interest').count()
         total_interest += interest_count
         job_interest_summary.append({
+            'id': job.id,
             'title': job.title,
             'location': job.location,
             'interest_count': interest_count
         })
-
     message_preview = Message.query.filter_by(recipient_id=current_user.id).order_by(
         Message.timestamp.desc()
     ).limit(4).all()
@@ -7646,6 +7647,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
