@@ -1610,19 +1610,7 @@ app.jinja_loader = DictLoader({
                                 <div class="stat-pill"><div class="small text-muted">Total interest</div><div class="fw-bold h5 mb-0">{{ total_interest }}</div></div>
                                 <div class="stat-pill"><div class="small text-muted">Upcoming calls</div><div class="fw-bold h5 mb-0">{{ active_calls }}</div></div>
                             </div>
-                            {% if job_interest_summary %}
-                                {% for job in job_interest_summary[:4] %}
-                                    <div class="activity-item d-flex justify-content-between align-items-start gap-3">
-                                        <div>
-                                            <div class="fw-semibold">{{ job.title }}</div>
-                                            <div class="text-muted small">{{ job.location }}</div>
-                                        </div>
-                                        <span class="badge bg-primary-subtle text-primary">{{ job.interest_count }} interested</span>
-                                    </div>
-                                {% endfor %}
-                            {% else %}
-                                <div class="empty-state">No roles posted yet. Post your first job to start receiving interest.</div>
-                            {% endif %}
+                            <div class="p-3 rounded bg-white border">Select a job below to view its applicants and recent interest.</div>
                         </div>
                         <div class="card-footer px-4 py-3">
                             <div class="text-muted small">Track interests and schedule calls directly from your dashboard.</div>
@@ -1632,10 +1620,10 @@ app.jinja_loader = DictLoader({
                     <div class="card glass-card mt-4 job-applicants-card" id="job-applicants-section">
                         <div class="card-header d-flex justify-content-between align-items-center px-4 py-3">
                             <div>
-                                <div class="text-uppercase small text-primary fw-semibold">Open roles</div>
-                                <h5 class="mb-0">Applicant activity</h5>
+                                <div class="text-uppercase small text-primary fw-semibold">Your jobs</div>
+                                <h5 class="mb-0">Select a role to view applicants</h5>
                             </div>
-                            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('client_my_jobs') }}">View all jobs</a>
+                            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('client_my_jobs') }}">Manage jobs</a>
                         </div>
                         <div class="card-body p-0">
                             {% if jobs_with_applicants %}
@@ -6669,7 +6657,6 @@ def client_dashboard():
 
     # Job analytics for dashboard cards
     jobs = Job.query.filter_by(poster_id=current_user.id).all()
-    job_interest_summary = []
     jobs_with_applicants = []
     total_interest = 0
     for job in jobs:
@@ -6692,12 +6679,6 @@ def client_dashboard():
                     'email': msg.doctor.email,
                     'timestamp': msg.timestamp.strftime('%b %d, %Y')
                 }
-
-        job_interest_summary.append({
-            'title': job.title,
-            'location': job.location,
-            'interest_count': len(interest_messages)
-        })
 
         jobs_with_applicants.append({
             'id': job.id,
@@ -6738,7 +6719,6 @@ def client_dashboard():
         events=events,
         reschedule_requests=reschedule_requests,
         upcoming_calls=upcoming_calls,
-        job_interest_summary=job_interest_summary,
         jobs_with_applicants=jobs_with_applicants,
         message_preview=message_preview,
         total_jobs=len(jobs),
@@ -7525,6 +7505,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
