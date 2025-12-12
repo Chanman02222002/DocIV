@@ -2401,46 +2401,124 @@ app.jinja_loader = DictLoader({
 
     'client_my_jobs.html': '''{% extends "base.html" %}
         {% block content %}
-        <h2 class="mb-4">My Posted Jobs</h2>
+        <style>
+            .jobs-hero {
+                background: linear-gradient(120deg, rgba(59,130,246,0.08), rgba(16,185,129,0.08));
+                border-radius: 18px;
+                padding: 1.5rem;
+                border: 1px solid #e5e7eb;
+            }
+            .filter-card {
+                border: 1px solid #e5e7eb;
+                border-radius: 14px;
+                box-shadow: 0 10px 30px rgba(15,23,42,0.05);
+            }
+            .job-tile {
+                border: 1px solid #e5e7eb;
+                border-radius: 16px;
+                transition: all 0.18s ease;
+            }
+            .job-tile:hover {
+                box-shadow: 0 14px 40px rgba(15,23,42,0.08);
+                transform: translateY(-2px);
+            }
+            .job-chip {
+                background: #eff6ff;
+                color: #1d4ed8;
+                border-radius: 999px;
+                padding: 0.25rem 0.75rem;
+                font-size: 0.85rem;
+                font-weight: 600;
+            }
+            .requirements-pill {
+                background: #ecfeff;
+                color: #0ea5e9;
+                border-radius: 999px;
+                padding: 0.25rem 0.65rem;
+                font-size: 0.8rem;
+                border: 1px solid #e0f2fe;
+            }
+        </style>
 
-        <form method="get" class="row g-3 mb-4">
-            <div class="col-md-4">
-                <input type="text" name="keyword" value="{{ keyword }}" class="form-control" placeholder="Enter Job Title / Keyword(s)">
-            </div>
-            <div class="col-md-4">
-                <input type="text" name="location" value="{{ location }}" class="form-control" placeholder="Enter Location">
-            </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-primary w-100">Search</button>
-            </div>
-            <div class="col-md-2">
-                <a href="{{ url_for('client_my_jobs') }}" class="btn btn-secondary w-100">Clear</a>
-            </div>
-        </form>
-
-        {% if jobs %}
-            {% for job in jobs %}
-            <div class="card mb-4 shadow-sm">
-                <div class="card-body">
-                    <h4 class="card-title">{{ job.title }}</h4>
-                    <h6 class="card-subtitle text-muted mb-2">{{ job.location }}</h6>
-                    <p class="card-text text-truncate" style="max-height: 5.5em; overflow: hidden;">
-                        {{ job.description }}
-                    </p>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <small class="text-muted">{{ job.salary }}</small>
-                        <a href="{{ url_for('edit_job', job_id=job.id) }}" class="btn btn-sm btn-warning">Edit</a>
-                    </div>
+        <div class="container py-4">
+            <div class="jobs-hero mb-4 d-flex flex-wrap justify-content-between align-items-start gap-3">
+                <div>
+                    <p class="text-uppercase text-muted small mb-1">My roles</p>
+                    <h2 class="fw-bold mb-1">Keep your postings fresh and on-brand</h2>
+                    <p class="text-muted mb-0">Search, review, and refine your open roles without leaving this page.</p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a class="btn btn-outline-secondary" href="{{ url_for('client_dashboard') }}">Dashboard</a>
+                    <a class="btn btn-primary" href="{{ url_for('post_job') }}">Post a New Job</a>
                 </div>
             </div>
-            {% endfor %}
-        {% else %}
-            <p>No jobs match your criteria.</p>
-        {% endif %}
 
-        <div class="d-flex gap-2 mt-4">
-            <a href="{{ url_for('post_job') }}" class="btn btn-outline-primary">Post a New Job</a>
-            <a href="{{ url_for('client_dashboard') }}" class="btn btn-outline-secondary">Back to Dashboard</a>
+            <div class="filter-card p-3 mb-4">
+                <form method="get" class="row g-3 align-items-end">
+                    <div class="col-lg-5">
+                        <label class="form-label text-muted small">Title or keywords</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                            <input type="text" name="keyword" value="{{ keyword }}" class="form-control" placeholder="e.g., hospitalist, weekend coverage">
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <label class="form-label text-muted small">Location</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white"><i class="bi bi-geo-alt"></i></span>
+                            <input type="text" name="location" value="{{ location }}" class="form-control" placeholder="City, State">
+                        </div>
+                    </div>
+                    <div class="col-lg-3 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary flex-grow-1">Search</button>
+                        <a href="{{ url_for('client_my_jobs') }}" class="btn btn-outline-secondary">Clear</a>
+                    </div>
+                </form>
+            </div>
+
+            {% if jobs %}
+                <div class="row g-3">
+                    {% for job in jobs %}
+                        <div class="col-md-6">
+                            <div class="job-tile p-3 h-100 d-flex flex-column">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <h5 class="mb-1">{{ job.title }}</h5>
+                                        <div class="text-muted small">{{ job.facility_name or 'Facility TBD' }}</div>
+                                    </div>
+                                    <span class="job-chip">{{ job.salary or 'Rate TBD' }}</span>
+                                </div>
+                                <div class="text-muted small mb-2"><i class="bi bi-geo-alt"></i> {{ job.location or 'Remote / flexible' }}</div>
+                                <p class="mb-3 text-secondary" style="min-height: 64px;">{{ (job.description or '')[:180] ~ ('…' if (job.description or '')|length > 180 else '') }}</p>
+                                <div class="d-flex flex-wrap gap-2 mb-3">
+                                    {% if job.requirements %}
+                                        <span class="requirements-pill">Requirements saved</span>
+                                        {% if job.requirements.specialty %}
+                                            <span class="requirements-pill">{{ job.requirements.specialty }}</span>
+                                        {% endif %}
+                                        {% if job.requirements.position %}
+                                            <span class="requirements-pill">{{ job.requirements.position }}</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="requirements-pill text-danger bg-white">Add requirements</span>
+                                    {% endif %}
+                                </div>
+                                <div class="mt-auto d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">Posted ID #{{ job.id }}</small>
+                                    <div class="d-flex gap-2">
+                                        <a href="{{ url_for('edit_job', job_id=job.id) }}" class="btn btn-sm btn-primary">Edit</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <p class="text-muted mb-2">No jobs match your criteria.</p>
+                    <a href="{{ url_for('post_job') }}" class="btn btn-primary">Post your first role</a>
+                </div>
+            {% endif %}
         </div>
         {% endblock %}''',
 
@@ -3181,26 +3259,155 @@ app.jinja_loader = DictLoader({
 
     'edit_job.html': '''{% extends "base.html" %}
     {% block content %}
-        <h2>Edit Job: {{ job.title }}</h2>
-        <form method="post">
-            {{ form.hidden_tag() }}
-            <div class="mb-3">
-                {{ form.facility_name.label }} {{ form.facility_name(class="form-control") }}
+    <style>
+        .edit-shell {
+            border: 1px solid #e5e7eb;
+            border-radius: 18px;
+            box-shadow: 0 20px 60px rgba(15,23,42,0.08);
+        }
+        .section-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .pill-muted {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 999px;
+            padding: 0.35rem 0.85rem;
+            font-size: 0.85rem;
+        }
+    </style>
+    <div class="container py-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+            <div>
+                <p class="text-uppercase text-muted small mb-1">Edit posting</p>
+                <h2 class="fw-bold mb-0">{{ job.title }}</h2>
+                <p class="text-muted mb-0">Update the role details and qualification criteria side by side.</p>
             </div>
-            <div class="mb-3">
-                {{ form.title.label }} {{ form.title(class="form-control") }}
+            <a href="{{ url_for('client_my_jobs') }}" class="btn btn-outline-secondary">Back to My Jobs</a>
+        </div>
+
+        <form method="post" class="edit-shell bg-white p-4">
+            {{ job_form.hidden_tag() }}
+            {{ req_form.hidden_tag() }}
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width:44px; height:44px;">
+                            <i class="bi bi-briefcase-fill"></i>
+                        </div>
+                        <div>
+                            <p class="text-uppercase text-muted small mb-1">Role basics</p>
+                            <h4 class="mb-0">Update the posting</h4>
+                        </div>
+                    </div>
+                    <div class="mb-3">{{ job_form.facility_name.label(class="form-label fw-semibold") }} {{ job_form.facility_name(class="form-control", placeholder="Hospital or clinic name") }}</div>
+                    <div class="mb-3">{{ job_form.title.label(class="form-label fw-semibold") }} {{ job_form.title(class="form-control form-control-lg", placeholder="e.g., Family Medicine Physician") }}</div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-7">
+                            <label class="form-label fw-semibold">{{ job_form.location.label.text }}</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white"><i class="bi bi-geo-alt"></i></span>
+                                {{ job_form.location(class="form-control", placeholder="City, State") }}
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label fw-semibold">{{ job_form.salary.label.text }}</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white"><i class="bi bi-cash-stack"></i></span>
+                                {{ job_form.salary(class="form-control", placeholder="Compensation details") }}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-4">{{ job_form.description.label(class="form-label fw-semibold") }} {{ job_form.description(class="form-control", rows=5, placeholder="Summarize responsibilities, schedule, and ideal experience") }}</div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <a href="{{ url_for('client_my_jobs') }}" class="btn btn-outline-secondary">Cancel</a>
+                        {{ job_form.submit(class="btn btn-primary px-4") }}
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-info text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width:44px; height:44px;">
+                            <i class="bi bi-filter-square"></i>
+                        </div>
+                        <div>
+                            <p class="text-uppercase text-muted small mb-1">Qualification matrix</p>
+                            <h4 class="mb-0">Requirements</h4>
+                        </div>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">{{ req_form.position.label(class="form-label fw-semibold") }} {{ req_form.position(class="form-select") }}</div>
+                        <div class="col-md-6">{{ req_form.specialty.label(class="form-label fw-semibold") }} {{ req_form.specialty(class="form-select") }}</div>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">{{ req_form.subspecialty.label(class="form-label fw-semibold") }} {{ req_form.subspecialty(class="form-control", placeholder="Optional") }}</div>
+                        <div class="col-md-6">{{ req_form.certification.label(class="form-label fw-semibold") }} {{ req_form.certification(class="form-select") }}</div>
+                    </div>
+                    <div class="mb-3">{{ req_form.certification_specialty_area.label(class="form-label fw-semibold") }} {{ req_form.certification_specialty_area(class="form-control", placeholder="Focus area, if any") }}</div>
+                    <div class="mb-3">{{ req_form.clinically_active.label(class="form-label fw-semibold") }} {{ req_form.clinically_active(class="form-select") }}</div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">{{ req_form.emr.label.text }}</label>
+                            <div class="border rounded p-2" style="max-height: 180px; overflow-y: auto;">
+                                {% for subfield in req_form.emr %}
+                                    <div class="form-check">{{ subfield(class="form-check-input", id=subfield.id) }} <label class="form-check-label" for="{{ subfield.id }}">{{ subfield.label.text }}</label></div>
+                                {% endfor %}
+                            </div>
+                            <div class="mt-2">{{ req_form.emr_other(class="form-control", placeholder="Other EMR systems") }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">{{ req_form.languages.label.text }}</label>
+                            <div class="border rounded p-2" style="max-height: 180px; overflow-y: auto;">
+                                {% for subfield in req_form.languages %}
+                                    <div class="form-check">{{ subfield(class="form-check-input", id=subfield.id) }} <label class="form-check-label" for="{{ subfield.id }}">{{ subfield.label.text }}</label></div>
+                                {% endfor %}
+                            </div>
+                            <div class="mt-2">{{ req_form.language_other(class="form-control", placeholder="Other languages") }}</div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">{{ req_form.states_required.label.text }}</label>
+                            <div class="border rounded p-2" style="max-height: 180px; overflow-y: auto;">
+                                {% for subfield in req_form.states_required %}
+                                    <div class="form-check">{{ subfield(class="form-check-input", id=subfield.id) }} <label class="form-check-label" for="{{ subfield.id }}">{{ subfield.label.text }}</label></div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">{{ req_form.states_preferred.label.text }}</label>
+                            <div class="border rounded p-2" style="max-height: 180px; overflow-y: auto;">
+                                {% for subfield in req_form.states_preferred %}
+                                    <div class="form-check">{{ subfield(class="form-check-input", id=subfield.id) }} <label class="form-check-label" for="{{ subfield.id }}">{{ subfield.label.text }}</label></div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <div class="form-check mt-2">
+                                {{ req_form.sponsorship_supported(class="form-check-input", id=req_form.sponsorship_supported.id) }}
+                                <label class="form-check-label" for="{{ req_form.sponsorship_supported.id }}">{{ req_form.sponsorship_supported.label.text }}</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">{{ req_form.salary_range.label(class="form-label fw-semibold") }} {{ req_form.salary_range(class="form-control", placeholder="Budget / range") }}</div>
+                    </div>
+                    <div class="mb-3">{{ req_form.notes.label(class="form-label fw-semibold") }} {{ req_form.notes(class="form-control", rows=3, placeholder="Additional notes for ideal match") }}</div>
+
+                    {% if requirement %}
+                        <div class="pill-muted text-muted">Last updated requirements are already saved for this job.</div>
+                    {% else %}
+                        <div class="pill-muted text-muted">No requirements yet—add them to improve matching.</div>
+                    {% endif %}
+                </div>
             </div>
-            <div class="mb-3">
-                {{ form.location.label }} {{ form.location(class="form-control") }}
-            </div>
-            <div class="mb-3">
-                {{ form.salary.label }} {{ form.salary(class="form-control") }}
-            </div>
-            <div class="mb-3">
-                {{ form.description.label }} {{ form.description(class="form-control") }}
-            </div>
-            {{ form.submit(class="btn btn-success") }}
         </form>
+    </div>
     {% endblock %}''',
 
     'doctor_jobs.html': '''{% extends "base.html" %}
@@ -6303,20 +6510,65 @@ def edit_job(job_id):
         flash('Unauthorized access!', 'danger')
         return redirect(url_for('home'))
 
-    form = JobForm(obj=job)
+    job_form = JobForm(obj=job)
+    job_form.submit.label.text = "Save changes"
+    req_form = JobRequirementForm(prefix="req")
+    requirement = JobRequirement.query.filter_by(job_id=job.id).first()
 
-    if form.validate_on_submit():
-        job.title = form.title.data
-        job.facility_name = form.facility_name.data
+    if request.method == 'GET' and requirement:
+        req_form.position.data = requirement.position or req_form.position.data
+        req_form.specialty.data = requirement.specialty or req_form.specialty.data
+        req_form.subspecialty.data = requirement.subspecialty or ''
+        req_form.certification.data = requirement.certification or ''
+        req_form.certification_specialty_area.data = requirement.certification_specialty_area or ''
+        req_form.clinically_active.data = requirement.clinically_active or ''
+        req_form.emr.data = requirement.emr.split(',') if requirement.emr else []
+        req_form.emr_other.data = requirement.emr_other or ''
+        req_form.languages.data = requirement.languages.split(',') if requirement.languages else []
+        req_form.language_other.data = requirement.language_other or ''
+        req_form.states_required.data = requirement.states_required.split(',') if requirement.states_required else []
+        req_form.states_preferred.data = requirement.states_preferred.split(',') if requirement.states_preferred else []
+        req_form.sponsorship_supported.data = requirement.sponsorship_supported
+        req_form.salary_range.data = requirement.salary_range or ''
+        req_form.notes.data = requirement.notes or ''
+
+    if job_form.validate_on_submit() and req_form.validate():
+        job.title = job_form.title.data
+        job.facility_name = job_form.facility_name.data
         job.facility_logo_url = current_user.organization_logo
-        job.location = form.location.data
-        job.salary = form.salary.data
-        job.description = form.description.data
+        job.location = job_form.location.data
+        job.salary = job_form.salary.data
+        job.description = job_form.description.data
+
+        lat, lng = geocode_location(job_form.location.data)
+        job.latitude = lat
+        job.longitude = lng
+
+        if not requirement:
+            requirement = JobRequirement(job=job)
+
+        requirement.position = req_form.position.data
+        requirement.specialty = req_form.specialty.data
+        requirement.subspecialty = req_form.subspecialty.data
+        requirement.certification = req_form.certification.data
+        requirement.certification_specialty_area = req_form.certification_specialty_area.data
+        requirement.clinically_active = req_form.clinically_active.data
+        requirement.emr = ",".join(req_form.emr.data) if req_form.emr.data else None
+        requirement.emr_other = req_form.emr_other.data
+        requirement.languages = ",".join(req_form.languages.data) if req_form.languages.data else None
+        requirement.language_other = req_form.language_other.data
+        requirement.states_required = ",".join(req_form.states_required.data) if req_form.states_required.data else None
+        requirement.states_preferred = ",".join(req_form.states_preferred.data) if req_form.states_preferred.data else None
+        requirement.sponsorship_supported = req_form.sponsorship_supported.data or False
+        requirement.salary_range = req_form.salary_range.data
+        requirement.notes = req_form.notes.data
+
+        db.session.add(requirement)
         db.session.commit()
-        flash('Job updated successfully!', 'success')
+        flash('Job and requirements updated successfully!', 'success')
         return redirect(url_for('client_my_jobs'))
 
-    return render_template('edit_job.html', form=form, job=job)
+    return render_template('edit_job.html', job_form=job_form, req_form=req_form, job=job, requirement=requirement)
 
 
 # ✅ Full route: doctor_edit_profile
@@ -7394,6 +7646,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
