@@ -6222,16 +6222,56 @@ def view_job(job_id):
             if not recipient_user:
                 flash('No recipient is available for this job.', 'warning')
             else:
-                message = Message(
-                    sender_id=current_user.id,
-                    recipient_id=recipient_user.id,
-                    job_id=job.id,
-                    doctor_id=current_user.doctor.id,
-                    content=f"Dr. {current_user.doctor.first_name} {current_user.doctor.last_name} sent an application for your job '{job.title}'.",
-                    message_type='interest'
+                message_content = (
+                    f"Dr. {current_user.doctor.first_name} {current_user.doctor.last_name} "
+                    f"sent an application for your job '{job.title}'."
                 )
-                db.session.add(message)
-                db.session.commit()
+
+                message = notify_user(
+                    recipient_user=recipient_user,
+                    sender_user=current_user,
+                    subject=f"New doctor application: {job.title}",
+                    content=message_content,
+                    job=job,
+                    doctor=current_user.doctor,
+                    message_type="interest",
+                )
+
+                contact_emails = []
+                if recipient_user.role == 'client':
+                    contact_emails = [
+                        contact.email
+                        for contact in ClientContact.query.filter_by(
+                            client_id=recipient_user.id,
+                            receive_updates=True
+                        ).all()
+                        if contact.email
+                    ]
+
+                unique_recipients = {
+                    email.strip()
+                    for email in contact_emails + [recipient_user.email]
+                    if email
+                }
+
+                if unique_recipients and SENDGRID_API_KEY and SENDGRID_FROM_EMAIL:
+                    try:
+                        mail = Mail(
+                            from_email=(SENDGRID_FROM_EMAIL, SENDGRID_FROM_NAME),
+                            to_emails=list(unique_recipients),
+                            subject=f"New doctor application received: {job.title}",
+                            html_content=f"""
+                                <div style='font-family:Arial, sans-serif; font-size:15px; color:#222;'>
+                                    <p>{message_content}</p>
+                                    <p style='font-size:12px; color:#666;'>Log in to your dashboard to respond.</p>
+                                </div>
+                            """,
+                        )
+                        sg = SendGridAPIClient(SENDGRID_API_KEY)
+                        sg.send(mail)
+                    except Exception as e:
+                        print("SendGrid contact email error:", e)
+
                 flash('Your application has been sent directly to this hospital, watch your inbox for any updates.', 'success')
         return redirect(url_for('doctor_jobs'))
     return render_template('view_job.html', job=job, already_interested=already_interested)
@@ -7864,6 +7904,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
