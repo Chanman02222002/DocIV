@@ -37,6 +37,8 @@ from flask import send_file
 import pandas as pd
 from io import BytesIO
 from sqlalchemy import inspect, text, or_
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 
 
 
@@ -49,6 +51,9 @@ from dotenv import load_dotenv
 load_dotenv()
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'fallback-secret')
 
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
+SENDGRID_FROM_EMAIL = os.getenv("SENDGRID_FROM_EMAIL")
+SENDGRID_FROM_NAME = os.getenv("SENDGRID_FROM_NAME", "DocIV Notifications")
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
@@ -139,6 +144,53 @@ class Message(db.Model):
     recipient = db.relationship('User', foreign_keys=[recipient_id], backref='received_messages')
     job = db.relationship('Job', backref='messages')
     doctor = db.relationship('Doctor', backref='messages')
+
+
+def notify_user(
+    *,
+    recipient_user,
+    sender_user=None,
+    subject,
+    content,
+    job=None,
+    doctor=None,
+    message_type="general",
+    send_email=True,
+):
+    """Create an inbox message and optionally send an email notification."""
+
+    message = Message(
+        sender_id=sender_user.id if sender_user else None,
+        recipient_id=recipient_user.id,
+        job_id=job.id if job else None,
+        doctor_id=doctor.id if doctor else None,
+        content=content,
+        message_type=message_type,
+    )
+
+    db.session.add(message)
+    db.session.commit()
+
+    if send_email and recipient_user.email and SENDGRID_API_KEY and SENDGRID_FROM_EMAIL:
+        try:
+            mail = Mail(
+                from_email=(SENDGRID_FROM_EMAIL, SENDGRID_FROM_NAME),
+                to_emails=recipient_user.email,
+                subject=subject,
+                html_content=f"""
+                    <div style='font-family:Arial, sans-serif; font-size:15px; color:#222;'>
+                        <p>{content}</p>
+                        <p style='font-size:12px; color:#666;'>Log in to your dashboard to respond.</p>
+                    </div>
+                """,
+            )
+
+            sg = SendGridAPIClient(SENDGRID_API_KEY)
+            sg.send(mail)
+        except Exception as e:
+            print("SendGrid error:", e)
+
+    return message
 
 
 def ensure_job_columns():
@@ -6599,17 +6651,18 @@ def express_interest(job_id):
 
     recipient_user = job.poster
 
-    message = Message(
-        sender_id=current_user.id,
-        recipient_id=recipient_user.id,
-        job_id=job.id,
-        doctor_id=current_user.doctor.id,
-        content=f"{current_user.doctor.first_name} {current_user.doctor.last_name} sent an application for your job: '{job.title}'.",
-        message_type='interest'  # <-- clearly marked interest message
+    notify_user(
+        recipient_user=recipient_user,
+        sender_user=current_user,
+        subject="New Job Application Received",
+        content=(
+            f"Dr. {current_user.doctor.first_name} {current_user.doctor.last_name} "
+            f"sent an application for your job: '<strong>{job.title}</strong>'."
+        ),
+        job=job,
+        doctor=current_user.doctor,
+        message_type='interest',
     )
-
-    db.session.add(message)
-    db.session.commit()
 
     flash('Application sent to client!', 'success')
     return redirect(url_for('doctor_jobs'))
@@ -6642,16 +6695,18 @@ def send_invite(doctor_id, job_id):
         db.session.commit()
 
         # Send invite message to doctor
-        message = Message(
-            sender_id=current_user.id,
-            recipient_id=doctor_user.id,
-            job_id=job_id,
-            doctor_id=doctor.id,
-            content=f"You have a call invite scheduled by {current_user.username} on {form.datetime.data}.",
-            message_type='invite'
+        notify_user(
+            recipient_user=doctor_user,
+            sender_user=current_user,
+            subject="You've Been Invited to a Call",
+            content=(
+                f"You have a call invite scheduled by {current_user.username} "
+                f"for <strong>{job.title}</strong> on {form.datetime.data}."
+            ),
+            job=job,
+            doctor=doctor,
+            message_type='invite',
         )
-        db.session.add(message)
-        db.session.commit()
 
         flash('Invite sent to doctor!', 'success')
 
@@ -7809,6 +7864,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
