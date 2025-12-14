@@ -5687,7 +5687,7 @@ Required output (plain text, no markdown headers):
 Provided information:
 {provided_facts}
 """
-            response = client.chat.completions.create(␊
+            response = client.chat.completions.create(
                 model="gpt-5-nano",
                 messages=[
                     {"role": "system", "content": "You turn structured job info into concise, factual postings."},
@@ -7871,6 +7871,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
