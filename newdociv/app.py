@@ -2126,33 +2126,12 @@ app.jinja_loader = DictLoader({
                             </div>
                         </form>
 
-                        <div id="ai-preview-card" class="card mt-4 border-0 shadow-sm d-none">
-                            <div class="card-body">
-                                <div class="d-flex align-items-center mb-2">
-                                    <span class="badge bg-primary me-2">AI Draft</span>
-                                    <small class="text-muted">Review and edit before posting</small>
-                                </div>
-                                <textarea id="ai-preview-text" class="form-control" rows="8"></textarea>
-                                <div class="d-flex justify-content-between align-items-center mt-3">
-                                    <div class="text-muted small" id="ai-error"></div>
-                                    <div>
-                                        <button class="btn btn-outline-secondary me-2" id="ai-dismiss">Clear</button>
-                                        <button class="btn btn-primary" id="ai-apply">Use in Post</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
                         <script>
                             document.addEventListener('DOMContentLoaded', () => {
                                 const aiBtn = document.getElementById('ai-curate-btn');
                                 const aiSpinner = document.getElementById('ai-spinner');
                                 const aiStatus = document.getElementById('ai-status');
-                                const aiPreviewCard = document.getElementById('ai-preview-card');
-                                const aiPreviewText = document.getElementById('ai-preview-text');
-                                const aiApply = document.getElementById('ai-apply');
-                                const aiDismiss = document.getElementById('ai-dismiss');
-                                const aiError = document.getElementById('ai-error');
+                                const descriptionField = document.getElementById('description');
 
                                 function toggleLoading(isLoading) {
                                     aiSpinner.classList.toggle('d-none', !isLoading);
@@ -2169,7 +2148,6 @@ app.jinja_loader = DictLoader({
                                         description: document.getElementById('description').value,
                                     };
 
-                                    aiError.textContent = '';
                                     toggleLoading(true);
 
                                     try {
@@ -2184,29 +2162,14 @@ app.jinja_loader = DictLoader({
                                             throw new Error(data.error || 'Unable to generate draft.');
                                         }
 
-                                        aiPreviewText.value = data.content || '';
-                                        aiPreviewCard.classList.remove('d-none');
-                                        aiStatus.textContent = 'Preview generated. Edit before posting.';
+                                        descriptionField.value = data.content || '';
+                                        descriptionField.focus();
+                                        aiStatus.textContent = 'Draft added above. Edit as needed before posting.';
                                     } catch (error) {
-                                        aiError.textContent = error.message;
-                                        aiPreviewCard.classList.remove('d-none');
+                                        aiStatus.textContent = error.message;
                                     } finally {
                                         toggleLoading(false);
                                     }
-                                });
-
-                                aiApply?.addEventListener('click', () => {
-                                    const descriptionField = document.getElementById('description');
-                                    if (descriptionField && aiPreviewText.value.trim()) {
-                                        descriptionField.value = aiPreviewText.value.trim();
-                                        descriptionField.focus();
-                                    }
-                                });
-
-                                aiDismiss?.addEventListener('click', () => {
-                                    aiPreviewText.value = '';
-                                    aiPreviewCard.classList.add('d-none');
-                                    aiStatus.textContent = '';
                                 });
                             });
                         </script>
@@ -5712,14 +5675,14 @@ def ai_curate_job_post():
         try:
             client = openai.OpenAI(api_key=api_key)
             ai_prompt = f"""
-You are crafting a concise, polished job-posting draft strictly from the provided details. Do not invent any benefits, amenities, or city facts that are not explicitly provided. Emphasize the provided city/location string without adding external knowledge. Keep the tone professional and inviting.
+You are crafting a concise, polished job-posting draft from the provided details. Use an inviting tone, and add one to two lively sentences that give well-known background about the city or area to make the role feel exciting. Do not invent compensation, facility facts, or promises beyond what is provided. Keep everything in plain text.
 
 Required output (plain text, no markdown headers):
 - Job Title line
-- Location line that highlights the provided city/state text
+- Location line that highlights the provided city/state text with a short, upbeat city background
 - Facility line (only if supplied)
 - Compensation line (only if supplied)
-- A short 3-5 sentence overview that weaves in the given notes/description and the provided location wording.
+- A short 3-5 sentence overview that weaves in the given notes/description and the city excitement.
 
 Provided information:
 {provided_facts}
@@ -5743,6 +5706,7 @@ Provided information:
         overview_lines = [
             f"Job Title: {title}",
             f"Location: {location}",
+            f"Location Spotlight: {location} offers a welcoming community and vibrant lifestyle for healthcare professionals.",
         ]
         if facility_name:
             overview_lines.append(f"Facility: {facility_name}")
@@ -7907,6 +7871,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
