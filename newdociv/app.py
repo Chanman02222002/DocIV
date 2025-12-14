@@ -1584,7 +1584,7 @@ app.jinja_loader = DictLoader({
     'client_dashboard.html': '''
         {% extends 'base.html' %}
         {% block content %}
-        <style>␊
+        <style>
             .client-dashboard { color: #0f172a; }
             .client-dashboard .glass-card {
                 background: linear-gradient(145deg, #f9fbff, #eef4ff);
@@ -6057,7 +6057,7 @@ Do not output any <img> tags or links to images. Only output the requested job s
     if api_key:
         try:
             client = openai.OpenAI(api_key=api_key)
-            response = client.chat.completions.create(␊
+            response = client.chat.completions.create(
                 model="gpt-5-nano",
                 messages=[
                     {"role": "system", "content": "You are a professional and creative medical job match assistant."},
@@ -7968,6 +7968,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
