@@ -221,9 +221,6 @@ def ensure_job_columns():
                     conn.execute(text(stmt))
 
 
-ensure_user_columns()
-
-
 def ensure_scheduled_call_columns():
     """Ensure scheduling extras exist without requiring migrations."""
     with app.app_context():
@@ -7968,6 +7965,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
