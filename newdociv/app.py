@@ -5869,14 +5869,15 @@ def ai_curate_job_post():
         try:
             client = openai.OpenAI(api_key=api_key)
             ai_prompt = f"""
-You are crafting a concise, polished job-posting draft from the provided details. Use an inviting tone, and add one to two lively sentences that give well-known background about the city or area to make the role feel exciting. Do not invent compensation, facility facts, or promises beyond what is provided. Keep everything in plain text.
+You are crafting a concise, polished job-posting draft from the provided details. Use an inviting tone, and weave in a 4-5 sentence city spotlight with interesting, widely known highlights to make the role feel exciting. Do not invent compensation, facility facts, or promises beyond what is provided. Keep everything in plain text.
 
 Required output (plain text, no markdown headers):
 - Job Title line
-- Location line that highlights the provided city/state text with a short, upbeat city background
+- Location line that names the provided city/state
+- City Spotlight: a 4-5 sentence paragraph with lively but factual highlights about the city or area
 - Facility line (only if supplied)
 - Compensation line (only if supplied)
-- A short 3-5 sentence overview that weaves in the given notes/description and the city excitement.
+- A short 3-5 sentence overview that blends the provided notes/description with the city excitement.
 
 Provided information:
 {provided_facts}
@@ -5900,7 +5901,12 @@ Provided information:
         overview_lines = [
             f"Job Title: {title}",
             f"Location: {location}",
-            f"Location Spotlight: {location} offers a welcoming community and vibrant lifestyle for healthcare professionals.",
+            "City Spotlight: "
+            f"{location} offers a welcoming community feel and a strong sense of local pride. "
+            "You'll find neighborhood events, museums, and parks that give clinicians plenty to explore between shifts. "
+            "The area is known for its mix of local eateries and seasonal festivals that showcase regional flavors. "
+            "Outdoor spaces and nearby trails make it easy to unwind and stay active. "
+            "Healthcare professionals also appreciate the connected medical community and convenient travel links.",
         ]
         if facility_name:
             overview_lines.append(f"Facility: {facility_name}")
@@ -8087,6 +8093,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
