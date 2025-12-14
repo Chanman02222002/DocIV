@@ -221,7 +221,29 @@ def ensure_job_columns():
                     conn.execute(text(stmt))
 
 
-ensure_job_columns()
+ensure_user_columns()
+
+
+def ensure_scheduled_call_columns():
+    """Ensure scheduling extras exist without requiring migrations."""
+    with app.app_context():
+        inspector = inspect(db.engine)
+        if not inspector.has_table('scheduled_call'):
+            return
+
+        existing = {col['name'] for col in inspector.get_columns('scheduled_call')}
+        statements = []
+
+        if 'alternate_options' not in existing:
+            statements.append("ALTER TABLE scheduled_call ADD COLUMN alternate_options TEXT")
+
+        if statements:
+            with db.engine.begin() as conn:
+                for stmt in statements:
+                    conn.execute(text(stmt))
+
+
+ensure_scheduled_call_columns()
 
 
 def ensure_user_columns():
@@ -767,6 +789,7 @@ class ScheduledCall(db.Model):
     scheduled_by_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=True)
     datetime = db.Column(db.DateTime, nullable=False)
+    alternate_options = db.Column(db.Text, nullable=True)
     reason = db.Column(db.String(255), nullable=True)
     canceled = db.Column(db.Boolean, default=False)
     reschedule_requested = db.Column(db.Boolean, default=False)
@@ -1034,6 +1057,15 @@ class JobRequirementForm(FlaskForm):
 class ScheduledCallForm(FlaskForm):
     doctor_id = SelectField('Doctor', validators=[DataRequired()])
     datetime = DateTimeLocalField('Call Date & Time', validators=[DataRequired()], format='%Y-%m-%dT%H:%M')
+    alternative_times = FieldList(
+        DateTimeLocalField(
+            'Alternative Option',
+            validators=[Optional()],
+            format='%Y-%m-%dT%H:%M'
+        ),
+        min_entries=2,
+        max_entries=2
+    )
     reason = TextAreaField('Reason for Call', validators=[DataRequired()])
     submit = SubmitField('Schedule Call')
 # Add this clearly above your route definitions:
@@ -2642,6 +2674,17 @@ app.jinja_loader = DictLoader({
                 <div class="mb-3">
                     {{ form.datetime.label }}
                     {{ form.datetime(class="form-control", id="datetime") }}
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Additional time options</label>
+                    <p class="text-muted small mb-2">Share a couple of backups so the doctor can pick what works best.</p>
+                    {% for alt_field in form.alternative_times %}
+                        <div class="mb-2">
+                            <label class="form-label">Option {{ loop.index + 1 }} (optional)</label>
+                            {{ alt_field(class="form-control") }}
+                        </div>
+                    {% endfor %}
                 </div>
 
                 <div class="mb-3">
@@ -4663,10 +4706,37 @@ app.jinja_loader = DictLoader({
 
         <p><strong>With:</strong> {{ call.scheduled_by.username }} ({{ call.scheduled_by.role }})</p>
         <p><strong>Date & Time:</strong> {{ call.datetime }}</p>
+        {% set alternate_options = call.alternate_options.split(',') if call.alternate_options else [] %}
+        {% if alternate_options %}
+            <p><strong>Other options shared:</strong></p>
+            <ul>
+                {% for option in alternate_options %}
+                    <li>{{ option.replace('T', ' ') }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
         <p><strong>Reason:</strong> {{ call.reason }}</p>
         <p><strong>Status:</strong> {% if call.canceled %}Canceled{% elif call.reschedule_requested %}Reschedule Requested{% else %}Scheduled{% endif %}</p>
 
         {% if not call.canceled %}
+        {% if alternate_options %}
+        <form method="post" class="mb-4">
+            <label class="form-label fw-semibold">Pick the time that works best</label>
+            <div class="list-group mb-3">
+                <label class="list-group-item">
+                    <input class="form-check-input me-2" type="radio" name="chosen_slot" value="{{ call.datetime.strftime('%Y-%m-%dT%H:%M') }}" checked>
+                    Primary: {{ call.datetime.strftime('%Y-%m-%d %H:%M') }}
+                </label>
+                {% for option in alternate_options %}
+                    <label class="list-group-item">
+                        <input class="form-check-input me-2" type="radio" name="chosen_slot" value="{{ option }}">
+                        Alternative: {{ option.replace('T', ' ') }}
+                    </label>
+                {% endfor %}
+            </div>
+            <button name="action" value="choose_option" class="btn btn-success">Confirm This Time</button>
+        </form>
+        {% endif %}
         <form method="post">
             <button name="action" value="cancel" class="btn btn-danger">Cancel Meeting</button>
         </form>
@@ -5278,6 +5348,8 @@ def schedule_call():
 
     if form.validate_on_submit():
         dt = form.datetime.data  # <-- FIX HERE
+        alternative_slots = [field.data for field in form.alternative_times if field.data]
+        alternate_options = ",".join(slot.strftime('%Y-%m-%dT%H:%M') for slot in alternative_slots) if alternative_slots else None
 
         invite_status = "Pending" if request.form.get('send_invite') == 'yes' else "Accepted"
 
@@ -5286,6 +5358,7 @@ def schedule_call():
             scheduled_by_id=current_user.id,
             job_id=None,
             datetime=dt,
+            alternate_options=alternate_options,
             reason=form.reason.data,
             invite_status=invite_status
         )
@@ -5296,12 +5369,14 @@ def schedule_call():
             doctor = Doctor.query.get(form.doctor_id.data)
             doctor_user = User.query.get(doctor.user_id)
             if doctor_user:
+                all_options = [dt] + alternative_slots
+                options_text = " / ".join(option.strftime('%Y-%m-%d %H:%M') for option in all_options)
                 message = Message(
                     sender_id=current_user.id,
                     recipient_id=doctor_user.id,
                     content=(
-                        f"You have a new call invite scheduled on {dt.strftime('%Y-%m-%d %H:%M')} "
-                        f"for reason: {form.reason.data}. Please accept or decline on your dashboard."
+                        f"You have a new call invite with available times: {options_text}. "
+                        f"Reason: {form.reason.data}. Please pick the one that works best on your dashboard."
                     )
                 )
                 db.session.add(message)
@@ -6689,11 +6764,14 @@ def send_invite(doctor_id, job_id):
     form.doctor_id.choices = [(doctor.id, f"{doctor.first_name} {doctor.last_name} | {doctor.email}")]
 
     if form.validate_on_submit():
+        alternative_slots = [field.data for field in form.alternative_times if field.data]
+        alternate_options = ",".join(slot.strftime('%Y-%m-%dT%H:%M') for slot in alternative_slots) if alternative_slots else None
         scheduled_call = ScheduledCall(
             doctor_id=doctor.id,
             scheduled_by_id=current_user.id,
             job_id=job.id,
             datetime=form.datetime.data,
+            alternate_options=alternate_options,
             reason=form.reason.data,
             invite_status='pending'
         )
@@ -6708,7 +6786,8 @@ def send_invite(doctor_id, job_id):
             subject="You've Been Invited to a Call",
             content=(
                 f"You have a call invite scheduled by {current_user.username} "
-                f"for <strong>{job.title}</strong> on {form.datetime.data}."
+                f"for <strong>{job.title}</strong> on {form.datetime.data}. "
+                f"Other options: {', '.join(slot.strftime('%Y-%m-%d %H:%M') for slot in alternative_slots) or 'None provided'}."
             ),
             job=job,
             doctor=doctor,
@@ -7203,10 +7282,28 @@ def doctor_call_details(call_id):
             flash('Meeting canceled.', 'success')
             return redirect(url_for('doctor_dashboard'))
 
+        elif action == 'choose_option':
+            selected_slot = request.form.get('chosen_slot')
+            if selected_slot:
+                scheduled_call.datetime = datetime.strptime(selected_slot, '%Y-%m-%dT%H:%M')
+                scheduled_call.invite_status = 'Accepted'
+                db.session.commit()
+
+                message = Message(
+                    sender_id=current_user.id,
+                    recipient_id=scheduled_call.scheduled_by_id,
+                    content=(
+                        f"Doctor selected {scheduled_call.datetime.strftime('%Y-%m-%d %H:%M')} for the call."
+                    )
+                )
+                db.session.add(message)
+                db.session.commit()
+                flash('Time confirmed and client notified.', 'success')
+            return redirect(url_for('doctor_dashboard'))
+
         elif action == 'reschedule':
             new_datetime = request.form.get('reschedule_datetime')
             note = request.form.get('reschedule_note')
-
             scheduled_call.reschedule_requested = True
             scheduled_call.reschedule_note = note
             scheduled_call.reschedule_datetime = datetime.strptime(new_datetime, '%Y-%m-%dT%H:%M')
@@ -7871,6 +7968,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
