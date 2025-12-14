@@ -5724,8 +5724,8 @@ Required output (plain text, no markdown headers):
 Provided information:
 {provided_facts}
 """
-            response = client.chat.completions.create(
-                model="gpt-4.1-nano",
+            response = client.chat.completions.create(␊
+                model="gpt-5-nano",
                 messages=[
                     {"role": "system", "content": "You turn structured job info into concise, factual postings."},
                     {"role": "user", "content": ai_prompt}
@@ -6018,8 +6018,8 @@ Do not output any <img> tags or links to images. Only output the requested job s
     if api_key:
         try:
             client = openai.OpenAI(api_key=api_key)
-            response = client.chat.completions.create(
-                model="gpt-4.1-nano",
+            response = client.chat.completions.create(␊
+                model="gpt-5-nano",
                 messages=[
                     {"role": "system", "content": "You are a professional and creative medical job match assistant."},
                     {"role": "user", "content": prompt}
@@ -7907,6 +7907,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
