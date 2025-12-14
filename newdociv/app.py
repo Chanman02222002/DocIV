@@ -2659,58 +2659,180 @@ app.jinja_loader = DictLoader({
     'schedule_call.html': '''
         {% extends "base.html" %}
         {% block content %}
-            <h2>Schedule Call with Doctor</h2>
-            <form method="post">
-                {{ form.hidden_tag() }}
+        <style>
+            .call-hero {
+                background: linear-gradient(135deg, rgba(142,202,212,0.18), rgba(90,164,179,0.08));
+                border: 1px solid rgba(90,164,179,0.2);
+                border-radius: 18px;
+            }
+            .call-hero .pill {
+                background: #fff;
+                border: 1px solid rgba(90,164,179,0.2);
+                color: #1b5160;
+                padding: 6px 12px;
+                border-radius: 999px;
+                font-weight: 600;
+                font-size: 0.9rem;
+            }
+            .card-flat {
+                border: 1px solid #e8eef3;
+                border-radius: 16px;
+            }
+            .icon-circle {
+                width: 44px;
+                height: 44px;
+                border-radius: 50%;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                background: rgba(90,164,179,0.1);
+                color: #1b5160;
+            }
+            .label-muted {
+                font-size: 0.85rem;
+                text-transform: uppercase;
+                letter-spacing: 0.03em;
+                color: #6c757d;
+            }
+            .helper-box {
+                background: #fff;
+                border-radius: 14px;
+                border: 1px dashed rgba(0,0,0,0.06);
+            }
+        </style>
 
-                <div class="mb-3">
-                    {{ form.doctor_id.label }}
-                    {{ form.doctor_id(class="form-select") }}
+        <div class="container py-4">
+            <div class="call-hero p-4 p-lg-5 mb-4 shadow-sm">
+                <div class="d-flex flex-column flex-lg-row align-items-start justify-content-between gap-3">
+                    <div>
+                        <div class="badge bg-white text-primary border border-1 border-primary-subtle mb-2">Concierge scheduling</div>
+                        <h2 class="mb-2">Schedule a call with a doctor</h2>
+                        <p class="mb-0 text-secondary">Send a polished invite with a primary time and backups so providers can accept quickly.</p>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <span class="pill"><i class="bi bi-shield-check me-1"></i> Verified providers</span>
+                        <span class="pill"><i class="bi bi-clock-history me-1"></i> 24h response</span>
+                    </div>
                 </div>
+            </div>
 
-                <div class="mb-3">
-                    {{ form.datetime.label }}
-                    {{ form.datetime(class="form-control", id="datetime") }}
-                </div>
+            <div class="row g-4">
+                <div class="col-lg-8">
+                    <div class="card card-flat shadow-sm">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center gap-2 mb-3">
+                                <span class="icon-circle"><i class="bi bi-telephone-outbound"></i></span>
+                                <div>
+                                    <div class="fw-semibold">Call details</div>
+                                    <small class="text-muted">Share the time and context—everything stays in one thread.</small>
+                                </div>
+                            </div>
 
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Additional time options</label>
-                    <p class="text-muted small mb-2">Share a couple of backups so the doctor can pick what works best.</p>
-                    {% for alt_field in form.alternative_times %}
-                        <div class="mb-2">
-                            <label class="form-label">Option {{ loop.index + 1 }} (optional)</label>
-                            {{ alt_field(class="form-control") }}
+                            <form method="post" class="needs-validation" novalidate>
+                                {{ form.hidden_tag() }}
+
+                                <div class="row g-3">
+                                    <div class="col-12">
+                                        <label class="form-label fw-semibold">{{ form.doctor_id.label }}</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-white text-primary"><i class="bi bi-person-badge"></i></span>
+                                            {{ form.doctor_id(class="form-select doctor-select") }}
+                                        </div>
+                                        <div class="form-text">Search by name, email, or specialty.</div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold">{{ form.datetime.label }}</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-white text-primary"><i class="bi bi-calendar-event"></i></span>
+                                            {{ form.datetime(class="form-control", id="datetime") }}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="helper-box p-3 h-100">
+                                            <div class="label-muted mb-1">Tip</div>
+                                            <div class="small text-secondary">Choose a time within business hours for faster confirms.</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mt-4 pt-3 border-top">
+                                    <div class="d-flex align-items-center gap-2 mb-2">
+                                        <span class="icon-circle"><i class="bi bi-clock-history"></i></span>
+                                        <div>
+                                            <div class="fw-semibold">Backup options</div>
+                                            <small class="text-muted">Offer alternates so the doctor can confirm instantly.</small>
+                                        </div>
+                                    </div>
+                                    <div class="row g-3">
+                                        {% for alt_field in form.alternative_times %}
+                                            <div class="col-md-6">
+                                                <label class="form-label label-muted">Option {{ loop.index + 1 }} (optional)</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text bg-white text-primary"><i class="bi bi-alarm"></i></span>
+                                                    {{ alt_field(class="form-control") }}
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+
+                                <div class="mt-4 pt-3 border-top">
+                                    <label class="form-label fw-semibold">{{ form.reason.label }}</label>
+                                    {{ form.reason(class="form-control", rows="3", placeholder="Share context, agenda, or who will join.") }}
+                                </div>
+
+                                <div class="d-flex flex-wrap gap-2 mt-4">
+                                    {{ form.submit(class="btn btn-primary px-4") }}
+                                    <button name="send_invite" value="yes" class="btn btn-outline-primary px-4">
+                                        <i class="bi bi-send"></i> Send invite to doctor
+                                    </button>
+                                </div>
+                            </form>
                         </div>
-                    {% endfor %}
+                    </div>
                 </div>
 
-                <div class="mb-3">
-                    {{ form.reason.label }}
-                    {{ form.reason(class="form-control") }}
+                <div class="col-lg-4">
+                    <div class="card card-flat bg-light shadow-sm h-100">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center gap-2 mb-3">
+                                <span class="icon-circle"><i class="bi bi-lightning-charge"></i></span>
+                                <div>
+                                    <div class="fw-semibold">What happens next</div>
+                                    <small class="text-muted">We notify the doctor and track responses.</small>
+                                </div>
+                            </div>
+                            <ul class="list-unstyled small text-secondary mb-4">
+                                <li class="d-flex align-items-start mb-2"><i class="bi bi-check2 text-success me-2"></i><span>Doctors see all your suggested times and confirm with one click.</span></li>
+                                <li class="d-flex align-items-start mb-2"><i class="bi bi-check2 text-success me-2"></i><span>You can follow up from the inbox if you need to adjust.</span></li>
+                                <li class="d-flex align-items-start"><i class="bi bi-check2 text-success me-2"></i><span>Calendar-ready timestamps keep everyone in sync.</span></li>
+                            </ul>
+                            <div class="helper-box p-3">
+                                <div class="fw-semibold mb-1">Need a different workflow?</div>
+                                <p class="small mb-2 text-secondary">Use "Send invite" to request availability, or submit to book immediately.</p>
+                                <span class="badge bg-white text-primary border border-primary-subtle">Live support</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+            </div>
+        </div>
 
-                {{ form.submit(class="btn btn-primary") }}
+        <!-- Include Select2 CSS and JS -->
+        <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
-                <div class="mt-3">
-                    <button name="send_invite" value="yes" class="btn btn-info">Send Invite to Doctor</button>
-                </div>
-            </form>
-
-
-            <!-- Include Select2 CSS and JS -->
-            <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-            <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-            <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-
-            <script>
-                $(document).ready(function() {
-                    $('.form-select').select2({
-                        placeholder: "Select Doctor (Name | Email | Specialty)",
-                        allowClear: true,
-                        width: '100%'
-                    });
+        <script>
+            $(document).ready(function() {
+                $('.doctor-select').select2({
+                    placeholder: "Select Doctor (Name | Email | Specialty)",
+                    allowClear: true,
+                    width: '100%'
                 });
-            </script>
+            });
+        </script>
         {% endblock %}''',
 
     'doctor_profile.html': '''{% extends "base.html" %}{% block content %}
@@ -7965,6 +8087,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
