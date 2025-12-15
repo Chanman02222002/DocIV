@@ -25,6 +25,7 @@ from collections import defaultdict
 from flask_login import current_user
 from werkzeug.utils import secure_filename
 from flask_wtf.file import FileField, FileAllowed
+from itertools import zip_longest
 import openai
 import re
 from flask import jsonify, request
@@ -122,8 +123,10 @@ class ClientContact(db.Model):
     name = db.Column(db.String(150), nullable=False)
     position = db.Column(db.String(150))
     email = db.Column(db.String(150), nullable=False)
+    phone = db.Column(db.String(50))
     receive_updates = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 
     client = db.relationship('User', back_populates='contacts')
 
@@ -266,6 +269,27 @@ def ensure_user_columns():
 
 ensure_user_columns()
 
+
+def ensure_client_contact_columns():
+    """Add new client contact columns to existing databases without migrations."""
+    with app.app_context():
+        inspector = inspect(db.engine)
+        if not inspector.has_table('client_contact'):
+            return
+
+        existing = {col['name'] for col in inspector.get_columns('client_contact')}
+        statements = []
+
+        if 'phone' not in existing:
+            statements.append("ALTER TABLE client_contact ADD COLUMN phone VARCHAR(50)")
+
+        if statements:
+            with db.engine.begin() as conn:
+                for stmt in statements:
+                    conn.execute(text(stmt))
+
+
+ensure_client_contact_columns()
 
 
 def ensure_doctor_columns():
@@ -1979,6 +2003,10 @@ app.jinja_loader = DictLoader({
                                             <input type="text" name="contact_position[]" class="form-control" placeholder="Recruiting Lead" value="{{ contact.position if contact else '' }}">
                                         </div>
                                         <div class="flex-grow-1">
+                                            <label class="form-label">Phone</label>
+                                            <input type="text" name="contact_phone[]" class="form-control" placeholder="555-123-4567" value="{{ contact.phone if contact else '' }}">
+                                        </div>
+                                        <div class="flex-grow-1">
                                             <label class="form-label">Email address</label>
                                             <input type="email" name="contact_email[]" class="form-control" placeholder="team@organization.com" value="{{ contact.email if contact else '' }}" required>
                                         </div>
@@ -2032,6 +2060,10 @@ app.jinja_loader = DictLoader({
                             <div class="flex-grow-1">
                                 <label class="form-label">Position</label>
                                 <input type="text" name="contact_position[]" class="form-control" placeholder="Recruiting Lead">
+                            </div>
+                            <div class="flex-grow-1">
+                                <label class="form-label">Phone</label>
+                                <input type="text" name="contact_phone[]" class="form-control" placeholder="555-123-4567">
                             </div>
                             <div class="flex-grow-1">
                                 <label class="form-label">Email address</label>
@@ -7359,6 +7391,7 @@ def client_profile():
         contact_names = request.form.getlist('contact_name[]')
         contact_positions = request.form.getlist('contact_position[]')
         contact_emails = request.form.getlist('contact_email[]')
+        contact_phones = request.form.getlist('contact_phone[]')
         contact_updates = request.form.getlist('contact_receive_updates[]')
 
         checked_indices = {int(idx) for idx in contact_updates if idx.isdigit()}
@@ -7366,12 +7399,15 @@ def client_profile():
         current_user.contacts.clear()
         db.session.flush()
 
-        for index, (name, position, email) in enumerate(zip(contact_names, contact_positions, contact_emails)):
+        for index, (name, position, email, phone) in enumerate(
+            zip_longest(contact_names, contact_positions, contact_emails, contact_phones, fillvalue="")
+        ):
             name = (name or '').strip()
             position = (position or '').strip()
             email = (email or '').strip()
+            phone = (phone or '').strip()
 
-            if not (name or email or position):
+            if not (name or email or position or phone):
                 continue
 
             contact = ClientContact(
@@ -7379,6 +7415,7 @@ def client_profile():
                 name=name or 'Team Member',
                 position=position or None,
                 email=email,
+                phone=phone or None,
                 receive_updates=index in checked_indices,
             )
             db.session.add(contact)
@@ -8121,6 +8158,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
