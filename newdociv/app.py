@@ -5925,6 +5925,43 @@ def ai_curate_job_post():
 
     curated_content = None
     api_key = os.getenv("OPENAI_API_KEY")
+    city_spotlight = None
+
+    def generate_city_spotlight(city: str, api_key: str):
+        """Create a unique city spotlight paragraph using OpenAI."""
+        if not city or not api_key:
+            return None
+        try:
+            client = openai.OpenAI(api_key=api_key)
+            response = client.chat.completions.create(
+                model="gpt-5-nano",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You write concise, factually grounded city spotlights for medical job postings. "
+                            "Highlight notable neighborhoods, cultural attractions, outdoor amenities, medical hubs, "
+                            "and any regionally famous food or events without exaggeration."
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": (
+                            "Write a single paragraph (4-6 sentences) spotlighting the city below. "
+                            "Keep it specific to the location, avoid generic filler, and do not repeat sentences across cities.\n"
+                            f"City: {city}"
+                        ),
+                    },
+                ],
+                max_tokens=220,
+                temperature=0.7,
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as exc:
+            print(f"City spotlight generation failed for {city}: {exc}")
+            return None
+
+    city_spotlight = generate_city_spotlight(location, api_key)
     if api_key:
         try:
             client = openai.OpenAI(api_key=api_key)
@@ -5934,11 +5971,10 @@ You are crafting a concise, polished job-posting draft from the provided details
 Required output (plain text, no markdown headers):
 - Job Title line
 - Location line that names the provided city/state
-- City Spotlight: a 4-5 sentence paragraph with lively but factual highlights about the city or area
+- City Spotlight: a 4-5 sentence paragraph with lively but factual highlights about the city or area{(' Use these facts as your base: ' + city_spotlight) if city_spotlight else ''}
 - Facility line (only if supplied)
 - Compensation line (only if supplied)
 - A short 3-5 sentence overview that blends the provided notes/description with the city excitement.
-
 Provided information:
 {provided_facts}
 """
@@ -5958,15 +5994,17 @@ Provided information:
         print("AI curation skipped: missing OPENAI_API_KEY")
 
     if not curated_content:
-        overview_lines = [
-            f"Job Title: {title}",
-            f"Location: {location}",
-            "City Spotlight: "
+        spotlight_fallback = city_spotlight or (
             f"{location} offers a welcoming community feel and a strong sense of local pride. "
             "You'll find neighborhood events, museums, and parks that give clinicians plenty to explore between shifts. "
             "The area is known for its mix of local eateries and seasonal festivals that showcase regional flavors. "
             "Outdoor spaces and nearby trails make it easy to unwind and stay active. "
-            "Healthcare professionals also appreciate the connected medical community and convenient travel links.",
+            "Healthcare professionals also appreciate the connected medical community and convenient travel links."
+        )
+        overview_lines = [
+            f"Job Title: {title}",
+            f"Location: {location}",
+            "City Spotlight: " + spotlight_fallback,
         ]
         if facility_name:
             overview_lines.append(f"Facility: {facility_name}")
@@ -8158,6 +8196,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
