@@ -5624,16 +5624,44 @@ def calls():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     form = LoginForm()
+
+    def doctor_profile_requires_setup(user_obj):
+        doctor_profile = getattr(user_obj, "doctor", None)
+        if not doctor_profile:
+            return True
+
+        required_fields = [
+            doctor_profile.first_name,
+            doctor_profile.last_name,
+            doctor_profile.specialty,
+            doctor_profile.phone,
+            doctor_profile.city_of_residence,
+        ]
+        return any(not field for field in required_fields)
+
+    def client_profile_requires_setup(user_obj):
+        if user_obj.role != 'client':
+            return False
+        has_basic_details = bool(user_obj.organization_name)
+        has_contacts = bool(user_obj.contacts)
+        return not (has_basic_details and has_contacts)
+
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
         if user and user.check_password(form.password.data):
             login_user(user)
             flash('Logged in successfully!', 'success')
-            
+
             # Redirect users immediately based on their role
             if user.role == 'doctor':
+                if doctor_profile_requires_setup(user):
+                    flash('Please complete your profile to continue.', 'info')
+                    return redirect(url_for('doctor_edit_profile'))
                 return redirect(url_for('doctor_dashboard'))
             elif user.role == 'client':
+                if client_profile_requires_setup(user):
+                    flash('Please complete your profile to continue.', 'info')
+                    return redirect(url_for('client_profile'))
                 return redirect(url_for('client_dashboard'))
             elif user.role == 'admin':
                 return redirect(url_for('dashboard'))
@@ -7954,8 +7982,8 @@ def public_register_client():
     db.session.commit()
 
     login_user(user)
-    flash('Client account created and logged in!', 'success')
-    return redirect(url_for('client_dashboard'))
+    flash('Client account created and logged in! Please complete your profile.', 'success')
+    return redirect(url_for('client_profile'))
 
 @app.route('/client/analytics')
 @login_required
@@ -8045,8 +8073,8 @@ def public_register_doctor():
     db.session.add(doctor)
     db.session.commit()
     login_user(user)
-    flash('Account created and logged in!', 'success')
-    return redirect(url_for('doctor_dashboard'))
+    flash('Account created and logged in! Please complete your profile.', 'success')
+    return redirect(url_for('doctor_edit_profile'))
 @app.route('/home')
 def home():
     return redirect(url_for('dashboard'))
@@ -8093,6 +8121,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
