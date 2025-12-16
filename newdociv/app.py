@@ -5954,12 +5954,12 @@ def ai_curate_job_post():
                     },
                 ],
                 max_completion_tokens=220,
-                temperature=0.7,
             )
             return response.choices[0].message.content.strip()
         except Exception as exc:
             print(f"City spotlight generation failed for {city}: {exc}")
             return None
+
 
     city_spotlight = generate_city_spotlight(location, api_key)
     if api_key:
@@ -5985,7 +5985,6 @@ Provided information:
                     {"role": "user", "content": ai_prompt}
                 ],
                 max_completion_tokens=500,
-                temperature=0.5,
             )
             curated_content = response.choices[0].message.content
         except Exception as exc:
@@ -6287,7 +6286,6 @@ Do not output any <img> tags or links to images. Only output the requested job s
                     {"role": "user", "content": prompt}
                 ],
                 max_completion_tokens=2200,
-                temperature=0.5,
             )
             gpt_html = response.choices[0].message.content
         except Exception as exc:
@@ -8196,6 +8194,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
