@@ -3941,7 +3941,7 @@ app.jinja_loader = DictLoader({
                                             {% if logo_path %}
                                                 <img src="{{ logo_path if '://' in logo_path else url_for('static', filename=logo_path) }}" alt="{{ job.facility_name or 'Facility logo' }}" class="job-logo-img">
                                             {% else %}
-                                                <div class="job-logo-placeholder">{{ (job.facility_name or job.title or 'H')[0]|upper }}</div>
+                                                <img src="{{ url_for('static', filename='hospital-placeholder.svg') }}" alt="Hospital logo placeholder" class="job-logo-img">
                                             {% endif %}
                                         </div>
                                 <div>
@@ -8216,6 +8216,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
