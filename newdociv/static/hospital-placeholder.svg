@@ -1,0 +1,8 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Generic hospital logo</title>
+  <desc id="desc">A simple cross icon representing a hospital</desc>
+  <rect width="128" height="128" rx="18" ry="18" fill="#e8f4ff" stroke="#c5d8f2" stroke-width="4" />
+  <rect x="56" y="26" width="16" height="76" rx="6" fill="#1f6db2" />
+  <rect x="26" y="56" width="76" height="16" rx="6" fill="#1f6db2" />
+  <circle cx="64" cy="64" r="54" fill="none" stroke="#1f6db2" stroke-width="6" opacity="0.25" />
+</svg>
