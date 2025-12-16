@@ -1489,9 +1489,37 @@ app.jinja_loader = DictLoader({
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
         <script>
             flatpickr("#datetime", { enableTime: true, dateFormat: "Y-m-d\\TH:i" });
+
+            document.addEventListener('DOMContentLoaded', () => {
+                document.querySelectorAll('[data-other-source]').forEach(wrapper => {
+                    const input = wrapper.querySelector('input, textarea');
+                    const { otherSource, otherValue } = wrapper.dataset;
+                    if (!input || !otherSource || !otherValue) return;
+
+                    const form = wrapper.closest('form');
+                    if (!form) return;
+
+                    const checkboxes = form.querySelectorAll(`input[name="${otherSource}"]`);
+                    if (!checkboxes.length) return;
+
+                    const toggleVisibility = () => {
+                        const isChecked = Array.from(checkboxes).some(cb => cb.value === otherValue && cb.checked);
+                        wrapper.style.display = isChecked ? '' : 'none';
+                        input.required = isChecked;
+                        if (!isChecked) input.value = '';
+
+                        const label = wrapper.querySelector('label');
+                        if (label) {
+                            label.classList.toggle('text-danger', isChecked);
+                        }
+                    };
+
+                    checkboxes.forEach(cb => cb.addEventListener('change', toggleVisibility));
+                    toggleVisibility();
+                });
+            });
         </script>
     </body>
-
     </html>
     ''',
 
@@ -2409,9 +2437,10 @@ app.jinja_loader = DictLoader({
                                             <div class="form-check">{{ subfield(class="form-check-input", id=subfield.id) }} <label class="form-check-label" for="{{ subfield.id }}">{{ subfield.label.text }}</label></div>
                                         {% endfor %}
                                     </div>
-                                    <div class="mt-2">{{ form.emr_other(class="form-control", placeholder="Other EMR systems") }}</div>
-                                </div>
-
+                                    <div class="mt-2" data-other-source="emr" data-other-value="Other" style="display:none;">
+                                        {{ form.emr_other(class="form-control", placeholder="Other EMR systems") }}
+                                    </div>
+                                    
                                 <div class="mb-3">
                                     <label class="form-label fw-semibold">{{ form.languages.label.text }}</label>
                                     <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
@@ -2419,7 +2448,9 @@ app.jinja_loader = DictLoader({
                                             <div class="form-check">{{ subfield(class="form-check-input", id=subfield.id) }} <label class="form-check-label" for="{{ subfield.id }}">{{ subfield.label.text }}</label></div>
                                         {% endfor %}
                                     </div>
-                                    <div class="mt-2">{{ form.language_other(class="form-control", placeholder="Other languages") }}</div>
+                                    <div class="mt-2" data-other-source="languages" data-other-value="Other" style="display:none;">
+                                        {{ form.language_other(class="form-control", placeholder="Other languages") }}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -2591,7 +2622,9 @@ app.jinja_loader = DictLoader({
                         <div class="form-check me-3" style="width:200px;">{{ emr_option(class="form-check-input") }} {{ emr_option.label(class="form-check-label") }}</div>
                         {% endfor %}
                     </div>
-                    <div class="mt-2">{{ form.emr_other.label(class="form-label") }} {{ form.emr_other(class="form-control", placeholder="Enter other EMR systems") }}</div>
+                    <div class="mt-2" data-other-source="emr" data-other-value="Other" style="display:none;">
+                        {{ form.emr_other.label(class="form-label") }} {{ form.emr_other(class="form-control", placeholder="Enter other EMR systems") }}
+                    </div>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label"><strong>{{ form.languages.label }}</strong></label>
@@ -2600,9 +2633,12 @@ app.jinja_loader = DictLoader({
                         <div class="form-check me-3" style="width:180px;">{{ language(class="form-check-input") }} {{ language.label(class="form-check-label") }}</div>
                         {% endfor %}
                     </div>
-                    <div class="mt-2">{{ form.language_other.label(class="form-label") }} {{ form.language_other(class="form-control", placeholder="Enter other languages") }}</div>
+                    <div class="mt-2" data-other-source="languages" data-other-value="Other" style="display:none;">
+                        {{ form.language_other.label(class="form-label") }} {{ form.language_other(class="form-control", placeholder="Enter other languages") }}
+                    </div>
                 </div>
             </div>
+
 
             <div class="row mb-3">
                 <div class="col-md-6">
@@ -3763,7 +3799,9 @@ app.jinja_loader = DictLoader({
                                     <div class="form-check">{{ subfield(class="form-check-input", id=subfield.id) }} <label class="form-check-label" for="{{ subfield.id }}">{{ subfield.label.text }}</label></div>
                                 {% endfor %}
                             </div>
-                            <div class="mt-2">{{ req_form.emr_other(class="form-control", placeholder="Other EMR systems") }}</div>
+                            <div class="mt-2" data-other-source="emr" data-other-value="Other" style="display:none;">
+                                {{ req_form.emr_other(class="form-control", placeholder="Other EMR systems") }}
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">{{ req_form.languages.label.text }}</label>
@@ -3772,7 +3810,9 @@ app.jinja_loader = DictLoader({
                                     <div class="form-check">{{ subfield(class="form-check-input", id=subfield.id) }} <label class="form-check-label" for="{{ subfield.id }}">{{ subfield.label.text }}</label></div>
                                 {% endfor %}
                             </div>
-                            <div class="mt-2">{{ req_form.language_other(class="form-control", placeholder="Other languages") }}</div>
+                            <div class="mt-2" data-other-source="languages" data-other-value="Other" style="display:none;">
+                                {{ req_form.language_other(class="form-control", placeholder="Other languages") }}
+                            </div>
                         </div>
                     </div>
 
@@ -4631,7 +4671,7 @@ app.jinja_loader = DictLoader({
                                     <div class="form-check me-3" style="width:200px;">{{ emr_option(class="form-check-input") }} {{ emr_option.label(class="form-check-label") }}</div>
                                     {% endfor %}
                                 </div>
-                                <div class="mt-2">{{ form.emr_other.label(class="form-label") }} {{ form.emr_other(class="form-control", placeholder="Enter other EMR systems") }}</div>
+                                <div class="mt-2" data-other-source="emr" data-other-value="Other" style="display:none;">{{ form.emr_other.label(class="form-label") }} {{ form.emr_other(class="form-control", placeholder="Enter other EMR systems") }}</div>
                             </div>
 
                             <p class="section-title">Practice Details</p>
@@ -4663,7 +4703,7 @@ app.jinja_loader = DictLoader({
                                     <div class="form-check me-3" style="width:180px;">{{ language(class="form-check-input") }} {{ language.label(class="form-check-label") }}</div>
                                     {% endfor %}
                                 </div>
-                                <div class="mt-2">{{ form.language_other.label(class="form-label") }} {{ form.language_other(class="form-control", placeholder="Enter other languages") }}</div>
+                                <div class="mt-2" data-other-source="languages" data-other-value="Other" style="display:none;">{{ form.language_other.label(class="form-label") }} {{ form.language_other(class="form-control", placeholder="Enter other languages") }}</div>
                             </div>
                         </div>
                         <div class="col-lg-6">
@@ -8389,6 +8429,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
