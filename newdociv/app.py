@@ -28,6 +28,7 @@ from flask_wtf.file import FileField, FileAllowed
 from itertools import zip_longest
 from openai import OpenAI
 client = OpenAI()
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 import re
 from flask import jsonify, request
 import html
@@ -5933,7 +5934,6 @@ def ai_curate_job_post():
         if not city or not api_key:
             return None
         try:
-            client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
             response = client.chat.completions.create(
                 model="gpt-5-nano",
                 messages=[
@@ -5965,7 +5965,6 @@ def ai_curate_job_post():
     city_spotlight = generate_city_spotlight(location, api_key)
     if api_key:
         try:
-            client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
             ai_prompt = f"""
 You are crafting a concise, polished job-posting draft from the provided details. Use an inviting tone, and weave in a 4-5 sentence city spotlight with interesting, widely known highlights to make the role feel exciting. Do not invent compensation, facility facts, or promises beyond what is provided. Keep everything in plain text.
 
@@ -6279,7 +6278,6 @@ Do not output any <img> tags or links to images. Only output the requested job s
     api_key = os.getenv("OPENAI_API_KEY")
     if api_key:
         try:
-            client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
             response = client.chat.completions.create(
                 model="gpt-5-nano",
                 messages=[
@@ -6663,7 +6661,6 @@ Jobs to evaluate (JSON):
             suggestions = build_fallback_suggestions(jobs_payload, doctor_profile)
         else:
             try:
-                client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
                 response = client.chat.completions.create(
                     model="gpt-4.1-mini",
                     messages=[
@@ -6743,7 +6740,6 @@ Jobs to refine (JSON):
 
     refined = []
     try:
-        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         response = client.chat.completions.create(
             model="gpt-4.1-mini",
             messages=[
@@ -8195,6 +8191,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
