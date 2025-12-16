@@ -5953,7 +5953,7 @@ def ai_curate_job_post():
                         ),
                     },
                 ],
-                max_tokens=220,
+                max_completion_tokens=220,
                 temperature=0.7,
             )
             return response.choices[0].message.content.strip()
@@ -5984,7 +5984,7 @@ Provided information:
                     {"role": "system", "content": "You turn structured job info into concise, factual postings."},
                     {"role": "user", "content": ai_prompt}
                 ],
-                max_tokens=500,
+                max_completion_tokens=500,
                 temperature=0.5,
             )
             curated_content = response.choices[0].message.content
@@ -6286,7 +6286,7 @@ Do not output any <img> tags or links to images. Only output the requested job s
                     {"role": "system", "content": "You are a professional and creative medical job match assistant."},
                     {"role": "user", "content": prompt}
                 ],
-                max_tokens=2200,
+                max_completion_tokens=2200,
                 temperature=0.5,
             )
             gpt_html = response.choices[0].message.content
@@ -6671,7 +6671,7 @@ Jobs to evaluate (JSON):
                         {"role": "system", "content": "You are a precise medical job-matching assistant."},
                         {"role": "user", "content": prompt},
                     ],
-                    max_tokens=1200,
+                    max_completion_tokens=1200,
                     temperature=0.2,
                 )
 
@@ -6751,7 +6751,7 @@ Jobs to refine (JSON):
                 {"role": "system", "content": "You are a precise medical job-matching assistant."},
                 {"role": "user", "content": prompt},
             ],
-            max_tokens=800,
+            max_completion_tokens=800,
             temperature=0.2,
         )
 
@@ -8196,6 +8196,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
