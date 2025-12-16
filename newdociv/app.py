@@ -1076,7 +1076,6 @@ class JobRequirementForm(FlaskForm):
     notes = TextAreaField('Additional Notes', validators=[Optional()])
     submit = SubmitField('Save Requirements')
 
-
 class ScheduledCallForm(FlaskForm):
     doctor_id = SelectField('Doctor', validators=[DataRequired()])
     datetime = DateTimeLocalField('Call Date & Time', validators=[DataRequired()], format='%Y-%m-%dT%H:%M')
@@ -1089,7 +1088,7 @@ class ScheduledCallForm(FlaskForm):
         min_entries=2,
         max_entries=2
     )
-    reason = TextAreaField('Reason for Call', validators=[DataRequired()])
+    reason = TextAreaField('Reason for Call', validators=[Optional()])
     submit = SubmitField('Schedule Call')
 # Add this clearly above your route definitions:
 
@@ -2838,9 +2837,10 @@ app.jinja_loader = DictLoader({
 
                                 <div class="mt-4 pt-3 border-top">
                                     <label class="form-label fw-semibold">{{ form.reason.label }}</label>
-                                    {{ form.reason(class="form-control", rows="3", placeholder="Share context, agenda, or who will join.") }}
+                                    {{ form.reason(class="form-control", rows="3", placeholder="Share context, agenda, or who will join (optional).") }}
+                                    <div class="form-text">Adding a note helps the doctor prepare, but it's optional.</div>
                                 </div>
-
+                                
                                 <div class="d-flex flex-wrap gap-2 mt-4">
                                     {{ form.submit(class="btn btn-primary px-4") }}
                                     <button name="send_invite" value="yes" class="btn btn-outline-primary px-4">
@@ -5529,6 +5529,8 @@ def schedule_call():
         alternative_slots = [field.data for field in form.alternative_times if field.data]
         alternate_options = ",".join(slot.strftime('%Y-%m-%dT%H:%M') for slot in alternative_slots) if alternative_slots else None
 
+        reason_text = (form.reason.data or "").strip()
+
         invite_status = "Pending" if request.form.get('send_invite') == 'yes' else "Accepted"
 
         call = ScheduledCall(
@@ -5537,7 +5539,7 @@ def schedule_call():
             job_id=None,
             datetime=dt,
             alternate_options=alternate_options,
-            reason=form.reason.data,
+            reason=reason_text or None,
             invite_status=invite_status
         )
         db.session.add(call)
@@ -5549,12 +5551,13 @@ def schedule_call():
             if doctor_user:
                 all_options = [dt] + alternative_slots
                 options_text = " / ".join(option.strftime('%Y-%m-%d %H:%M') for option in all_options)
+                reason_note = reason_text if reason_text else "No additional note provided."
                 message = Message(
                     sender_id=current_user.id,
                     recipient_id=doctor_user.id,
                     content=(
                         f"You have a new call invite with available times: {options_text}. "
-                        f"Reason: {form.reason.data}. Please pick the one that works best on your dashboard."
+                        f"Reason: {reason_note}. Please pick the one that works best on your dashboard."
                     )
                 )
                 db.session.add(message)
@@ -8216,6 +8219,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
