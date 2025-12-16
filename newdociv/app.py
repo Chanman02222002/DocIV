@@ -26,7 +26,8 @@ from flask_login import current_user
 from werkzeug.utils import secure_filename
 from flask_wtf.file import FileField, FileAllowed
 from itertools import zip_longest
-import openai
+from openai import OpenAI
+client = OpenAI()
 import re
 from flask import jsonify, request
 import html
@@ -8194,6 +8195,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
