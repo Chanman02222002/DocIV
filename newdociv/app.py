@@ -1152,6 +1152,28 @@ app.jinja_loader = DictLoader({
                 font-weight: 600;
             }
 
+            .back-button {
+                background: #ffffff;
+                border: 1px solid #ced4da;
+                border-radius: 30px;
+                color: #0b1224;
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                padding: 10px 16px;
+                font-weight: 600;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+                transition: all 0.15s ease-in-out;
+            }
+
+            .back-button:hover {
+                background: var(--brand-teal-soft);
+                border-color: var(--brand-teal-dark);
+                color: var(--brand-teal-dark);
+                text-decoration: none;
+                transform: translateY(-1px);
+            }
+
             .navbar-nav .nav-link {
                 font-size: 0.95rem;
                 font-weight: 500;
@@ -1447,6 +1469,9 @@ app.jinja_loader = DictLoader({
         </nav>
 
         <main class="container py-5">
+            <div class="mb-4">
+                <a href="javascript:window.history.back();" class="back-button" aria-label="Go back to previous page">&larr; Back</a>
+            </div>
             {% with messages = get_flashed_messages(with_categories=true) %}
             {% for category, msg in messages %}
             <div class="alert alert-{{ category }}">{{ msg }}</div>
@@ -8191,6 +8216,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
