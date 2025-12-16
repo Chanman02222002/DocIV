@@ -1951,6 +1951,11 @@ app.jinja_loader = DictLoader({
                 background: rgba(59, 130, 246, 0.08);
             }
             .update-badge { color: #0ea5e9; font-weight: 700; }
+            .missing-field {
+                border-color: #f97316 !important;
+                background: #fff7ed !important;
+                box-shadow: 0 0 0 0.15rem rgba(249, 115, 22, 0.15);
+            }
         </style>
         <div class="client-profile-page">
             <div class="glass-card profile-hero p-4 p-lg-5 mb-4">
@@ -1982,7 +1987,7 @@ app.jinja_loader = DictLoader({
                     <h5 class="mb-0">Update your brand details</h5>
                 </div>
                 <div class="card-body p-4">
-                    <form method="post" action="{{ url_for('client_profile') }}" enctype="multipart/form-data" class="row g-4">
+                    <form method="post" action="{{ url_for('client_profile') }}" enctype="multipart/form-data" class="row g-4" id="clientProfileForm">
                         {{ form.hidden_tag() }}
                         <div class="col-md-6">
                             {{ form.organization_name.label(class="form-label") }}
@@ -2064,6 +2069,68 @@ app.jinja_loader = DictLoader({
                 const addContactBtn = document.getElementById('addContactBtn');
                 let contactIndex = parseInt(contactList?.dataset.existingCount || '0', 10) || contactList.querySelectorAll('.contact-wrapper').length;
 
+                const findLabelForField = (field) => {
+                    if (!field) return null;
+                    const direct = document.querySelector(`label[for="${field.id}"]`);
+                    if (direct) return direct;
+                    return field.closest('div')?.querySelector('label');
+                };
+
+                const clearMissing = (field) => {
+                    field.classList.remove('missing-field');
+                    const label = findLabelForField(field);
+                    if (label && label.dataset.baseText) {
+                        label.textContent = label.dataset.baseText;
+                    }
+                };
+
+                const flagMissing = (field) => {
+                    field.classList.add('missing-field');
+                    const label = findLabelForField(field);
+                    if (label) {
+                        if (!label.dataset.baseText) {
+                            label.dataset.baseText = label.textContent.trim().replace(/\*+$/, '').trim();
+                        }
+                        if (!label.textContent.trim().endsWith('*')) {
+                            label.textContent = `${label.dataset.baseText} *`;
+                        }
+                    }
+                };
+
+                const attachMissingFieldListeners = (scope) => {
+                    scope.querySelectorAll('.form-control, .form-select').forEach(field => {
+                        if (field.dataset.hasMissingListener) return;
+                        const handler = () => {
+                            const isFile = field.type === 'file';
+                            const hasValue = isFile ? (field.files && field.files.length > 0) : Boolean(field.value && field.value.trim());
+                            if (hasValue) {
+                                clearMissing(field);
+                            }
+                        };
+                        field.addEventListener('input', handler);
+                        field.addEventListener('change', handler);
+                        field.dataset.hasMissingListener = 'true';
+                    });
+                };
+
+                const markMissingFields = (scope) => {
+                    const missing = [];
+                    scope.querySelectorAll('.form-control, .form-select').forEach(field => {
+                        const isFile = field.type === 'file';
+                        const hasValue = isFile ? (field.files && field.files.length > 0) : Boolean(field.value && field.value.trim());
+                        if (!hasValue) {
+                            flagMissing(field);
+                            missing.push(field);
+                        } else {
+                            clearMissing(field);
+                        }
+                    });
+                    return missing;
+                };
+
+                const profileForm = document.getElementById('clientProfileForm');
+                let clientSubmitWarningShown = false;
+
                 const renumberContacts = () => {
                     const wrappers = contactList.querySelectorAll('.contact-wrapper');
                     wrappers.forEach((wrapper, idx) => {
@@ -2127,10 +2194,24 @@ app.jinja_loader = DictLoader({
                     contactIndex += 1;
                     bindRemoveHandlers();
                     renumberContacts();
+                    attachMissingFieldListeners(contactList);
                 });
 
                 bindRemoveHandlers();
                 renumberContacts();
+
+                if (profileForm) {
+                    attachMissingFieldListeners(profileForm);
+                    profileForm.addEventListener('submit', (event) => {
+                        const missing = markMissingFields(profileForm);
+                        if (missing.length && !clientSubmitWarningShown) {
+                            event.preventDefault();
+                            clientSubmitWarningShown = true;
+                            return;
+                        }
+                        clientSubmitWarningShown = false;
+                    });
+                }
             });
         </script>
         {% endblock %}
@@ -4376,6 +4457,11 @@ app.jinja_loader = DictLoader({
                 font-weight: 700;
                 color: #0f172a;
             }
+            .missing-field {
+                border-color: #f97316 !important;
+                background: #fff7ed !important;
+                box-shadow: 0 0 0 0.15rem rgba(249, 115, 22, 0.15);
+            }
         </style>
 
         <div class="wizard-shell">
@@ -4623,6 +4709,66 @@ app.jinja_loader = DictLoader({
             const cropContainer = document.getElementById('crop-container');
             let cropper;
 
+            function findLabelForField(field) {
+                if (!field) return null;
+                const directLabel = document.querySelector(`label[for="${field.id}"]`);
+                if (directLabel) return directLabel;
+                return field.closest('div')?.querySelector('label');
+            }
+
+            function clearMissing(field) {
+                field.classList.remove('missing-field');
+                const label = findLabelForField(field);
+                if (label && label.dataset.baseText) {
+                    label.textContent = label.dataset.baseText;
+                }
+            }
+
+            function flagMissing(field) {
+                field.classList.add('missing-field');
+                const label = findLabelForField(field);
+                if (label) {
+                    if (!label.dataset.baseText) {
+                        label.dataset.baseText = label.textContent.trim().replace(/\*+$/, '').trim();
+                    }
+                    if (!label.textContent.trim().endsWith('*')) {
+                        label.textContent = `${label.dataset.baseText} *`;
+                    }
+                }
+            }
+
+            function markMissingFields(scope) {
+                const fields = scope.querySelectorAll('.form-control, .form-select');
+                const missing = [];
+                fields.forEach(field => {
+                    const isFile = field.type === 'file';
+                    const valuePresent = isFile ? (field.files && field.files.length > 0) : Boolean(field.value && field.value.trim());
+                    if (!valuePresent) {
+                        flagMissing(field);
+                        missing.push(field);
+                    } else {
+                        clearMissing(field);
+                    }
+                });
+                return missing;
+            }
+
+            function attachMissingFieldListeners(scope) {
+                scope.querySelectorAll('.form-control, .form-select').forEach(field => {
+                    if (field.dataset.hasMissingListener) return;
+                    const handler = () => {
+                        const isFile = field.type === 'file';
+                        const valuePresent = isFile ? (field.files && field.files.length > 0) : Boolean(field.value && field.value.trim());
+                        if (valuePresent) {
+                            clearMissing(field);
+                        }
+                    };
+                    field.addEventListener('input', handler);
+                    field.addEventListener('change', handler);
+                    field.dataset.hasMissingListener = 'true';
+                });
+            }
+
             input.addEventListener('change', function (e) {
                 const file = e.target.files[0];
                 if (file) {
@@ -4734,7 +4880,6 @@ app.jinja_loader = DictLoader({
                     profileWizard.addEventListener('submit', formatSalaryInput);
                 }
             }
-
             document.getElementById('clinically_active').addEventListener('change', function () {
                 const selectedOption = this.value;
                 const lastActiveDiv = document.getElementById('last_active_field');
@@ -4754,6 +4899,8 @@ app.jinja_loader = DictLoader({
             const prevBtn = document.getElementById('prevStep');
             const submitBtn = document.getElementById('submitWizard');
             let currentStep = 0;
+            let stepWarningAcknowledged = false;
+            let submitWarningAcknowledged = false;
 
             function updateStepDisplay() {
                 steps.forEach((step, idx) => step.classList.toggle('active', idx === currentStep));
@@ -4763,9 +4910,18 @@ app.jinja_loader = DictLoader({
                 prevBtn.disabled = currentStep === 0;
                 nextBtn.classList.toggle('d-none', currentStep === steps.length - 1);
                 submitBtn.classList.toggle('d-none', currentStep !== steps.length - 1);
+                stepWarningAcknowledged = false;
             }
 
             nextBtn.addEventListener('click', () => {
+                const currentStepEl = steps[currentStep];
+                attachMissingFieldListeners(currentStepEl);
+                const missing = markMissingFields(currentStepEl);
+                if (missing.length && !stepWarningAcknowledged) {
+                    stepWarningAcknowledged = true;
+                    return;
+                }
+
                 if (currentStep < steps.length - 1) {
                     currentStep += 1;
                     updateStepDisplay();
@@ -4778,6 +4934,20 @@ app.jinja_loader = DictLoader({
                     updateStepDisplay();
                 }
             });
+
+            if (profileWizard) {
+                profileWizard.addEventListener('submit', (event) => {
+                    const currentStepEl = steps[currentStep];
+                    attachMissingFieldListeners(currentStepEl);
+                    const missing = markMissingFields(currentStepEl);
+                    if (missing.length && !submitWarningAcknowledged) {
+                        event.preventDefault();
+                        submitWarningAcknowledged = true;
+                        return;
+                    }
+                    submitWarningAcknowledged = false;
+                });
+            }
 
             updateStepDisplay();
         </script>
@@ -8219,6 +8389,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
