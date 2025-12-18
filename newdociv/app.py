@@ -7322,7 +7322,7 @@ def send_invite(doctor_id, job_id):
                 f"Other options: {', '.join(slot.strftime('%Y-%m-%d %H:%M') for slot in alternative_slots) or 'None provided'} ({form.timezone.data})."
             ),
             job=job,
-            doctor=doctor
+            doctor=doctor,
             message_type='invite',
         )
 
@@ -8507,6 +8507,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
