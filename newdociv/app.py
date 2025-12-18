@@ -5,6 +5,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, SelectMultipleField, FloatField
 from wtforms.validators import DataRequired, Email
 from datetime import datetime
+from zoneinfo import available_timezones
 import threading, webbrowser, time
 from jinja2 import DictLoader
 from wtforms.widgets import ListWidget, CheckboxInput
@@ -239,6 +240,8 @@ def ensure_scheduled_call_columns():
         if 'alternate_options' not in existing:
             statements.append("ALTER TABLE scheduled_call ADD COLUMN alternate_options TEXT")
 
+        if 'timezone' not in existing:
+            statements.append("ALTER TABLE scheduled_call ADD COLUMN timezone VARCHAR(50) DEFAULT 'UTC'")
         if statements:
             with db.engine.begin() as conn:
                 for stmt in statements:
@@ -270,6 +273,50 @@ def ensure_user_columns():
 
 
 ensure_user_columns()
+
+
+def build_timezone_choices():
+    """Provide a comprehensive, readable timezone choice list."""
+    try:
+        tz_names = sorted(available_timezones())
+    except Exception:
+        tz_names = []
+
+    common_timezones = [
+        'UTC',
+        'America/New_York',
+        'America/Chicago',
+        'America/Denver',
+        'America/Los_Angeles',
+        'Europe/London',
+        'Europe/Paris',
+        'Europe/Berlin',
+        'Africa/Johannesburg',
+        'Asia/Dubai',
+        'Asia/Kolkata',
+        'Asia/Shanghai',
+        'Asia/Tokyo',
+        'Australia/Sydney',
+    ]
+
+    ordered_timezones = []
+
+    for tz in common_timezones:
+        if tz not in ordered_timezones:
+            ordered_timezones.append(tz)
+
+    for tz in tz_names:
+        if tz not in ordered_timezones:
+            ordered_timezones.append(tz)
+
+    if not ordered_timezones:
+        ordered_timezones = ['UTC']
+
+    return [(tz, tz.replace('_', ' ')) for tz in ordered_timezones]
+
+
+TIMEZONE_CHOICES = build_timezone_choices()
+
 
 
 def ensure_client_contact_columns():
@@ -813,6 +860,7 @@ class ScheduledCall(db.Model):
     job_id = db.Column(db.Integer, db.ForeignKey('job.id'), nullable=True)
     datetime = db.Column(db.DateTime, nullable=False)
     alternate_options = db.Column(db.Text, nullable=True)
+    timezone = db.Column(db.String(50), default="UTC")
     reason = db.Column(db.String(255), nullable=True)
     canceled = db.Column(db.Boolean, default=False)
     reschedule_requested = db.Column(db.Boolean, default=False)
@@ -1079,6 +1127,7 @@ class JobRequirementForm(FlaskForm):
 class ScheduledCallForm(FlaskForm):
     doctor_id = SelectField('Doctor', validators=[DataRequired()])
     datetime = DateTimeLocalField('Call Date & Time', validators=[DataRequired()], format='%Y-%m-%dT%H:%M')
+    timezone = SelectField('Time Zone', choices=TIMEZONE_CHOICES, validators=[DataRequired()], default='UTC')
     alternative_times = FieldList(
         DateTimeLocalField(
             'Alternative Option',
@@ -2916,17 +2965,29 @@ app.jinja_loader = DictLoader({
                                         <div class="form-text">Search by name, email, or specialty.</div>
                                     </div>
 
-                                    <div class="col-md-6">
+                                    <div class="col-lg-6">
                                         <label class="form-label fw-semibold">{{ form.datetime.label }}</label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-white text-primary"><i class="bi bi-calendar-event"></i></span>
                                             {{ form.datetime(class="form-control", id="datetime") }}
                                         </div>
                                     </div>
-                                    <div class="col-md-6">
+
+                                    <div class="col-lg-6">
+                                        <label class="form-label fw-semibold">{{ form.timezone.label }}</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-white text-primary"><i class="bi bi-globe2"></i></span>
+                                            {{ form.timezone(class="form-select") }}
+                                        </div>
+                                        <div class="form-text">Times are shared and stored using this timezone.</div>
+                                    </div>
+                                </div>
+
+                                <div class="row g-3 mt-1">
+                                    <div class="col-12">
                                         <div class="helper-box p-3 h-100">
                                             <div class="label-muted mb-1">Tip</div>
-                                            <div class="small text-secondary">Choose a time within business hours for faster confirms.</div>
+                                            <div class="small text-secondary">Choose a time within business hours for faster confirms and double-check the timezone for international teams.</div>
                                         </div>
                                     </div>
                                 </div>
@@ -5093,10 +5154,10 @@ app.jinja_loader = DictLoader({
         <h2>Scheduled Call Details</h2>
 
         <p><strong>With:</strong> {{ call.scheduled_by.username }} ({{ call.scheduled_by.role }})</p>
-        <p><strong>Date & Time:</strong> {{ call.datetime }}</p>
+        <p><strong>Date & Time:</strong> {{ call.datetime }} <span class="badge bg-light text-dark ms-2">{{ call.timezone or 'UTC' }}</span></p>
         {% set alternate_options = call.alternate_options.split(',') if call.alternate_options else [] %}
         {% if alternate_options %}
-            <p><strong>Other options shared:</strong></p>
+            <p><strong>Other options shared ({{ call.timezone or 'UTC' }}):</strong></p>
             <ul>
                 {% for option in alternate_options %}
                     <li>{{ option.replace('T', ' ') }}</li>
@@ -5132,7 +5193,7 @@ app.jinja_loader = DictLoader({
         <h3 class="mt-4">Request Reschedule</h3>
         <form method="post">
             <div class="mb-3">
-                <label>New Date & Time:</label>
+                <label>New Date & Time ({{ call.timezone or 'UTC' }}):</label>
                 <input type="datetime-local" name="reschedule_datetime" class="form-control" required>
             </div>
             <div class="mb-3">
@@ -5150,10 +5211,9 @@ app.jinja_loader = DictLoader({
         <h2>Handle Reschedule Request</h2>
 
         <p><strong>Doctor:</strong> {{ call.doctor.first_name }} {{ call.doctor.last_name }}</p>
-        <p><strong>Current Date & Time:</strong> {{ call.datetime }}</p>
-        <p><strong>Requested Date & Time:</strong> {{ call.reschedule_datetime }}</p>
+        <p><strong>Current Date & Time:</strong> {{ call.datetime }} <span class="badge bg-light text-dark ms-2">{{ call.timezone or 'UTC' }}</span></p>
+        <p><strong>Requested Date & Time:</strong> {{ call.reschedule_datetime }} <span class="badge bg-light text-dark ms-2">{{ call.timezone or 'UTC' }}</span></p>
         <p><strong>Reason for Reschedule:</strong> {{ call.reschedule_note }}</p>
-
         <form method="post">
             <button name="action" value="accept" class="btn btn-success">Accept Request</button>
             <button name="action" value="reject" class="btn btn-danger">Reject Request</button>
@@ -5257,6 +5317,11 @@ app.jinja_loader = DictLoader({
             <div class="mb-3">
                 {{ form.datetime.label }}
                 {{ form.datetime(class="form-control", id="datetime") }}
+            </div>
+
+            <div class="mb-3">
+                {{ form.timezone.label }}
+                {{ form.timezone(class="form-select") }}
             </div>
 
             <div class="mb-3">
@@ -5748,6 +5813,7 @@ def schedule_call():
             scheduled_by_id=current_user.id,
             job_id=None,
             datetime=dt,
+            timezone=form.timezone.data,
             alternate_options=alternate_options,
             reason=reason_text or None,
             invite_status=invite_status
@@ -5766,7 +5832,7 @@ def schedule_call():
                     sender_id=current_user.id,
                     recipient_id=doctor_user.id,
                     content=(
-                        f"You have a new call invite with available times: {options_text}. "
+                        f"You have a new call invite with available times: {options_text} ({form.timezone.data}). "
                         f"Reason: {reason_note}. Please pick the one that works best on your dashboard."
                     )
                 )
@@ -5830,6 +5896,7 @@ def edit_call(call_id):
 
         scheduled_call.doctor_id = form.doctor_id.data
         scheduled_call.datetime = form.datetime.data if isinstance(form.datetime.data, datetime) else datetime.strptime(form.datetime.data, '%Y-%m-%dT%H:%M')
+        scheduled_call.timezone = form.timezone.data
         scheduled_call.reason = form.reason.data
         
         db.session.commit()
@@ -5846,7 +5913,7 @@ def edit_call(call_id):
                     content=(
                         f"The scheduled meeting has been rescheduled to "
                         f"{scheduled_call.datetime.strftime('%Y-%m-%d %H:%M')} "
-                        f"by {current_user.username}."
+                        f"({scheduled_call.timezone or 'UTC'}) by {current_user.username}."
                     )
                 )
                 db.session.add(message)
@@ -5857,6 +5924,7 @@ def edit_call(call_id):
 
     form.doctor_id.data = scheduled_call.doctor_id
     form.datetime.data = scheduled_call.datetime 
+    form.timezone.data = scheduled_call.timezone or 'UTC'
     form.reason.data = scheduled_call.reason
 
     return render_template('edit_call.html', form=form, call=scheduled_call)
@@ -7056,7 +7124,10 @@ def doctor_handle_invite(call_id):
         notification = Message(
             sender_id=current_user.id,
             recipient_id=scheduled_call.scheduled_by_id,
-            content=f"Dr. {current_user.doctor.first_name} {current_user.doctor.last_name} accepted your meeting invite scheduled on {scheduled_call.datetime.strftime('%Y-%m-%d %H:%M')}."
+            content=(
+                f"Dr. {current_user.doctor.first_name} {current_user.doctor.last_name} accepted your meeting invite "
+                f"scheduled on {scheduled_call.datetime.strftime('%Y-%m-%d %H:%M')} ({scheduled_call.timezone or 'UTC'})."
+            )
         )
 
     elif action == 'decline':
@@ -7066,7 +7137,10 @@ def doctor_handle_invite(call_id):
         notification = Message(
             sender_id=current_user.id,
             recipient_id=scheduled_call.scheduled_by_id,
-            content=f"Dr. {current_user.doctor.first_name} {current_user.doctor.last_name} declined your meeting invite scheduled on {scheduled_call.datetime.strftime('%Y-%m-%d %H:%M')}."
+            content=(
+                f"Dr. {current_user.doctor.first_name} {current_user.doctor.last_name} declined your meeting invite "
+                f"scheduled on {scheduled_call.datetime.strftime('%Y-%m-%d %H:%M')} ({scheduled_call.timezone or 'UTC'})."
+            )
         )
 
     db.session.add(notification)
@@ -7227,10 +7301,12 @@ def send_invite(doctor_id, job_id):
             scheduled_by_id=current_user.id,
             job_id=job.id,
             datetime=form.datetime.data,
+            timezone=form.timezone.data,
             alternate_options=alternate_options,
             reason=form.reason.data,
             invite_status='pending'
         )
+
 
         db.session.add(scheduled_call)
         db.session.commit()
@@ -7242,11 +7318,11 @@ def send_invite(doctor_id, job_id):
             subject="You've Been Invited to a Call",
             content=(
                 f"You have a call invite scheduled by {current_user.username} "
-                f"for <strong>{job.title}</strong> on {form.datetime.data}. "
-                f"Other options: {', '.join(slot.strftime('%Y-%m-%d %H:%M') for slot in alternative_slots) or 'None provided'}."
+                f"for <strong>{job.title}</strong> on {form.datetime.data} ({form.timezone.data}). "
+                f"Other options: {', '.join(slot.strftime('%Y-%m-%d %H:%M') for slot in alternative_slots) or 'None provided'} ({form.timezone.data})."
             ),
             job=job,
-            doctor=doctor,
+            doctor=doctor
             message_type='invite',
         )
 
@@ -7754,10 +7830,9 @@ def doctor_call_details(call_id):
                     sender_id=current_user.id,
                     recipient_id=scheduled_call.scheduled_by_id,
                     content=(
-                        f"Doctor selected {scheduled_call.datetime.strftime('%Y-%m-%d %H:%M')} for the call."
+                        f"Doctor selected {scheduled_call.datetime.strftime('%Y-%m-%d %H:%M')} ({scheduled_call.timezone or 'UTC'}) for the call."
                     )
                 )
-                db.session.add(message)
                 db.session.commit()
                 flash('Time confirmed and client notified.', 'success')
             return redirect(url_for('doctor_dashboard'))
@@ -7769,12 +7844,15 @@ def doctor_call_details(call_id):
             scheduled_call.reschedule_note = note
             scheduled_call.reschedule_datetime = datetime.strptime(new_datetime, '%Y-%m-%dT%H:%M')
             db.session.commit()
-
             # Put the notification code HERE
             message = Message(
                 sender_id=current_user.id,
                 recipient_id=scheduled_call.scheduled_by_id,
-                content=f"Reschedule requested for call on {scheduled_call.datetime.strftime('%Y-%m-%d %H:%M')} to {scheduled_call.reschedule_datetime.strftime('%Y-%m-%d %H:%M')}. Reason: {scheduled_call.reschedule_note}"
+                content=(
+                    f"Reschedule requested for call on {scheduled_call.datetime.strftime('%Y-%m-%d %H:%M')} "
+                    f"to {scheduled_call.reschedule_datetime.strftime('%Y-%m-%d %H:%M')} "
+                    f"({scheduled_call.timezone or 'UTC'}). Reason: {scheduled_call.reschedule_note}"
+                )
             )
             db.session.add(message)
             db.session.commit()
@@ -7970,14 +8048,14 @@ def client_handle_reschedule(call_id):
         scheduled_call.reschedule_note = None
         scheduled_call.reschedule_datetime = None
         content = (f"Your reschedule request for "
-                   f"{scheduled_call.datetime.strftime('%Y-%m-%d %H:%M')} has been accepted. {client_note}")
+                   f"{scheduled_call.datetime.strftime('%Y-%m-%d %H:%M')} ({scheduled_call.timezone or 'UTC'}) has been accepted. {client_note}")
     elif action == 'decline':
         scheduled_call.reschedule_requested = False
         declined_datetime = scheduled_call.reschedule_datetime
         scheduled_call.reschedule_datetime = None
         scheduled_call.reschedule_note = None
         content = (f"Your reschedule request for "
-                   f"{declined_datetime.strftime('%Y-%m-%d %H:%M')} has been declined. {client_note}")
+                   f"{declined_datetime.strftime('%Y-%m-%d %H:%M')} ({scheduled_call.timezone or 'UTC'}) has been declined. {client_note}")
 
     db.session.commit()
 
@@ -8429,6 +8507,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
