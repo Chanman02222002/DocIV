@@ -3318,12 +3318,15 @@ app.jinja_loader = DictLoader({
             {% endif %}
         </div>
 
-        <a href="{{ url_for('edit_doctor', doctor_id=doctor.id) }}" class="btn btn-warning">Edit Profile</a>
+        {% if current_user.is_authenticated and (current_user.role == 'admin' or (current_user.role == 'doctor' and doctor.user_id == current_user.id)) %}
+            <a href="{{ url_for('edit_doctor', doctor_id=doctor.id) }}" class="btn btn-warning">Edit Profile</a>
+        {% endif %}
         <a href="{{ url_for('send_job_to_doctor', doctor_id=doctor.id) }}" class="btn btn-info">Send Job Posting</a>
 
         {% if current_user.role in ['client', 'admin'] %}
             {% set first_job = current_user.jobs[0] if current_user.jobs|length > 0 else None %}
             {% if first_job %}
+            
                 <a href="{{ url_for('send_invite', doctor_id=doctor.id, job_id=first_job.id) }}" class="btn btn-success">Schedule Call</a>
             {% else %}
                 <button class="btn btn-secondary" disabled title="Post a job first">Schedule Call</button>
@@ -5407,7 +5410,9 @@ app.jinja_loader = DictLoader({
                 <th>States Licensed</th>
                 <th>States Willing to Work</th>
                 <th>Salary Expectation (Total Compensation)</th>
+                {% if current_user.is_authenticated and current_user.role in ['admin', 'doctor'] %}
                 <th>Edit</th>
+                {% endif %}
             </tr>
             {% for doctor in doctors %}
             <tr>
@@ -5418,9 +5423,13 @@ app.jinja_loader = DictLoader({
                 <td>{{ doctor.states_licensed.replace(",", ", ") if doctor.states_licensed else '' }}</td>
                 <td>{{ doctor.states_willing_to_work.replace(",", ", ") if doctor.states_willing_to_work else '' }}</td>
                 <td>${{ doctor.salary_expectations }}</td>
+                {% if current_user.is_authenticated and (current_user.role == 'admin' or (current_user.role == 'doctor' and doctor.user_id == current_user.id)) %}
                 <td>
                     <a href="{{ url_for('edit_doctor', doctor_id=doctor.id) }}" class="btn btn-warning btn-sm">Edit</a>
                 </td>
+                {% elif current_user.is_authenticated and current_user.role in ['admin', 'doctor'] %}
+                <td></td>
+                {% endif %}
             </tr>
             {% endfor %}
         </table>
@@ -8325,6 +8334,11 @@ def edit_doctor(doctor_id):
     doctor = Doctor.query.get_or_404(doctor_id)
     form = DoctorForm()
 
+    is_owner = current_user.role == 'doctor' and doctor.user_id == current_user.id
+    if not (current_user.role == 'admin' or is_owner):
+        flash('Unauthorized access!', 'danger')
+        return redirect(url_for('doctor_profile', doctor_id=doctor_id))
+
     if form.validate_on_submit():
         try:
             existing_doctor = Doctor.query.filter(
@@ -8647,6 +8661,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
