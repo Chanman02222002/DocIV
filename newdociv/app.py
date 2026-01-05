@@ -4477,7 +4477,7 @@ app.jinja_loader = DictLoader({
         }
 
         .hero {
-            padding: 32px 48px 80px;
+            padding: 80px 48px 64px;
             position: relative;
             overflow: hidden;
         }
@@ -4492,38 +4492,39 @@ app.jinja_loader = DictLoader({
         }
 
         .hero-grid {
+            max-width: 1200px;
+            margin: 0 auto;
             display: grid;
-            grid-template-columns: 1.1fr 0.9fr;
-            gap: 40px;
+            grid-template-columns: 1.05fr 0.95fr;
+            gap: 60px;
+            align-items: center;
             position: relative;
             z-index: 1;
-            align-items: center;
-        }
-
-        .eyebrow {
-            font-weight: 600;
-            color: var(--secondary);
-            letter-spacing: 0.4px;
-            text-transform: uppercase;
         }
 
         .hero-title {
-            font-size: 40px;
-            line-height: 1.2;
-            color: var(--text-dark);
-            margin: 12px 0;
+            font-size: 52px;
+            line-height: 60px;
             font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 18px;
         }
-
+        
+        .hero-title span {
+            color: var(--primary);
+        }
+        
         .hero-subtitle {
-            font-size: 24px;
+            font-size: 18px;
+            line-height: 28px;
             color: var(--text-body);
-            margin-bottom: 24px;
+            max-width: 520px;
+            margin-bottom: 32px;
         }
-
+        
         .hero-actions {
             display: flex;
-            gap: 16px;
+            gap: 14px;
             flex-wrap: wrap;
         }
 
@@ -4732,21 +4733,24 @@ app.jinja_loader = DictLoader({
         <div class="hero">
             <div class="hero-grid">
                 <div>
-                    <div class="eyebrow">Direct hiring for healthcare professionals — no recruiters, no noise.</div>
-                    <h1 class="hero-title">Connect directly with verified healthcare organizations</h1>
-                    <p class="hero-subtitle">No middle-men, no spam, just faster hiring.</p>
+                    <div class="eyebrow">Direct hiring for healthcare professionals</div>
+                    <h1 class="hero-title">
+                        no recruiters, <span>no noise.</span>
+                    </h1>
+                    <p class="hero-subtitle">
+                        Connect directly with verified healthcare organizations.
+                    </p>
                     <div class="hero-actions">
                         <a class="btn-primary-lg" href="{{ url_for('create_account') }}">Create Account</a>
                         <a class="btn-secondary-lg" href="{{ url_for('login', role='professional') }}">Log In</a>
                     </div>
                 </div>
                 <div class="hero-visual">
-                    <div class="floating-hex main"></div>
-                    <div class="floating-hex alt"></div>
-                    <div class="text-center" style="max-width: 360px;">
-                        <h3 class="fw-bold text-dark mb-3">Secure, verified matches</h3>
-                        <p class="text-muted mb-0">Personalized opportunities based on your specialty and preferences.</p>
-                    </div>
+                    <img
+                        src="{{ url_for('static', filename='doctor-hero.png') }}"
+                        alt="Healthcare professional"
+                        style="width:100%;max-width:420px;border-radius:28px;box-shadow:0 20px 40px rgba(0,0,0,0.12);"
+                    >
                 </div>
             </div>
         </div>
@@ -8970,6 +8974,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
