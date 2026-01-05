@@ -1773,7 +1773,7 @@ app.jinja_loader = DictLoader({
                 <div class="d-flex flex-wrap gap-2 mt-3 mt-lg-0">
                     <a class="btn btn-primary" href="{{ url_for('post_job') }}">Post a job</a>
                     <a class="btn btn-outline-primary" href="{{ url_for('schedule_call') }}">Schedule call</a>
-                    <a class="btn btn-outline-secondary" href="{{ url_for('client_analytics') }}">View analytics</a>
+                    <a class="btn btn-outline-secondary" href="{{ url_for('client_my_jobs') }}">My jobs & analytics</a>
                 </div>
             </div>
 
@@ -2796,13 +2796,37 @@ app.jinja_loader = DictLoader({
                 font-size: 0.8rem;
                 border: 1px solid #e0f2fe;
             }
+            .insight-pill {
+                background: #f8fafc;
+                border: 1px solid #e5e7eb;
+                border-radius: 999px;
+                padding: 6px 12px;
+                font-weight: 600;
+                color: #0f172a;
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+            }
+            .pill-quiet {
+                background: #fff;
+                border: 1px dashed #d1d5db;
+                color: #6b7280;
+            }
+            .analytics-panel {
+                border-top: 1px dashed #e5e7eb;
+            }
+            .applicant-card {
+                border: 1px solid #e5e7eb;
+                border-radius: 12px;
+                background: #f8fafc;
+            }
         </style>
 
         <div class="container py-4">
             <div class="jobs-hero mb-4 d-flex flex-wrap justify-content-between align-items-start gap-3">
                 <div>
                     <p class="text-uppercase text-muted small mb-1">My roles</p>
-                    <h2 class="fw-bold mb-1">Keep your postings fresh and on-brand</h2>
+                    <h2 class="fw-bold mb-1">Manage your postings and see interest in real time</h2>
                     <p class="text-muted mb-0">Search, review, and refine your open roles without leaving this page.</p>
                 </div>
                 <div class="d-flex flex-wrap gap-2">
@@ -2837,6 +2861,7 @@ app.jinja_loader = DictLoader({
             {% if jobs %}
                 <div class="row g-3">
                     {% for job in jobs %}
+                        {% set analytics = job_analytics.get(job.id, {}) %}
                         <div class="col-md-6">
                             <div class="job-tile p-3 h-100 d-flex flex-column">
                                 <div class="d-flex justify-content-between align-items-start mb-2">
@@ -2861,10 +2886,77 @@ app.jinja_loader = DictLoader({
                                         <span class="requirements-pill text-danger bg-white">Add requirements</span>
                                     {% endif %}
                                 </div>
-                                <div class="mt-auto d-flex justify-content-between align-items-center">
-                                    <small class="text-muted">Posted ID #{{ job.id }}</small>
-                                    <div class="d-flex gap-2">
-                                        <a href="{{ url_for('edit_job', job_id=job.id) }}" class="btn btn-sm btn-primary">Edit</a>
+
+                                <div class="analytics-panel pt-3 mt-auto">
+                                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                                            <span class="insight-pill">
+                                                <i class="bi bi-people-fill"></i>
+                                                {{ analytics.interest_count or 0 }} applicant{{ (analytics.interest_count or 0) != 1 and 's' or '' }}
+                                            </span>
+                                            {% if analytics.last_interest %}
+                                                <span class="insight-pill pill-quiet">Updated {{ analytics.last_interest }}</span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="d-flex flex-wrap gap-2">
+                                            <a href="{{ url_for('download_job_applicants', job_id=job.id) }}"
+                                               class="btn btn-sm btn-outline-success {% if (analytics.interest_count or 0) == 0 %}disabled{% endif %}">
+                                                <i class="bi bi-file-earmark-arrow-down"></i> Excel
+                                            </a>
+                                            <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#job-{{ job.id }}-analytics">
+                                                Applicants
+                                            </button>
+                                            <a href="{{ url_for('edit_job', job_id=job.id) }}" class="btn btn-sm btn-primary">Edit</a>
+                                        </div>
+                                    </div>
+
+                                    <div class="collapse mt-3" id="job-{{ job.id }}-analytics">
+                                        <div class="row g-3">
+                                            <div class="col-lg-7">
+                                                <div class="p-3 h-100 applicant-card">
+                                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                                        <h6 class="mb-0">Interested clinicians</h6>
+                                                        <span class="badge bg-white text-primary border border-primary">{{ analytics.interest_count or 0 }} total</span>
+                                                    </div>
+                                                    {% if analytics.interested_doctors %}
+                                                        <div class="list-group">
+                                                            {% for doc in analytics.interested_doctors %}
+                                                                <div class="list-group-item d-flex justify-content-between align-items-start flex-wrap gap-2">
+                                                                    <div>
+                                                                        <div class="fw-semibold">{{ doc.name }}</div>
+                                                                        <div class="text-muted small">{{ doc.email }}</div>
+                                                                    </div>
+                                                                    {% if doc.id %}
+                                                                        <div class="d-flex flex-wrap gap-1">
+                                                                            <a href="{{ url_for('doctor_profile', doctor_id=doc.id, job_id=job.id, compare='1') }}" class="btn btn-sm btn-outline-primary">Compare</a>
+                                                                            <a href="{{ url_for('doctor_profile', doctor_id=doc.id, job_id=job.id) }}" class="btn btn-sm btn-outline-secondary">Profile</a>
+                                                                            <a href="{{ url_for('send_invite', doctor_id=doc.id, job_id=job.id) }}" class="btn btn-sm btn-success">Schedule</a>
+                                                                        </div>
+                                                                    {% else %}
+                                                                        <span class="text-muted small">Profile not available</span>
+                                                                    {% endif %}
+                                                                </div>
+                                                            {% endfor %}
+                                                        </div>
+                                                    {% else %}
+                                                        <div class="text-muted small">No applicants yet. Share this posting to attract interest.</div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            <div class="col-lg-5">
+                                                <div class="p-3 h-100 border rounded">
+                                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                                        <h6 class="mb-0">Daily interest</h6>
+                                                        <i class="bi bi-bar-chart-line text-primary"></i>
+                                                    </div>
+                                                    {% if analytics.chart_labels %}
+                                                        <canvas id="chart-{{ job.id }}" height="180"></canvas>
+                                                    {% else %}
+                                                        <p class="text-muted small mb-0">No interest recorded yet.</p>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -2878,8 +2970,39 @@ app.jinja_loader = DictLoader({
                 </div>
             {% endif %}
         </div>
-        {% endblock %}''',
 
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script>
+            const chartPayload = {{ chart_payload|tojson|safe }};
+            chartPayload.forEach(job => {
+                const ctx = document.getElementById(`chart-${job.id}`);
+                if (!ctx) return;
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: job.labels,
+                        datasets: [{
+                            label: 'Applicants per day',
+                            data: job.values,
+                            backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                            borderColor: 'rgba(59, 130, 246, 1)',
+                            borderWidth: 1,
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            x: { title: { display: true, text: 'Date' } },
+                            y: { beginAtZero: true, title: { display: true, text: 'Count' }, ticks: { precision:0 } }
+                        },
+                        plugins: { legend: { display: false } },
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+            });
+        </script>
+        {% endblock %}''',
     'schedule_call.html': '''
         {% extends "base.html" %}
         {% block content %}
@@ -7881,7 +8004,54 @@ def client_my_jobs():
 
     jobs = jobs_query.order_by(Job.id.desc()).all()
 
-    return render_template('client_my_jobs.html', jobs=jobs, keyword=keyword, location=location)
+    job_analytics = {}
+    chart_payload = []
+
+    for job in jobs:
+        messages = Message.query.filter_by(job_id=job.id, message_type='interest').order_by(Message.timestamp.asc()).all()
+
+        interest_by_day = defaultdict(int)
+        interested_doctors = []
+        last_interest = None
+
+        for msg in messages:
+            date_str = msg.timestamp.strftime("%Y-%m-%d")
+            interest_by_day[date_str] += 1
+            last_interest = msg.timestamp if not last_interest or msg.timestamp > last_interest else last_interest
+
+            if msg.doctor:
+                interested_doctors.append({
+                    'id': msg.doctor.id,
+                    'name': f"{msg.doctor.first_name} {msg.doctor.last_name}",
+                    'email': msg.doctor.email
+                })
+
+        labels = sorted(interest_by_day.keys())
+        values = [interest_by_day[label] for label in labels]
+
+        job_analytics[job.id] = {
+            'interest_count': len(messages),
+            'interested_doctors': interested_doctors,
+            'chart_labels': labels,
+            'chart_values': values,
+            'last_interest': last_interest.strftime("%b %d, %Y") if last_interest else None
+        }
+
+        if labels:
+            chart_payload.append({
+                'id': job.id,
+                'labels': labels,
+                'values': values
+            })
+
+    return render_template(
+        'client_my_jobs.html',
+        jobs=jobs,
+        keyword=keyword,
+        location=location,
+        job_analytics=job_analytics,
+        chart_payload=chart_payload
+    )
 
 
 
@@ -8083,7 +8253,7 @@ def download_job_applicants(job_id):
         return redirect(url_for('home'))
     if current_user.role == 'client' and job.poster_id != current_user.id:
         flash('Not authorized for this job.', 'danger')
-        return redirect(url_for('client_analytics'))
+        return redirect(url_for('client_my_jobs'))
 
     # Get all doctors who sent applications (via Message table)
     messages = Message.query.filter_by(job_id=job.id, message_type='interest').all()
@@ -8378,38 +8548,8 @@ def client_analytics():
         flash('Unauthorized access!', 'danger')
         return redirect(url_for('home'))
 
-    jobs = Job.query.filter_by(poster_id=current_user.id).order_by(Job.id.desc()).all()
-
-    job_data = []
-    for job in jobs:
-        messages = Message.query.filter_by(job_id=job.id, message_type='interest').all()
-
-        # Count interest per day
-        interest_by_day = defaultdict(int)
-        interested_doctors = []
-        for msg in messages:
-            date_str = msg.timestamp.strftime("%Y-%m-%d")
-            interest_by_day[date_str] += 1
-
-            if msg.doctor:
-                interested_doctors.append({
-                    'id': msg.doctor.id,
-                    'name': f"{msg.doctor.first_name} {msg.doctor.last_name}",
-                    'email': msg.doctor.email
-                })
-
-        job_data.append({
-            'id': job.id,
-            'title': job.title,
-            'location': job.location,
-            'salary': job.salary,
-            'description': job.description,
-            'interest_count': len(messages),
-            'interested_doctors': interested_doctors,
-            'interest_by_day': interest_by_day
-        })
-
-    return render_template("client_analytics.html", job_data=job_data)
+    flash('Job analytics are now available directly inside the My Jobs page.', 'info')
+    return redirect(url_for('client_my_jobs'))
 
 @app.route('/public_register_doctor', methods=['POST'])
 def public_register_doctor():
@@ -8507,6 +8647,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
