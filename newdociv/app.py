@@ -5264,6 +5264,10 @@ app.jinja_loader = DictLoader({
                             <div class="mb-3">{{ form.certification.label }} {{ form.certification(class="form-select") }}</div>
                             <div class="mb-3">{{ form.certification_specialty_area.label }} {{ form.certification_specialty_area(class="form-control") }}</div>
                             <div class="mb-3">{{ form.clinically_active.label }} {{ form.clinically_active(class="form-select", id="clinically_active") }}</div>
+                            <div class="mb-3" id="last_active_field" style="display:none;">
+                                {{ form.last_clinically_active.label(class="form-label fw-semibold") }}
+                                {{ form.last_clinically_active(class="form-control", type="date") }}
+                            </div>
 
                             <p class="section-title">Digital & Facility Experience</p>
                             <div class="mb-3">
@@ -9086,6 +9090,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
