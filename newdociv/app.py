@@ -107,6 +107,7 @@ class JobRequirement(db.Model):
     certification = db.Column(db.String(50))
     certification_specialty_area = db.Column(db.String(100))
     clinically_active = db.Column(db.String(50))
+    clinical_recency_requirement = db.Column(db.String(100))
     emr = db.Column(db.Text)
     emr_other = db.Column(db.String(255))
     languages = db.Column(db.Text)
@@ -363,6 +364,28 @@ def ensure_doctor_columns():
 
 
 ensure_doctor_columns()
+
+
+def ensure_job_requirement_columns():
+    """Add new job requirement columns to existing databases without migrations."""
+    with app.app_context():
+        inspector = inspect(db.engine)
+        if not inspector.has_table('job_requirement'):
+            return
+
+        existing = {col['name'] for col in inspector.get_columns('job_requirement')}
+        statements = []
+
+        if 'clinical_recency_requirement' not in existing:
+            statements.append("ALTER TABLE job_requirement ADD COLUMN clinical_recency_requirement VARCHAR(100)")
+
+        if statements:
+            with db.engine.begin() as conn:
+                for stmt in statements:
+                    conn.execute(text(stmt))
+
+
+ensure_job_requirement_columns()
 
 
 def parse_salary_input(raw_value):
@@ -912,7 +935,7 @@ class DoctorForm(FlaskForm):
     ]
     specialty = SelectField(
         'Specialty',
-        choices=[(spec, spec) for spec in specialty_choices],
+        choices=[('', 'Select a specialty')] + [(spec, spec) for spec in specialty_choices],
         validators=[DataRequired()],
         validate_choice=False
     )
@@ -973,6 +996,7 @@ class DoctorForm(FlaskForm):
     certification = SelectField(
         'Certification',
         choices=[
+            ('', 'Select certification'),
             ('Board Certified', 'Board Certified'),
             ('Board Certified/Eligible', 'Board Certified/Eligible'),
             ('Not Boarded', 'Not Boarded')
@@ -984,6 +1008,7 @@ class DoctorForm(FlaskForm):
     clinically_active = SelectField(
         'Clinically Active?',
         choices=[
+            ('', 'Select status'),
             ('Yes', 'Yes'),
             ('No', 'No'),
             ('Never clinically active', 'Never clinically active')
@@ -1065,7 +1090,7 @@ class JobRequirementForm(FlaskForm):
     position = SelectField('Healthcare Provider Type', choices=[('MD','MD'),('DO','DO'),('NP','NP'),('PA','PA')], validators=[DataRequired()])
     specialty = SelectField(
         'Specialty',
-        choices=[(spec, spec) for spec in DoctorForm.specialty_choices],
+        choices=[('', 'Select a specialty')] + [(spec, spec) for spec in DoctorForm.specialty_choices],
         validators=[DataRequired()],
         validate_choice=False
     )
@@ -1073,6 +1098,7 @@ class JobRequirementForm(FlaskForm):
     certification = SelectField(
         'Certification',
         choices=[
+            ('', 'Select certification'),
             ('Board Certified', 'Board Certified'),
             ('Board Certified/Eligible', 'Board Certified/Eligible'),
             ('Not Boarded', 'Not Boarded')
@@ -1083,12 +1109,14 @@ class JobRequirementForm(FlaskForm):
     clinically_active = SelectField(
         'Clinically Active?',
         choices=[
+            ('', 'Select status'),
             ('Yes', 'Yes'),
             ('No', 'No'),
             ('Never clinically active', 'Never clinically active')
         ],
         validators=[Optional()]
     )
+    clinical_recency_requirement = StringField('How recent must they have been clinically active?', validators=[Optional()])
     emr = SelectMultipleField(
         'Preferred EMR Experience',
         choices=[(system, system) for system in DoctorForm.emr_choices],
@@ -2475,6 +2503,7 @@ app.jinja_loader = DictLoader({
                                 <div class="mb-3">{{ form.certification.label(class="form-label fw-semibold") }} {{ form.certification(class="form-select") }}</div>
                                 <div class="mb-3">{{ form.certification_specialty_area.label(class="form-label fw-semibold") }} {{ form.certification_specialty_area(class="form-control") }}</div>
                                 <div class="mb-3">{{ form.clinically_active.label(class="form-label fw-semibold") }} {{ form.clinically_active(class="form-select") }}</div>
+                                <div class="mb-3" id="clinicalRecencyField" style="display:none;">{{ form.clinical_recency_requirement.label(class="form-label fw-semibold") }} {{ form.clinical_recency_requirement(class="form-control", placeholder="e.g., Within the last 12 months") }}</div>
                             </div>
 
                             <div class="col-lg-6">
@@ -2538,6 +2567,25 @@ app.jinja_loader = DictLoader({
                             {{ form.submit(class="btn btn-success px-4") }}
                         </div>
                     </form>
+                    <script>
+                        (function() {
+                            const clinicallyActiveSelect = document.getElementById('{{ form.clinically_active.id }}');
+                            const recencyField = document.getElementById('clinicalRecencyField');
+
+                            function syncRecencyVisibility() {
+                                if (!clinicallyActiveSelect || !recencyField) return;
+                                const show = clinicallyActiveSelect.value === 'No';
+                                recencyField.style.display = show ? 'block' : 'none';
+                                if (!show) {
+                                    const input = recencyField.querySelector('input, textarea, select');
+                                    if (input) input.value = '';
+                                }
+                            }
+
+                            clinicallyActiveSelect?.addEventListener('change', syncRecencyVisibility);
+                            syncRecencyVisibility();
+                        })();
+                    </script>
                 </div>
             </div>
         </div>
@@ -3992,6 +4040,7 @@ app.jinja_loader = DictLoader({
                     </div>
                     <div class="mb-3">{{ req_form.certification_specialty_area.label(class="form-label fw-semibold") }} {{ req_form.certification_specialty_area(class="form-control", placeholder="Focus area, if any") }}</div>
                     <div class="mb-3">{{ req_form.clinically_active.label(class="form-label fw-semibold") }} {{ req_form.clinically_active(class="form-select") }}</div>
+                    <div class="mb-3" id="reqClinicalRecencyField" style="display:none;">{{ req_form.clinical_recency_requirement.label(class="form-label fw-semibold") }} {{ req_form.clinical_recency_requirement(class="form-control", placeholder="e.g., Within the last 12 months") }}</div>
 
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
@@ -4056,6 +4105,25 @@ app.jinja_loader = DictLoader({
                 </div>
             </div>
         </form>
+        <script>
+            (function() {
+                const clinicallyActiveSelect = document.getElementById('{{ req_form.clinically_active.id }}');
+                const recencyField = document.getElementById('reqClinicalRecencyField');
+
+                function syncRecencyField() {
+                    if (!clinicallyActiveSelect || !recencyField) return;
+                    const show = clinicallyActiveSelect.value === 'No';
+                    recencyField.style.display = show ? 'block' : 'none';
+                    if (!show) {
+                        const input = recencyField.querySelector('input, textarea, select');
+                        if (input) input.value = '';
+                    }
+                }
+
+                clinicallyActiveSelect?.addEventListener('change', syncRecencyField);
+                syncRecencyField();
+            })();
+        </script>
     </div>
     {% endblock %}''',
 
@@ -6804,6 +6872,7 @@ def job_requirements(job_id):
         form.certification.data = requirement.certification or ''
         form.certification_specialty_area.data = requirement.certification_specialty_area or ''
         form.clinically_active.data = requirement.clinically_active or ''
+        form.clinical_recency_requirement.data = requirement.clinical_recency_requirement or ''
         form.emr.data = requirement.emr.split(',') if requirement.emr else []
         form.emr_other.data = requirement.emr_other or ''
         form.languages.data = requirement.languages.split(',') if requirement.languages else []
@@ -6824,6 +6893,9 @@ def job_requirements(job_id):
         requirement.certification = form.certification.data
         requirement.certification_specialty_area = form.certification_specialty_area.data
         requirement.clinically_active = form.clinically_active.data
+        requirement.clinical_recency_requirement = (
+            form.clinical_recency_requirement.data if form.clinically_active.data == 'No' else None
+        )
         requirement.emr = ",".join(form.emr.data) if form.emr.data else None
         requirement.emr_other = form.emr_other.data
         requirement.languages = ",".join(form.languages.data) if form.languages.data else None
@@ -7818,6 +7890,7 @@ def edit_job(job_id):
         req_form.certification.data = requirement.certification or ''
         req_form.certification_specialty_area.data = requirement.certification_specialty_area or ''
         req_form.clinically_active.data = requirement.clinically_active or ''
+        req_form.clinical_recency_requirement.data = requirement.clinical_recency_requirement or ''
         req_form.emr.data = requirement.emr.split(',') if requirement.emr else []
         req_form.emr_other.data = requirement.emr_other or ''
         req_form.languages.data = requirement.languages.split(',') if requirement.languages else []
@@ -7849,6 +7922,9 @@ def edit_job(job_id):
         requirement.certification = req_form.certification.data
         requirement.certification_specialty_area = req_form.certification_specialty_area.data
         requirement.clinically_active = req_form.clinically_active.data
+        requirement.clinical_recency_requirement = (
+            req_form.clinical_recency_requirement.data if req_form.clinically_active.data == 'No' else None
+        )
         requirement.emr = ",".join(req_form.emr.data) if req_form.emr.data else None
         requirement.emr_other = req_form.emr_other.data
         requirement.languages = ",".join(req_form.languages.data) if req_form.languages.data else None
@@ -8991,6 +9067,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
