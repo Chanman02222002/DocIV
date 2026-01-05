@@ -4395,159 +4395,468 @@ app.jinja_loader = DictLoader({
     <meta charset="UTF-8">
     <title>JobsDirect Medical</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --brand-teal: #8ecad4;
-            --brand-blue: #1e3a8a;
-            --brand-gray: #374151;
+            --primary: #1B9EAF;
+            --secondary: #3687C8;
+            --text-dark: #231F20;
+            --text-body: #4A4A4A;
+            --muted: #8A8A8A;
+            --background: #F9FAFB;
         }
 
-        html, body {
+        * { box-sizing: border-box; }
+
+        body {
             margin: 0;
-            height: 100%;
-            background: #0f172a;
-            font-family: 'Segoe UI', Tahoma, sans-serif;
+            font-family: 'Roboto', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--background);
+            color: var(--text-body);
         }
 
-        .hero-shell {
+        .page {
+            max-width: 1440px;
+            margin: 0 auto;
+            background: linear-gradient(180deg, #EEF6F6 0%, #FFFFFF 40%);
+            border-radius: 10px;
             position: relative;
-            min-height: 100vh;
             overflow: hidden;
-            display: flex;
+            box-shadow: 0 20px 60px rgba(27, 158, 175, 0.15);
+        }
+
+        header {
             display: flex;
             align-items: center;
+            justify-content: space-between;
+            padding: 32px 48px;
+            position: sticky;
+            top: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(6px);
+            z-index: 10;
+        }
+
+        .brand {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+            color: var(--text-dark);
+        }
+
+        .nav-actions {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .btn-primary-lg, .btn-secondary-lg {
+            display: inline-flex;
+            align-items: center;
             justify-content: center;
-            background: radial-gradient(circle at 20% 20%, rgba(142, 202, 212, 0.08), transparent 30%),
-                        radial-gradient(circle at 80% 10%, rgba(30, 58, 138, 0.1), transparent 35%),
-                        #0f172a;
+            gap: 10px;
+            padding: 16px 28px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 20px;
+            text-decoration: none;
         }
 
-        .pdf-frame {
-            position: absolute;
-            inset: 0;
-        }
-
-        .pdf-frame embed {
-            width: 100%;
-            height: 100%;
+        .btn-primary-lg {
+            background: var(--primary);
+            color: #fff;
             border: none;
-            object-fit: contain;
-            background: #0f172a;
-            filter: drop-shadow(0 20px 50px rgba(0,0,0,0.35));
         }
 
-        .hotspot-layer {
+        .btn-primary-lg:hover { background: #15889a; }
+
+        .btn-secondary-lg {
+            border: 2px solid var(--secondary);
+            color: var(--secondary);
+            background: transparent;
+        }
+
+        .hero {
+            padding: 32px 48px 80px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::after {
+            content: "";
             position: absolute;
             inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            background: radial-gradient(600px at 80% 10%, rgba(118, 196, 207, 0.18), transparent 50%),
+                        radial-gradient(520px at 0% 20%, rgba(249, 250, 251, 0.6), transparent 50%);
             pointer-events: none;
         }
 
-        .hotspot {
-            position: absolute;
-            transform: translate(-50%, -50%);
-            width: 18%;
-            min-width: 200px;
-            max-width: 380px;
-            aspect-ratio: 3.2 / 1;
-            border-radius: 999px;
-            border: 2px solid rgba(255, 255, 255, 0.45);
-            background: rgba(255, 255, 255, 0.02);
-            color: #ffffff;
-            font-size: 1.05rem;
+        .hero-grid {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 40px;
+            position: relative;
+            z-index: 1;
+            align-items: center;
+        }
+
+        .eyebrow {
+            font-weight: 600;
+            color: var(--secondary);
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+        }
+
+        .hero-title {
+            font-size: 40px;
+            line-height: 1.2;
+            color: var(--text-dark);
+            margin: 12px 0;
             font-weight: 700;
-            letter-spacing: 0.3px;
-            text-decoration: none;
+        }
+
+        .hero-subtitle {
+            font-size: 24px;
+            color: var(--text-body);
+            margin-bottom: 24px;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .hero-visual {
+            position: relative;
+            aspect-ratio: 4 / 3.2;
+            background: linear-gradient(135deg, rgba(118,196,207,0.08), #fff);
+            border-radius: 18px;
+            box-shadow: 4px 8px 20px rgba(27, 158, 175, 0.25);
+            display: grid;
+            place-items: center;
+        }
+
+        .floating-hex {
+            position: absolute;
+            width: 280px;
+            height: 240px;
+            border-radius: 24px;
+            background: linear-gradient(270deg, rgba(249, 250, 251, 0.3) 60%, rgba(255,255,255,0) 100%);
+            box-shadow: 4px 8px 20px rgba(118, 196, 207, 0.35);
+            transform: rotate(-12deg);
+        }
+
+        .floating-hex.alt { width: 240px; height: 206px; transform: rotate(18deg); right: 16%; top: 10%; }
+        .floating-hex.main { left: 12%; bottom: 8%; }
+
+        .trust-banner {
+            margin: 0 48px;
+            background: #F9FAFB;
+            border-radius: 10px;
+            padding: 20px 28px;
             display: flex;
             align-items: center;
-            justify-content: center;
-            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
-            backdrop-filter: blur(4px);
-            transition: all 0.2s ease;
-            pointer-events: auto;
+            gap: 16px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.06);
         }
 
-        .hotspot:hover {
-            background: rgba(142, 202, 212, 0.35);
-            border-color: rgba(142, 202, 212, 0.85);
-            transform: translate(-50%, -50%) scale(1.02);
+        .trust-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 14px;
+            background: rgba(138,138,138,0.2);
+            display: grid;
+            place-items: center;
+            color: var(--text-body);
+            font-size: 26px;
         }
 
-        .hotspot:focus-visible {
-            outline: 3px solid var(--brand-teal);
-            outline-offset: 2px;
+        section {
+            padding: 80px 48px;
+            position: relative;
         }
 
-        .hotspot.pro {
-            top: 62%;
-            left: 50%;
-        }
-
-        .hotspot.org {
-            top: 72%;
-            left: 50%;
-        }
-
-        .hotspot.create {
-            top: 82%;
-            left: 50%;
-            width: 20%;
-            background: rgba(30, 58, 138, 0.65);
-            border-color: rgba(30, 58, 138, 0.9);
-        }
-
-        .hotspot.create:hover {
-            background: rgba(30, 58, 138, 0.85);
-        }
-
-        .fallback-links {
-            position: absolute;
-            bottom: 14px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.55);
-            color: #e5e7eb;
-            padding: 10px 14px;
-            border-radius: 12px;
-            font-size: 0.9rem;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.25);
-        }
-
-        .fallback-links a {
-            color: var(--brand-teal);
+        h2.section-title {
+            font-size: 40px;
             font-weight: 700;
-            text-decoration: none;
-            margin: 0 8px;
+            color: var(--text-dark);
+            margin-bottom: 12px;
+            text-align: center;
         }
 
-        .fallback-links a:hover {
-            text-decoration: underline;
+        .section-subtitle {
+            font-size: 24px;
+            color: var(--muted);
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 24px;
+        }
+
+        .info-card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            padding: 32px 24px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .info-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 18px;
+            border-radius: 14px;
+            background: #EEF6F6;
+            display: grid;
+            place-items: center;
+            color: var(--primary);
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .info-card h3 {
+            font-size: 24px;
+            color: var(--text-dark);
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .info-card p {
+            font-size: 20px;
+            color: var(--text-body);
+            margin: 0;
+        }
+
+        .feature-list {
+            display: grid;
+            gap: 18px;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: #fff;
+            padding: 14px 16px;
+            border-radius: 12px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.04);
+        }
+
+        .check {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: #1B9EAF;
+            color: #fff;
+            display: grid;
+            place-items: center;
+            font-weight: 900;
+            font-size: 24px;
+        }
+
+        .cta-band {
+            background: #fff;
+            border-radius: 14px;
+            padding: 48px 24px;
+            text-align: center;
+            box-shadow: 0 16px 38px rgba(0,0,0,0.08);
+        }
+
+        .cta-band h3 {
+            font-size: 40px;
+            color: var(--text-dark);
+            margin-bottom: 12px;
+            font-weight: 700;
+        }
+
+        .cta-band p {
+            font-size: 24px;
+            color: var(--muted);
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        footer {
+            padding: 48px;
+            border-top: 1px solid rgba(138, 138, 138, 0.2);
+            background: #fff;
+        }
+
+        footer .footer-grid {
+            display: flex;
+            justify-content: space-between;
+            gap: 32px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        footer .links {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        footer a {
+            color: #000;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 20px;
+        }
+
+        footer a:hover { text-decoration: underline; }
+
+        @media (max-width: 1100px) {
+            .hero-grid { grid-template-columns: 1fr; }
+            .card-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+            header { position: sticky; }
         }
     </style>
 </head>
 <body>
+    <div class="page">
+        <header>
+            <div class="brand">JobsDirect Medical</div>
+            <div class="nav-actions">
+                <a class="btn-secondary-lg" href="{{ url_for('login', role='organization') }}">Log In</a>
+                <a class="btn-primary-lg" href="{{ url_for('create_account') }}">Get Started</a>
+            </div>
+        </header>
 
-     <div class="hero-shell">
-        <div class="pdf-frame" aria-hidden="true">
-            <embed src="{{ url_for('static', filename='FILE_6696.pdf') }}#toolbar=0&navpanes=0&scrollbar=0" type="application/pdf">
+        <div class="hero">
+            <div class="hero-grid">
+                <div>
+                    <div class="eyebrow">Direct hiring for healthcare professionals — no recruiters, no noise.</div>
+                    <h1 class="hero-title">Connect directly with verified healthcare organizations</h1>
+                    <p class="hero-subtitle">No middle-men, no spam, just faster hiring.</p>
+                    <div class="hero-actions">
+                        <a class="btn-primary-lg" href="{{ url_for('create_account') }}">Create Account</a>
+                        <a class="btn-secondary-lg" href="{{ url_for('login', role='professional') }}">Log In</a>
+                    </div>
+                </div>
+                <div class="hero-visual">
+                    <div class="floating-hex main"></div>
+                    <div class="floating-hex alt"></div>
+                    <div class="text-center" style="max-width: 360px;">
+                        <h3 class="fw-bold text-dark mb-3">Secure, verified matches</h3>
+                        <p class="text-muted mb-0">Personalized opportunities based on your specialty and preferences.</p>
+                    </div>
+                </div>
+            </div>
         </div>
-    <div class="hotspot-layer">
-            <a class="hotspot pro" href="{{ url_for('login', role='professional') }}">Healthcare Professional Login</a>
-            <a class="hotspot org" href="{{ url_for('login', role='organization') }}">Healthcare Organization Login</a>
-            <a class="hotspot create" href="{{ url_for('create_account') }}">Create Account</a>
-        </div>
-    
 
-        <div class="fallback-links">
-            Having trouble clicking? Use these links:
-            <a href="{{ url_for('login', role='professional') }}">Professional</a>
-            ·
-            <a href="{{ url_for('login', role='organization') }}">Organization</a>
-            ·
-            <a href="{{ url_for('create_account') }}">Create Account</a>
+        <div class="trust-banner">
+            <div class="trust-icon">🔒</div>
+            <div class="fw-semibold fs-5 text-body">
+                Your information is shared only with the actual hiring entity. <strong>NEVER</strong> with third parties.
+            </div>
         </div>
+
+        <section aria-labelledby="how-pro-title">
+            <h2 id="how-pro-title" class="section-title">How It Works</h2>
+            <div class="section-subtitle text-primary">For Healthcare Professionals</div>
+            <div class="card-grid">
+                <div class="info-card">
+                    <div class="info-icon">1</div>
+                    <h3>Create Your Profile</h3>
+                    <p>Upload your CV and set your preferences one time.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-icon">2</div>
+                    <h3>Find & Apply</h3>
+                    <p>Review matched roles and apply directly — no third party recruiters.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-icon">3</div>
+                    <h3>Connect & Schedule</h3>
+                    <p>Choose interview times and communicate directly.</p>
+                </div>
+            </div>
+        </section>
+
+        <section aria-labelledby="why-title" style="background:#F9FAFB;border-radius:10px;">
+            <div class="hero-grid" style="align-items: start; gap:32px;">
+                <div>
+                    <h2 id="why-title" class="section-title" style="text-align:left;">Why Healthcare Professionals Choose JobsDirect</h2>
+                    <div class="feature-list">
+                        <div class="feature-item"><span class="check">✓</span><span>No recruiter spam or third-party outreach</span></div>
+                        <div class="feature-item"><span class="check">✓</span><span>Only verified healthcare organizations</span></div>
+                        <div class="feature-item"><span class="check">✓</span><span>No middle-men, no delays</span></div>
+                        <div class="feature-item"><span class="check">✓</span><span>Full control over who sees your information</span></div>
+                        <div class="feature-item"><span class="check">✓</span><span>Faster, more intentional hiring</span></div>
+                        <div class="feature-item"><span class="check">✓</span><span>Matches based on your preferences</span></div>
+                    </div>
+                </div>
+                <div class="hero-visual" style="min-height:520px;">
+                    <div class="floating-hex main" style="top:16%; left:14%;"></div>
+                    <div class="floating-hex alt" style="right:10%; bottom:12%; transform:rotate(-26deg);"></div>
+                    <div class="floating-hex" style="width:300px;height:260px;transform:rotate(-48deg);right:18%;top:24%;"></div>
+                </div>
+            </div>
+        </section>
+
+        <section aria-labelledby="ai-title">
+            <h2 id="ai-title" class="section-title">Smarter AI Tools That Work For You</h2>
+            <div class="section-subtitle">Powered by intelligent AI tools built for healthcare workflows.</div>
+            <div class="card-grid" style="grid-template-columns: 1fr; max-width: 700px; margin: 0 auto;">
+                <div class="feature-list">
+                    <div class="feature-item"><span class="check">✓</span><span>Personalized matching based on specialty and preferences</span></div>
+                    <div class="feature-item"><span class="check">✓</span><span>Profile-based applications and guided next steps</span></div>
+                    <div class="feature-item"><span class="check">✓</span><span>Smart notifications that keep you moving forward</span></div>
+                </div>
+            </div>
+        </section>
+
+        <section aria-labelledby="cta-title" style="padding: 60px 48px 20px;">
+            <div class="cta-band">
+                <h3 id="cta-title">Tired Of Nonstop Recruiter Outreach?</h3>
+                <p>Take control of your job search in minutes.</p>
+                <a class="btn-primary-lg" style="border-radius:20px;padding:16px 34px;" href="{{ url_for('create_account') }}">Create Account</a>
+            </div>
+        </section>
+
+        <section aria-labelledby="org-title">
+            <h2 id="org-title" class="section-title">How It Works</h2>
+            <div class="section-subtitle text-primary">For Healthcare Organizations</div>
+            <div class="card-grid">
+                <div class="info-card">
+                    <div class="info-icon">1</div>
+                    <h3>Create Organization Profile</h3>
+                    <p>Submit your organization for verification.</p>
+                </div>
+                    <div class="info-card">
+                    <div class="info-icon">2</div>
+                    <h3>Post & Review</h3>
+                    <p>Publish openings and review matched candidates.</p>
+                </div>
+                <div class="info-card">
+                    <div class="info-icon">3</div>
+                    <h3>Schedule Interviews</h3>
+                    <p>Propose times and manage interviews on platform.</p>
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            <div class="footer-grid">
+                <div>
+                    <div class="brand mb-2">JobsDirect Medical</div>
+                    <div class="text-muted">© {{ current_year }} JobsDirect Medical. All rights reserved.</div>
+                </div>
+                <div class="links">
+                    <a href="#">Contact</a>
+                    <a href="#">Privacy Policy</a>
+                    <a href="#">Cookie Policy</a>
+                    <a href="#">Terms & Conditions</a>
+                </div>
+            </div>
+        </footer>
     </div>
 </body>
 </html>
@@ -8661,6 +8970,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
