@@ -388,6 +388,18 @@ def ensure_job_requirement_columns():
 ensure_job_requirement_columns()
 
 
+def normalize_date_value(value):
+    """Return an ISO-formatted date string if value looks like a date, else empty string."""
+    if not value:
+        return ''
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+    try:
+        return datetime.fromisoformat(str(value)).date().isoformat()
+    except (TypeError, ValueError):
+        return ''
+
+
 def parse_salary_input(raw_value):
     """Normalize currency-formatted salary strings to a float value."""
     if not raw_value:
@@ -1016,7 +1028,11 @@ class DoctorForm(FlaskForm):
         validators=[DataRequired()]
     )
 
-    last_clinically_active = StringField('Last Clinically Active (Month/Year)', validators=[Optional()])
+    last_clinically_active = StringField(
+        'When were you last active?',
+        validators=[Optional()],
+        render_kw={"type": "date"}
+    )
 
 
     emr_choices = [
@@ -1116,7 +1132,11 @@ class JobRequirementForm(FlaskForm):
         ],
         validators=[Optional()]
     )
-    clinical_recency_requirement = StringField('How recent must they have been clinically active?', validators=[Optional()])
+    clinical_recency_requirement = StringField(
+        'When were they last active?',
+        validators=[Optional()],
+        render_kw={"type": "date"}
+    )
     emr = SelectMultipleField(
         'Preferred EMR Experience',
         choices=[(system, system) for system in DoctorForm.emr_choices],
@@ -2503,7 +2523,7 @@ app.jinja_loader = DictLoader({
                                 <div class="mb-3">{{ form.certification.label(class="form-label fw-semibold") }} {{ form.certification(class="form-select") }}</div>
                                 <div class="mb-3">{{ form.certification_specialty_area.label(class="form-label fw-semibold") }} {{ form.certification_specialty_area(class="form-control") }}</div>
                                 <div class="mb-3">{{ form.clinically_active.label(class="form-label fw-semibold") }} {{ form.clinically_active(class="form-select") }}</div>
-                                <div class="mb-3" id="clinicalRecencyField" style="display:none;">{{ form.clinical_recency_requirement.label(class="form-label fw-semibold") }} {{ form.clinical_recency_requirement(class="form-control", placeholder="e.g., Within the last 12 months") }}</div>
+                                <div class="mb-3" id="clinicalRecencyField" style="display:none;">{{ form.clinical_recency_requirement.label(class="form-label fw-semibold") }} {{ form.clinical_recency_requirement(class="form-control", type="date") }}</div>
                             </div>
 
                             <div class="col-lg-6">
@@ -2704,7 +2724,7 @@ app.jinja_loader = DictLoader({
             <div class="mb-3">{{ form.certification.label }} {{ form.certification(class="form-select") }}</div>
             <div class="mb-3">{{ form.certification_specialty_area.label }} {{ form.certification_specialty_area(class="form-control") }}</div>
             <div class="mb-3">{{ form.clinically_active.label }} {{ form.clinically_active(class="form-select", id="clinically_active") }}</div>
-            <div class="mb-3" id="last_active_field" style="display:none;">{{ form.last_clinically_active.label }} {{ form.last_clinically_active(class="form-control") }}</div>
+            <div class="mb-3" id="last_active_field" style="display:none;">{{ form.last_clinically_active.label }} {{ form.last_clinically_active(class="form-control", type="date") }}</div>
 
             <div class="position-section position-shared">
                 <h5>Practice Details</h5>
@@ -4040,8 +4060,7 @@ app.jinja_loader = DictLoader({
                     </div>
                     <div class="mb-3">{{ req_form.certification_specialty_area.label(class="form-label fw-semibold") }} {{ req_form.certification_specialty_area(class="form-control", placeholder="Focus area, if any") }}</div>
                     <div class="mb-3">{{ req_form.clinically_active.label(class="form-label fw-semibold") }} {{ req_form.clinically_active(class="form-select") }}</div>
-                    <div class="mb-3" id="reqClinicalRecencyField" style="display:none;">{{ req_form.clinical_recency_requirement.label(class="form-label fw-semibold") }} {{ req_form.clinical_recency_requirement(class="form-control", placeholder="e.g., Within the last 12 months") }}</div>
-
+                    <div class="mb-3" id="reqClinicalRecencyField" style="display:none;">{{ req_form.clinical_recency_requirement.label(class="form-label fw-semibold") }} {{ req_form.clinical_recency_requirement(class="form-control", type="date") }}</div>
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">{{ req_form.emr.label.text }}</label>
@@ -6058,7 +6077,7 @@ app.jinja_loader = DictLoader({
             </div>
 
             <div class="mb-3" id="last_active_field" style="display:none;">
-                {{ form.last_clinically_active.label }} {{ form.last_clinically_active(class="form-control") }}
+                {{ form.last_clinically_active.label }} {{ form.last_clinically_active(class="form-control", type="date") }}
             </div>
             <div class=\"row mb-3\">\n                <div class=\"col-md-6 mb-3 mb-md-0\">\n                    <label class=\"form-label\"><strong>{{ form.emr.label }}</strong></label>\n                    <div class=\"d-flex flex-wrap border rounded p-2\" style=\"max-height:300px; overflow-y:auto;\">\n                        {% for emr_option in form.emr %}\n                        <div class=\"form-check me-3\" style=\"width:200px;\">{{ emr_option(class=\"form-check-input\") }} {{ emr_option.label(class=\"form-check-label\") }}</div>\n                        {% endfor %}\n                    </div>\n                </div>\n                <div class=\"col-md-6\">\n                    <label class=\"form-label\"><strong>{{ form.languages.label }}</strong></label>\n                    <div class=\"d-flex flex-wrap border rounded p-2\" style=\"max-height:300px; overflow-y:auto;\">\n                        {% for language in form.languages %}\n                        <div class=\"form-check me-3\" style=\"width:180px;\">{{ language(class=\"form-check-input\") }} {{ language.label(class=\"form-check-label\") }}</div>\n                        {% endfor %}\n                    </div>\n                </div>\n            </div>
 
@@ -6296,7 +6315,7 @@ def add_doctor():
             certification=form.certification.data,
             certification_specialty_area=form.certification_specialty_area.data,
             clinically_active=form.clinically_active.data,
-            last_clinically_active=form.last_clinically_active.data if form.clinically_active.data == 'No' else None,
+            last_clinically_active=normalize_date_value(form.last_clinically_active.data) if form.clinically_active.data == 'No' else None,
             emr=",".join(emr_selections),
             languages=",".join(language_selections),
             states_licensed=",".join(form.states_licensed.data),
@@ -6872,7 +6891,7 @@ def job_requirements(job_id):
         form.certification.data = requirement.certification or ''
         form.certification_specialty_area.data = requirement.certification_specialty_area or ''
         form.clinically_active.data = requirement.clinically_active or ''
-        form.clinical_recency_requirement.data = requirement.clinical_recency_requirement or ''
+        form.clinical_recency_requirement.data = normalize_date_value(requirement.clinical_recency_requirement)
         form.emr.data = requirement.emr.split(',') if requirement.emr else []
         form.emr_other.data = requirement.emr_other or ''
         form.languages.data = requirement.languages.split(',') if requirement.languages else []
@@ -6894,7 +6913,7 @@ def job_requirements(job_id):
         requirement.certification_specialty_area = form.certification_specialty_area.data
         requirement.clinically_active = form.clinically_active.data
         requirement.clinical_recency_requirement = (
-            form.clinical_recency_requirement.data if form.clinically_active.data == 'No' else None
+            normalize_date_value(form.clinical_recency_requirement.data) if form.clinically_active.data == 'No' else None
         )
         requirement.emr = ",".join(form.emr.data) if form.emr.data else None
         requirement.emr_other = form.emr_other.data
@@ -7890,7 +7909,7 @@ def edit_job(job_id):
         req_form.certification.data = requirement.certification or ''
         req_form.certification_specialty_area.data = requirement.certification_specialty_area or ''
         req_form.clinically_active.data = requirement.clinically_active or ''
-        req_form.clinical_recency_requirement.data = requirement.clinical_recency_requirement or ''
+        req_form.clinical_recency_requirement.data = normalize_date_value(requirement.clinical_recency_requirement)
         req_form.emr.data = requirement.emr.split(',') if requirement.emr else []
         req_form.emr_other.data = requirement.emr_other or ''
         req_form.languages.data = requirement.languages.split(',') if requirement.languages else []
@@ -7923,7 +7942,7 @@ def edit_job(job_id):
         requirement.certification_specialty_area = req_form.certification_specialty_area.data
         requirement.clinically_active = req_form.clinically_active.data
         requirement.clinical_recency_requirement = (
-            req_form.clinical_recency_requirement.data if req_form.clinically_active.data == 'No' else None
+            normalize_date_value(req_form.clinical_recency_requirement.data) if req_form.clinically_active.data == 'No' else None
         )
         requirement.emr = ",".join(req_form.emr.data) if req_form.emr.data else None
         requirement.emr_other = req_form.emr_other.data
@@ -8044,7 +8063,7 @@ def doctor_edit_profile():
                 doctor.certification_specialty_area = form.certification_specialty_area.data
                 doctor.clinically_active = form.clinically_active.data
                 doctor.last_clinically_active = (
-                    form.last_clinically_active.data if form.clinically_active.data == 'No' else None
+                    normalize_date_value(form.last_clinically_active.data) if form.clinically_active.data == 'No' else None
                 )
                 doctor.emr = ",".join(form.emr.data)
                 doctor.languages = ",".join(form.languages.data)
@@ -8110,7 +8129,7 @@ def doctor_edit_profile():
         form.certification.data = doctor.certification
         form.certification_specialty_area.data = doctor.certification_specialty_area
         form.clinically_active.data = doctor.clinically_active
-        form.last_clinically_active.data = doctor.last_clinically_active
+        form.last_clinically_active.data = normalize_date_value(doctor.last_clinically_active)
         form.emr.data = doctor.emr.split(',') if doctor.emr else []
         form.languages.data = doctor.languages.split(',') if doctor.languages else []
         form.states_licensed.data = doctor.states_licensed.split(',') if doctor.states_licensed else []
@@ -8802,7 +8821,7 @@ def edit_doctor(doctor_id):
             doctor.clinically_active = form.clinically_active.data
 
             if form.clinically_active.data == 'No':
-                doctor.last_clinically_active = form.last_clinically_active.data
+                doctor.last_clinically_active = normalize_date_value(form.last_clinically_active.data)
             else:
                 doctor.last_clinically_active = None
             emr_selections = list(form.emr.data or [])
@@ -8887,7 +8906,7 @@ def edit_doctor(doctor_id):
         form.certification.data = doctor.certification
         form.certification_specialty_area.data = doctor.certification_specialty_area
         form.clinically_active.data = doctor.clinically_active
-        form.last_clinically_active.data = doctor.last_clinically_active
+        form.last_clinically_active.data = normalize_date_value(doctor.last_clinically_active)
         emr_values = doctor.emr.split(',') if doctor.emr else []
         valid_emr_options = {choice for choice, _ in form.emr.choices}
         form.emr.data = [value for value in emr_values if value in valid_emr_options]
@@ -9067,6 +9086,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
