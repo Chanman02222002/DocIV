@@ -1801,7 +1801,7 @@ app.jinja_loader = DictLoader({
                             {% if job_interest_summary %}
                                 {% for job in job_interest_summary[:4] %}
                                     <a class="activity-item d-flex justify-content-between align-items-start gap-3 text-decoration-none text-reset"
-                                       href="{{ url_for('edit_job', job_id=job.id) }}">
+                                       href="{{ url_for('client_my_jobs', job_id=job.id) }}#job-{{ job.id }}-tile">
                                         <div>
                                             <div class="fw-semibold">{{ job.title }}</div>
                                             <div class="text-muted small">{{ job.location }}</div>
@@ -2863,7 +2863,7 @@ app.jinja_loader = DictLoader({
                     {% for job in jobs %}
                         {% set analytics = job_analytics.get(job.id, {}) %}
                         <div class="col-md-6">
-                            <div class="job-tile p-3 h-100 d-flex flex-column">
+                            <div class="job-tile p-3 h-100 d-flex flex-column" id="job-{{ job.id }}-tile">
                                 <div class="d-flex justify-content-between align-items-start mb-2">
                                     <div>
                                         <h5 class="mb-1">{{ job.title }}</h5>
@@ -3001,6 +3001,21 @@ app.jinja_loader = DictLoader({
                     }
                 });
             });
+
+            const focusedJobId = {{ focused_job_id or 'null' }};
+            if (focusedJobId) {
+                const targetTile = document.getElementById(`job-${focusedJobId}-tile`);
+                if (targetTile) {
+                    targetTile.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+                const collapseEl = document.getElementById(`job-${focusedJobId}-analytics`);
+                if (collapseEl && typeof bootstrap !== 'undefined') {
+                    const collapse = new bootstrap.Collapse(collapseEl, { toggle: false });
+                    collapse.show();
+                } else if (collapseEl) {
+                    collapseEl.classList.add('show');
+                }
+            }
         </script>
         {% endblock %}''',
     'schedule_call.html': '''
@@ -8316,6 +8331,7 @@ def client_my_jobs():
 
     keyword = request.args.get('keyword', '').lower()
     location = request.args.get('location', '').lower()
+    focused_job_id = request.args.get('job_id', type=int)
 
     jobs_query = Job.query.filter_by(poster_id=current_user.id)
 
@@ -8372,7 +8388,8 @@ def client_my_jobs():
         keyword=keyword,
         location=location,
         job_analytics=job_analytics,
-        chart_payload=chart_payload
+        chart_payload=chart_payload,
+        focused_job_id=focused_job_id
     )
 
 
@@ -8974,6 +8991,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
