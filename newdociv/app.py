@@ -8305,7 +8305,7 @@ def client_profile():
 
         db.session.commit()
         flash('Profile updated successfully.', 'success')
-        return redirect(url_for('client_profile'))
+        return redirect(url_for('client_dashboard'))
     elif request.method == 'POST':
         error_messages = [f"{field.label.text}: {error}" for field, errors in form.errors.items() for error in errors]
         flash(' '.join(error_messages) or 'Could not update profile.', 'danger')
@@ -9067,6 +9067,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
