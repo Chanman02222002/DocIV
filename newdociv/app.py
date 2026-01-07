@@ -2945,6 +2945,7 @@ app.jinja_loader = DictLoader({
                                         <form method="post" action="{{ url_for('archive_job', job_id=job.id) }}">
                                             <button type="submit" class="btn btn-sm btn-outline-secondary" title="Archive job">
                                                 <i class="bi bi-archive"></i>
+                                                <span class="ms-1">Archive</span>
                                             </button>
                                         </form>
                                     </div>
@@ -9223,6 +9224,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
