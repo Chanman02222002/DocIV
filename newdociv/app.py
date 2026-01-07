@@ -6009,6 +6009,8 @@ app.jinja_loader = DictLoader({
             <form method="post" action="/public_register_client" class="mt-3">
                 <div class="mb-3"><input name="organization_name" class="form-control" placeholder="Hospital or Organization Name"></div>
                 <div class="mb-3"><input name="email" class="form-control" placeholder="Email"></div>
+                <div class="mb-3"><input name="phone" class="form-control" placeholder="Phone Number"></div>
+                <div class="mb-3"><input name="signup_role" class="form-control" placeholder="Your Role (e.g., Recruiting Lead)"></div>
                 <div class="mb-3"><input name="username" class="form-control" placeholder="Username"></div>
                 <div class="mb-3"><input type="password" name="password" class="form-control" placeholder="Password"></div>
                 <div class="mb-3"><input type="password" name="confirm_password" class="form-control" placeholder="Confirm Password"></div>
@@ -9266,6 +9268,8 @@ def public_register_client():
 
     username = (data.get('username') or '').strip()
     email = (data.get('email') or '').strip().lower()
+    phone = (data.get('phone') or '').strip()
+    signup_role = (data.get('signup_role') or '').strip()
     organization_name = (data.get('organization_name') or '').strip()
     password = data.get('password')
     confirm_password = data.get('confirm_password')
@@ -9296,7 +9300,9 @@ def public_register_client():
     primary_contact = ClientContact(
         client_id=user.id,
         name=user.organization_name or user.username or 'Primary Contact',
+        position=signup_role or None,
         email=user.email,
+        phone=phone or None,
         receive_updates=True,
     )
     db.session.add(primary_contact)
@@ -9427,6 +9433,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
