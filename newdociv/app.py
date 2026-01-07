@@ -70,6 +70,7 @@ class User(UserMixin, db.Model):
     role = db.Column(db.String(20), default='client')  # default as client
     organization_name = db.Column(db.String(150))
     organization_logo = db.Column(db.String(255))
+    is_approved = db.Column(db.Boolean, default=True)
 
     doctor = db.relationship('Doctor', back_populates='user', uselist=False)
     contacts = db.relationship('ClientContact', back_populates='client', cascade="all, delete-orphan")
@@ -268,12 +269,17 @@ def ensure_user_columns():
             statements.append("ALTER TABLE user ADD COLUMN organization_name VARCHAR(150)")
         if 'organization_logo' not in existing:
             statements.append("ALTER TABLE user ADD COLUMN organization_logo VARCHAR(255)")
+        if 'is_approved' not in existing:
+            statements.append("ALTER TABLE user ADD COLUMN is_approved BOOLEAN DEFAULT 1")
 
         if statements:
             with db.engine.begin() as conn:
                 for stmt in statements:
                     conn.execute(text(stmt))
 
+        if 'is_approved' in existing or any("is_approved" in stmt for stmt in statements):
+            with db.engine.begin() as conn:
+                conn.execute(text("UPDATE user SET is_approved = 1 WHERE is_approved IS NULL"))
 
 ensure_user_columns()
 
@@ -1525,6 +1531,7 @@ app.jinja_loader = DictLoader({
                         {% elif current_user.role == 'admin' %}
                             <a class="nav-link text-white" href="{{ url_for('register_doctor') }}">Create Doctor Login</a>
                             <a class="nav-link text-white" href="{{ url_for('register_client') }}">Create Client Login</a>
+                            <a class="nav-link text-white" href="{{ url_for('admin_client_applications') }}">Client Applications</a>
                             <a class="nav-link text-white" href="{{ url_for('add_doctor') }}">Add Doctor</a>
                             <a class="nav-link text-white" href="{{ url_for('doctors') }}">View Doctors</a>
                             <a class="nav-link text-white" href="{{ url_for('post_job') }}">Post Job</a>
@@ -1753,6 +1760,46 @@ app.jinja_loader = DictLoader({
             </div>
         </div>
 
+        {% endblock %}''',
+
+    'admin_client_applications.html': '''{% extends "base.html" %}
+        {% block content %}
+        <h2 class="mb-4">Client Applications</h2>
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                {% if pending_clients %}
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Organization</th>
+                                    <th>Username</th>
+                                    <th>Email</th>
+                                    <th class="text-end">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for client in pending_clients %}
+                                    <tr>
+                                        <td>{{ client.organization_name or 'N/A' }}</td>
+                                        <td>{{ client.username }}</td>
+                                        <td>{{ client.email }}</td>
+                                        <td class="text-end">
+                                            <form method="post" class="d-inline">
+                                                <input type="hidden" name="user_id" value="{{ client.id }}">
+                                                <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted mb-0">No pending client applications right now.</p>
+                {% endif %}
+            </div>
+        </div>
         {% endblock %}''',
 
     'client_dashboard.html': '''
@@ -6489,7 +6536,7 @@ def admin_dashboard():
     if current_user.role != 'admin':
         flash('Unauthorized access!', 'danger')
         return redirect(url_for('home'))
-
+        
     scheduled_calls = ScheduledCall.query.order_by(ScheduledCall.datetime).all()
 
     events = [
@@ -6501,6 +6548,29 @@ def admin_dashboard():
     ]
 
     return render_template('index.html', events=events)
+
+
+@app.route('/admin/client_applications', methods=['GET', 'POST'])
+@login_required
+def admin_client_applications():
+    if current_user.role != 'admin':
+        flash('Unauthorized access!', 'danger')
+        return redirect(url_for('home'))
+
+    if request.method == 'POST':
+        user_id = request.form.get('user_id')
+        user = User.query.filter_by(id=user_id, role='client').first()
+        if not user:
+            flash('Client application not found.', 'danger')
+            return redirect(url_for('admin_client_applications'))
+
+        user.is_approved = True
+        db.session.commit()
+        flash(f"{user.organization_name or user.username} approved successfully.", 'success')
+        return redirect(url_for('admin_client_applications'))
+
+    pending_clients = User.query.filter_by(role='client', is_approved=False).order_by(User.id.desc()).all()
+    return render_template('admin_client_applications.html', pending_clients=pending_clients)
 
 
 @app.route('/doctors')
@@ -6619,6 +6689,9 @@ def login():
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
         if user and user.check_password(form.password.data):
+            if user.role == 'client' and not user.is_approved:
+                flash('Please wait for our admin to approve your account before logging in.', 'warning')
+                return redirect(url_for('login'))
             login_user(user)
             flash('Logged in successfully!', 'success')
 
@@ -7883,7 +7956,8 @@ def register_client():
             username=form.username.data,
             email=form.email.data,
             password_hash=generate_password_hash(form.password.data),
-            role='client'
+            role='client',
+            is_approved=True
         )
         db.session.add(new_client)
         db.session.flush()
@@ -9113,16 +9187,17 @@ def public_register_client():
         flash('Username or email already exists.', 'danger')
         return redirect(url_for('create_account'))
 
-    user = User(
+   user = User(
         username=username,
         email=email,
         role='client',
         organization_name=organization_name or username,
+        is_approved=False,
     )
     user.set_password(password)
     db.session.add(user)
-    db.session.flush()
-
+    db.session.commit()
+    
     primary_contact = ClientContact(
         client_id=user.id,
         name=user.organization_name or user.username or 'Primary Contact',
@@ -9133,8 +9208,8 @@ def public_register_client():
     db.session.commit()
 
     login_user(user)
-    flash('Client account created and logged in! Please complete your profile.', 'success')
-    return redirect(url_for('client_profile'))
+    flash('Account submitted! Please wait for our admin to approve your account before logging in.', 'info')
+    return redirect(url_for('login'))
 
 @app.route('/client/analytics')
 @login_required
@@ -9242,6 +9317,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
