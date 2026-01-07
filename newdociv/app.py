@@ -7378,6 +7378,7 @@ def view_job(job_id):
                 }
 
                 if unique_recipients and SENDGRID_API_KEY and SENDGRID_FROM_EMAIL:
+                    inbox_url = url_for('client_inbox', _external=True)
                     try:
                         mail = Mail(
                             from_email=(SENDGRID_FROM_EMAIL, SENDGRID_FROM_NAME),
@@ -7386,6 +7387,11 @@ def view_job(job_id):
                             html_content=f"""
                                 <div style='font-family:Arial, sans-serif; font-size:15px; color:#222;'>
                                     <p>{message_content}</p>
+                                    <p>
+                                        <a href="{inbox_url}" style="color:#2563eb; text-decoration:underline;">
+                                            View this application in your inbox
+                                        </a>
+                                    </p>
                                     <p style='font-size:12px; color:#666;'>Log in to your dashboard to respond.</p>
                                 </div>
                             """,
@@ -9090,6 +9096,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
