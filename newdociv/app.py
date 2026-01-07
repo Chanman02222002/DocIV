@@ -43,7 +43,7 @@ from io import BytesIO
 from sqlalchemy import inspect, text, or_
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
-
+import secrets
 
 print("Current working directory:", os.getcwd())
 print("Database path:", os.path.abspath('crm.db'))
@@ -75,6 +75,7 @@ def require_client_approval():
         'landing_page',
         'create_account',
         'public_register_client',
+        'verify_email',
         'static',
     }
     endpoint = request.endpoint
@@ -93,7 +94,9 @@ class User(UserMixin, db.Model):
     organization_name = db.Column(db.String(150))
     organization_logo = db.Column(db.String(255))
     is_approved = db.Column(db.Boolean, default=True)
-
+    email_verified = db.Column(db.Boolean, default=True)
+    email_verification_token = db.Column(db.String(255), nullable=True)
+    email_verification_sent_at = db.Column(db.DateTime, nullable=True)
     doctor = db.relationship('Doctor', back_populates='user', uselist=False)
     contacts = db.relationship('ClientContact', back_populates='client', cascade="all, delete-orphan")
     
@@ -223,6 +226,40 @@ def notify_user(
     return message
 
 
+def send_email_verification(user):
+    if not user.email:
+        return False
+
+    verification_link = url_for('verify_email', token=user.email_verification_token, _external=True)
+    subject = "Verify your email address"
+    content = f"""
+        <div style='font-family:Arial, sans-serif; font-size:15px; color:#222;'>
+            <p>Thanks for submitting your hospital application.</p>
+            <p>Please verify your email address by clicking the link below:</p>
+            <p><a href="{verification_link}">Verify my email</a></p>
+            <p style='font-size:12px; color:#666;'>If you did not request this, you can ignore this email.</p>
+        </div>
+    """
+
+    if SENDGRID_API_KEY and SENDGRID_FROM_EMAIL:
+        try:
+            mail = Mail(
+                from_email=(SENDGRID_FROM_EMAIL, SENDGRID_FROM_NAME),
+                to_emails=user.email,
+                subject=subject,
+                html_content=content,
+            )
+            sg = SendGridAPIClient(SENDGRID_API_KEY)
+            sg.send(mail)
+        except Exception as e:
+            print("SendGrid error:", e)
+            return False
+        return True
+
+    print("SendGrid not configured; email verification not sent.")
+    return False
+
+
 def ensure_job_columns():
     """Add new job columns to existing databases without migrations."""
     with app.app_context():
@@ -293,6 +330,12 @@ def ensure_user_columns():
             statements.append("ALTER TABLE user ADD COLUMN organization_logo VARCHAR(255)")
         if 'is_approved' not in existing:
             statements.append("ALTER TABLE user ADD COLUMN is_approved BOOLEAN DEFAULT 1")
+        if 'email_verified' not in existing:
+            statements.append("ALTER TABLE user ADD COLUMN email_verified BOOLEAN DEFAULT 1")
+        if 'email_verification_token' not in existing:
+            statements.append("ALTER TABLE user ADD COLUMN email_verification_token VARCHAR(255)")
+        if 'email_verification_sent_at' not in existing:
+            statements.append("ALTER TABLE user ADD COLUMN email_verification_sent_at DATETIME")
 
         if statements:
             with db.engine.begin() as conn:
@@ -302,6 +345,9 @@ def ensure_user_columns():
         if 'is_approved' in existing or any("is_approved" in stmt for stmt in statements):
             with db.engine.begin() as conn:
                 conn.execute(text("UPDATE user SET is_approved = 1 WHERE is_approved IS NULL"))
+        if 'email_verified' in existing or any("email_verified" in stmt for stmt in statements):
+            with db.engine.begin() as conn:
+                conn.execute(text("UPDATE user SET email_verified = 1 WHERE email_verified IS NULL"))
 
 ensure_user_columns()
 
@@ -1797,6 +1843,7 @@ app.jinja_loader = DictLoader({
                                     <th>Organization</th>
                                     <th>Username</th>
                                     <th>Email</th>
+                                    <th>Email Verified</th>
                                     <th class="text-end">Action</th>
                                 </tr>
                             </thead>
@@ -1806,10 +1853,17 @@ app.jinja_loader = DictLoader({
                                         <td>{{ client.organization_name or 'N/A' }}</td>
                                         <td>{{ client.username }}</td>
                                         <td>{{ client.email }}</td>
+                                        <td>
+                                            {% if client.email_verified %}
+                                                <span class="badge bg-success">Verified</span>
+                                            {% else %}
+                                                <span class="badge bg-warning text-dark">Unverified</span>
+                                            {% endif %}
+                                        </td>
                                         <td class="text-end">
                                             <form method="post" class="d-inline">
                                                 <input type="hidden" name="user_id" value="{{ client.id }}">
-                                                <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                                                <button type="submit" class="btn btn-sm btn-success" {% if not client.email_verified %}disabled{% endif %}>Approve</button>
                                             </form>
                                         </td>
                                     </tr>
@@ -6591,7 +6645,14 @@ def admin_client_applications():
         if not user:
             flash('Client application not found.', 'danger')
             return redirect(url_for('admin_client_applications'))
+        if not user.email_verified:
+            flash('Client must verify their email before approval.', 'warning')
+            return redirect(url_for('admin_client_applications'))
 
+        user.is_approved = True
+        db.session.commit()
+        flash(f"{user.organization_name or user.username} approved successfully.", 'success')
+        return redirect(url_for('admin_client_applications'))
         user.is_approved = True
         db.session.commit()
         flash(f"{user.organization_name or user.username} approved successfully.", 'success')
@@ -7985,7 +8046,8 @@ def register_client():
             email=form.email.data,
             password_hash=generate_password_hash(form.password.data),
             role='client',
-            is_approved=True
+            is_approved=True,
+            email_verified=True,
         )
         db.session.add(new_client)
         db.session.flush()
@@ -9215,12 +9277,16 @@ def public_register_client():
         flash('Username or email already exists.', 'danger')
         return redirect(url_for('create_account'))
 
+    verification_token = secrets.token_urlsafe(32)
     user = User(
         username=username,
         email=email,
         role='client',
         organization_name=organization_name or username,
         is_approved=False,
+        email_verified=False,
+        email_verification_token=verification_token,
+        email_verification_sent_at=datetime.utcnow(),
     )
     user.set_password(password)
     db.session.add(user)
@@ -9234,7 +9300,25 @@ def public_register_client():
     )
     db.session.add(primary_contact)
     db.session.commit()
-    flash('Account submitted! Please wait for our admin to approve your account before logging in.', 'info')
+    send_email_verification(user)
+    flash('Account submitted! Please check your email to verify your address before approval.', 'info')
+    return redirect(url_for('login'))
+
+
+@app.route('/verify_email/<token>')
+def verify_email(token):
+    user = User.query.filter_by(email_verification_token=token).first()
+    if not user:
+        flash('Verification link is invalid or has expired.', 'danger')
+        return redirect(url_for('login'))
+    if user.email_verified:
+        flash('Your email is already verified.', 'info')
+        return redirect(url_for('login'))
+
+    user.email_verified = True
+    user.email_verification_token = None
+    db.session.commit()
+    flash('Email verified successfully! Your application is now pending approval.', 'success')
     return redirect(url_for('login'))
 @app.route('/client/analytics')
 @login_required
@@ -9342,6 +9426,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
