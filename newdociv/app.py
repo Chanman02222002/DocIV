@@ -93,7 +93,7 @@ class Job(db.Model):
     poster_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     latitude = db.Column(db.Float, nullable=True)
     longitude = db.Column(db.Float, nullable=True)
-
+    archived = db.Column(db.Boolean, default=False, nullable=False)
     poster = db.relationship('User', backref='jobs')
     requirements = db.relationship('JobRequirement', back_populates='job', uselist=False, cascade="all, delete-orphan")
 
@@ -221,6 +221,8 @@ def ensure_job_columns():
             statements.append("ALTER TABLE job ADD COLUMN latitude FLOAT")
         if 'longitude' not in existing:
             statements.append("ALTER TABLE job ADD COLUMN longitude FLOAT")
+        if 'archived' not in existing:
+            statements.append("ALTER TABLE job ADD COLUMN archived BOOLEAN DEFAULT 0")
 
         if statements:
             with db.engine.begin() as conn:
@@ -638,7 +640,7 @@ def get_doctor_jobs_payload(doctor):
 
 def get_doctor_jobs(doctor):
     """Return scoped Job objects filtered by specialty and state preferences."""
-    raw_jobs = Job.query.order_by(Job.id.desc()).all()
+    raw_jobs = Job.query.filter_by(archived=False).order_by(Job.id.desc()).all()
     scoped_jobs = filter_jobs_by_specialty(raw_jobs, doctor.specialty, doctor.subspecialty)
 
     licensed_states = set(normalize_state_values((doctor.states_licensed or "").split(',')))
@@ -2899,6 +2901,7 @@ app.jinja_loader = DictLoader({
                 </div>
                 <div class="d-flex flex-wrap gap-2">
                     <a class="btn btn-outline-secondary" href="{{ url_for('client_dashboard') }}">Dashboard</a>
+                    <a class="btn btn-outline-secondary" href="{{ url_for('client_archived_jobs') }}">Archived jobs</a>
                     <a class="btn btn-primary" href="{{ url_for('post_job') }}">Post a New Job</a>
                 </div>
             </div>
@@ -2937,7 +2940,14 @@ app.jinja_loader = DictLoader({
                                         <h5 class="mb-1">{{ job.title }}</h5>
                                         <div class="text-muted small">{{ job.facility_name or 'Facility TBD' }}</div>
                                     </div>
-                                    <span class="job-chip">{{ job.salary or 'Rate TBD' }}</span>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="job-chip">{{ job.salary or 'Rate TBD' }}</span>
+                                        <form method="post" action="{{ url_for('archive_job', job_id=job.id) }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary" title="Archive job">
+                                                <i class="bi bi-archive"></i>
+                                            </button>
+                                        </form>
+                                    </div>
                                 </div>
                                 <div class="text-muted small mb-2"><i class="bi bi-geo-alt"></i> {{ job.location or 'Remote / flexible' }}</div>
                                 <p class="mb-3 text-secondary" style="min-height: 64px;">{{ (job.description or '')[:180] ~ ('…' if (job.description or '')|length > 180 else '') }}</p>
@@ -3085,6 +3095,71 @@ app.jinja_loader = DictLoader({
                 }
             }
         </script>
+        {% endblock %}''',
+    'client_archived_jobs.html': '''{% extends "base.html" %}
+        {% block content %}
+        <style>
+            .archive-hero {
+                background: linear-gradient(120deg, rgba(15,118,110,0.1), rgba(59,130,246,0.08));
+                border-radius: 18px;
+                padding: 1.5rem;
+                border: 1px solid #e5e7eb;
+            }
+            .archive-card {
+                border: 1px solid #e5e7eb;
+                border-radius: 14px;
+                padding: 1.25rem;
+                background: #fff;
+                box-shadow: 0 8px 24px rgba(15,23,42,0.05);
+            }
+        </style>
+
+        <div class="container py-4">
+            <div class="archive-hero mb-4 d-flex flex-wrap justify-content-between align-items-start gap-3">
+                <div>
+                    <p class="text-uppercase text-muted small mb-1">Archived roles</p>
+                    <h2 class="fw-bold mb-1">Keep past postings handy for quick reposting</h2>
+                    <p class="text-muted mb-0">Repost a role whenever you're ready to hire again.</p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a class="btn btn-outline-secondary" href="{{ url_for('client_my_jobs') }}">Back to My Jobs</a>
+                    <a class="btn btn-primary" href="{{ url_for('post_job') }}">Post a New Job</a>
+                </div>
+            </div>
+
+            {% if jobs %}
+                <div class="row g-3">
+                    {% for job in jobs %}
+                        <div class="col-md-6">
+                            <div class="archive-card h-100 d-flex flex-column">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <h5 class="mb-1">{{ job.title }}</h5>
+                                        <div class="text-muted small">{{ job.facility_name or 'Facility TBD' }}</div>
+                                    </div>
+                                    <span class="badge bg-light text-dark border">{{ job.salary or 'Rate TBD' }}</span>
+                                </div>
+                                <div class="text-muted small mb-3"><i class="bi bi-geo-alt"></i> {{ job.location or 'Remote / flexible' }}</div>
+                                <p class="text-secondary mb-4">{{ (job.description or '')[:180] ~ ('…' if (job.description or '')|length > 180 else '') }}</p>
+                                <div class="mt-auto d-flex flex-wrap gap-2">
+                                    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('edit_job', job_id=job.id) }}">Edit</a>
+                                    <form method="post" action="{{ url_for('repost_job', job_id=job.id) }}">
+                                        <button type="submit" class="btn btn-sm btn-success">
+                                            <i class="bi bi-arrow-repeat"></i> Repost
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <p class="text-muted mb-2">No archived jobs yet.</p>
+                    <a href="{{ url_for('client_my_jobs') }}" class="btn btn-outline-secondary">View active jobs</a>
+                </div>
+            {% endif %}
+        </div>
         {% endblock %}''',
     'schedule_call.html': '''
         {% extends "base.html" %}
@@ -6163,9 +6238,9 @@ def send_job_to_doctor(doctor_id):
 
     # Ensure clients can only see their own jobs
     if current_user.role == 'admin':
-        jobs = Job.query.all()
+        jobs = Job.query.filter_by(archived=False).all()
     else:  # client
-        jobs = Job.query.filter_by(poster_id=current_user.id).all()
+        jobs = Job.query.filter_by(poster_id=current_user.id, archived=False).all()
 
     if request.method == 'POST':
         job_id = request.form.get('job_id')
@@ -7281,8 +7356,7 @@ def doctor_jobs():
     salary_min = parse_salary_input(salary_min_raw)
     salary_max = parse_salary_input(salary_max_raw)
 
-    jobs_query = Job.query.outerjoin(JobRequirement)
-
+    jobs_query = Job.query.outerjoin(JobRequirement).filter(Job.archived.is_(False))
     if keyword:
         keyword_like = f"%{keyword}%"
         jobs_query = jobs_query.filter(
@@ -7326,7 +7400,9 @@ def view_job(job_id):
         return redirect(url_for('home'))
 
     job = Job.query.get_or_404(job_id)
-
+    if job.archived:
+        flash('This job is no longer available.', 'info')
+        return redirect(url_for('doctor_jobs'))
     # Check if doctor already sent an application
     already_interested = Message.query.filter_by(
         sender_id=current_user.id,
@@ -8219,7 +8295,7 @@ def client_dashboard():
     ]
 
     # Job analytics for dashboard cards
-    jobs = Job.query.filter_by(poster_id=current_user.id).all()
+    jobs = Job.query.filter_by(poster_id=current_user.id, archived=False).all()
     job_interest_summary = []
     total_interest = 0
     for job in jobs:
@@ -8438,7 +8514,7 @@ def client_my_jobs():
     location = request.args.get('location', '').lower()
     focused_job_id = request.args.get('job_id', type=int)
 
-    jobs_query = Job.query.filter_by(poster_id=current_user.id)
+    jobs_query = Job.query.filter_by(poster_id=current_user.id, archived=False)
 
     if keyword:
         jobs_query = jobs_query.filter(Job.title.ilike(f"%{keyword}%") | Job.description.ilike(f"%{keyword}%"))
@@ -8496,6 +8572,54 @@ def client_my_jobs():
         chart_payload=chart_payload,
         focused_job_id=focused_job_id
     )
+
+
+@app.route('/client/archived_jobs')
+@login_required
+def client_archived_jobs():
+    if current_user.role != 'client':
+        flash('Unauthorized access!', 'danger')
+        return redirect(url_for('home'))
+
+    jobs = Job.query.filter_by(poster_id=current_user.id, archived=True).order_by(Job.id.desc()).all()
+    return render_template('client_archived_jobs.html', jobs=jobs)
+
+
+@app.route('/client/jobs/<int:job_id>/archive', methods=['POST'])
+@login_required
+def archive_job(job_id):
+    if current_user.role != 'client':
+        flash('Unauthorized access!', 'danger')
+        return redirect(url_for('home'))
+
+    job = Job.query.get_or_404(job_id)
+    if job.poster_id != current_user.id:
+        flash('You can only archive your own jobs.', 'danger')
+        return redirect(url_for('client_my_jobs'))
+
+    job.archived = True
+    db.session.commit()
+    flash('Job archived.', 'success')
+    return redirect(url_for('client_my_jobs'))
+
+
+@app.route('/client/jobs/<int:job_id>/repost', methods=['POST'])
+@login_required
+def repost_job(job_id):
+    if current_user.role != 'client':
+        flash('Unauthorized access!', 'danger')
+        return redirect(url_for('home'))
+
+    job = Job.query.get_or_404(job_id)
+    if job.poster_id != current_user.id:
+        flash('You can only repost your own jobs.', 'danger')
+        return redirect(url_for('client_archived_jobs'))
+
+    job.archived = False
+    db.session.commit()
+    flash('Job reposted.', 'success')
+    return redirect(url_for('client_my_jobs'))
+
 
 
 
@@ -9096,6 +9220,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
