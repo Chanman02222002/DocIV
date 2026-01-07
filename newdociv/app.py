@@ -3504,9 +3504,10 @@ app.jinja_loader = DictLoader({
                         <a href="{{ url_for('doctor_profile', doctor_id=doctor.id, job_id=job_id) }}" class="btn btn-outline-secondary btn-sm ms-2">Clear Comparison</a>
                     {% endif %}
                 </div>
+            {% elif job_id and associated_job %}
+                <div class="text-muted small">Add job requirements to view job comparison.</div>
             {% endif %}
         </div>
-
         {% if job_requirement %}
             <div class="alert alert-info">
                 Comparing against job: <strong>{{ associated_job.title }}</strong> ({{ associated_job.location }})
@@ -9426,6 +9427,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
