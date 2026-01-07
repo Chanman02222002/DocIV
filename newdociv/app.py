@@ -45,7 +45,6 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 
 
-
 print("Current working directory:", os.getcwd())
 print("Database path:", os.path.abspath('crm.db'))
 app = Flask(__name__, static_folder='static')
@@ -62,6 +61,29 @@ db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+
+@app.before_request
+def require_client_approval():
+    if not current_user.is_authenticated:
+        return None
+    if current_user.role != 'client' or current_user.is_approved:
+        return None
+
+    allowed_endpoints = {
+        'login',
+        'logout',
+        'landing_page',
+        'create_account',
+        'public_register_client',
+        'static',
+    }
+    endpoint = request.endpoint
+    if endpoint in allowed_endpoints or (endpoint and endpoint.startswith('static')):
+        return None
+
+    logout_user()
+    flash('Please wait for our admin to approve your account before logging in.', 'warning')
+    return redirect(url_for('login'))
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
@@ -9206,11 +9228,8 @@ def public_register_client():
     )
     db.session.add(primary_contact)
     db.session.commit()
-
-    login_user(user)
     flash('Account submitted! Please wait for our admin to approve your account before logging in.', 'info')
     return redirect(url_for('login'))
-
 @app.route('/client/analytics')
 @login_required
 def client_analytics():
@@ -9317,6 +9336,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
