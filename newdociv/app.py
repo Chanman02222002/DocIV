@@ -7886,6 +7886,15 @@ def register_client():
             role='client'
         )
         db.session.add(new_client)
+        db.session.flush()
+
+        primary_contact = ClientContact(
+            client_id=new_client.id,
+            name=new_client.organization_name or new_client.username or 'Primary Contact',
+            email=new_client.email,
+            receive_updates=True,
+        )
+        db.session.add(primary_contact)
         db.session.commit()
 
         flash('New client account created successfully!', 'success')
@@ -9090,9 +9099,9 @@ def landing_page():
 def public_register_client():
     data = request.form
 
-    username = data.get('username')
-    email = data.get('email')
-    organization_name = data.get('organization_name')
+    username = (data.get('username') or '').strip()
+    email = (data.get('email') or '').strip().lower()
+    organization_name = (data.get('organization_name') or '').strip()
     password = data.get('password')
     confirm_password = data.get('confirm_password')
     
@@ -9112,6 +9121,15 @@ def public_register_client():
     )
     user.set_password(password)
     db.session.add(user)
+    db.session.flush()
+
+    primary_contact = ClientContact(
+        client_id=user.id,
+        name=user.organization_name or user.username or 'Primary Contact',
+        email=user.email,
+        receive_updates=True,
+    )
+    db.session.add(primary_contact)
     db.session.commit()
 
     login_user(user)
@@ -9224,6 +9242,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
