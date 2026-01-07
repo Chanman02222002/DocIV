@@ -899,7 +899,10 @@ def extract_state_abbr(location):
 
 @app.context_processor
 def inject_user():
-    return dict(current_user=current_user)
+    pending_client_approvals = 0
+    if current_user.is_authenticated and current_user.role == 'admin':
+        pending_client_approvals = User.query.filter_by(role='client', is_approved=False).count()
+    return dict(current_user=current_user, pending_client_approvals=pending_client_approvals)
 
     
 class LoginForm(FlaskForm):
@@ -1599,7 +1602,14 @@ app.jinja_loader = DictLoader({
                         {% elif current_user.role == 'admin' %}
                             <a class="nav-link text-white" href="{{ url_for('register_doctor') }}">Create Doctor Login</a>
                             <a class="nav-link text-white" href="{{ url_for('register_client') }}">Create Client Login</a>
-                            <a class="nav-link text-white" href="{{ url_for('admin_client_applications') }}">Client Applications</a>
+                            <a class="nav-link text-white position-relative" href="{{ url_for('admin_client_applications') }}">
+                                Client Applications
+                                {% if pending_client_approvals > 0 %}
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                    {{ pending_client_approvals }}
+                                </span>
+                                {% endif %}
+                            </a>
                             <a class="nav-link text-white" href="{{ url_for('add_doctor') }}">Add Doctor</a>
                             <a class="nav-link text-white" href="{{ url_for('doctors') }}">View Doctors</a>
                             <a class="nav-link text-white" href="{{ url_for('post_job') }}">Post Job</a>
@@ -9433,6 +9443,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
