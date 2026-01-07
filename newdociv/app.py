@@ -3552,9 +3552,15 @@ app.jinja_loader = DictLoader({
         <a href="{{ url_for('send_job_to_doctor', doctor_id=doctor.id) }}" class="btn btn-info">Send Job Posting</a>
 
         {% if current_user.role in ['client', 'admin'] %}
+            {% if job_requirement %}
+                {% if show_compare %}
+                    <a href="{{ url_for('doctor_profile', doctor_id=doctor.id, job_id=job_id) }}" class="btn btn-outline-secondary">Clear Comparison</a>
+                {% else %}
+                    <a href="{{ url_for('doctor_profile', doctor_id=doctor.id, job_id=job_id, compare='1') }}" class="btn btn-outline-primary">Compare to Job Requirements</a>
+                {% endif %}
+            {% endif %}
             {% set first_job = current_user.jobs[0] if current_user.jobs|length > 0 else None %}
             {% if first_job %}
-            
                 <a href="{{ url_for('send_invite', doctor_id=doctor.id, job_id=first_job.id) }}" class="btn btn-success">Schedule Call</a>
             {% else %}
                 <button class="btn btn-secondary" disabled title="Post a job first">Schedule Call</button>
@@ -9336,6 +9342,7 @@ if __name__ == "__main__":
         geocode_missing_jobs()
     else:
         app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
